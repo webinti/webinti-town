@@ -13,6 +13,7 @@ class SocketManager {
   private socket: Socket | null = null;
   private listeners = new Set<(p: PlayerState) => void>();
   private removalListeners = new Set<(id: string) => void>();
+  private proximityListeners = new Set<(ids: string[]) => void>();
 
   connect(): Socket {
     if (this.socket && this.socket.connected) return this.socket;
@@ -28,9 +29,13 @@ class SocketManager {
 
     socket.on('room_state', (state: RoomState) => {
       const store = useGameStore.getState();
-      store.setLocalPlayerId(state.selfId);
+      store.setLocalPlayerId(state.playerId);
       store.setPlayers(state.players);
       store.setJoined(true);
+    });
+
+    socket.on('join_error', (e: { message?: string }) => {
+      console.error('[join_error]', e?.message ?? 'unknown');
     });
 
     socket.on('players_update', (players: PlayerState[]) => {
@@ -51,7 +56,14 @@ class SocketManager {
       for (const fn of this.listeners) fn(p);
     });
 
-    socket.on('player_left', (id: string) => {
+    socket.on('proximity_update', (payload: { nearbyPlayerIds?: string[] }) => {
+      const ids = Array.isArray(payload?.nearbyPlayerIds) ? payload.nearbyPlayerIds : [];
+      for (const fn of this.proximityListeners) fn(ids);
+    });
+
+    socket.on('player_left', (payload: { playerId: string }) => {
+      const id = payload?.playerId;
+      if (!id) return;
       useGameStore.getState().removePlayer(id);
       for (const fn of this.removalListeners) fn(id);
     });
@@ -75,6 +87,13 @@ class SocketManager {
   onPlayerRemoved(fn: (id: string) => void): () => void {
     this.removalListeners.add(fn);
     return () => this.removalListeners.delete(fn);
+  }
+
+  onProximityUpdate(fn: (ids: string[]) => void): () => void {
+    this.proximityListeners.add(fn);
+    return () => {
+      this.proximityListeners.delete(fn);
+    };
   }
 
   disconnect(): void {

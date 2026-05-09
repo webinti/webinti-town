@@ -1,14 +1,25 @@
-import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { socketManager } from '../network/SocketManager';
 import { Minimap } from './Minimap';
+import { useLiveKit } from './hooks/useLiveKit';
+import { VideoBar } from './components/VideoBar';
 
 export function HUD() {
   const name = useGameStore((s) => s.name);
   const connected = useGameStore((s) => s.connected);
   const playerCount = useGameStore((s) => s.players.size);
-  const [micOn, setMicOn] = useState(false);
-  const [camOn, setCamOn] = useState(false);
+  const {
+    micEnabled,
+    camEnabled,
+    screenShareEnabled,
+    toggleMic,
+    toggleCam,
+    toggleScreenShare,
+    localCamTrack,
+    localScreenTrack,
+    remotes,
+    error,
+  } = useLiveKit();
 
   const handleLeave = () => {
     socketManager.disconnect();
@@ -27,23 +38,47 @@ export function HUD() {
           </div>
         </div>
         <div className="text-sm font-semibold tracking-wide text-slate-300">
-          WebintiSpace · demo
+          Webinti Town · demo
         </div>
       </div>
+
+      <VideoBar
+        localCamTrack={localCamTrack}
+        localScreenTrack={localScreenTrack}
+        localName={name}
+        remotes={remotes}
+      />
+
+      {error && (
+        <div className="pointer-events-auto mx-auto mt-2 max-w-md rounded-md bg-red-600/90 px-3 py-1.5 text-xs text-white shadow">
+          {error}
+        </div>
+      )}
 
       <div className="flex-1" />
 
       <div className="pointer-events-none flex items-end justify-between p-4">
         <div className="pointer-events-auto flex gap-2 rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">
           <ControlButton
-            active={micOn}
-            onClick={() => setMicOn((v) => !v)}
+            active={micEnabled}
+            onClick={() => {
+              void toggleMic();
+            }}
             label="Mic"
           />
           <ControlButton
-            active={camOn}
-            onClick={() => setCamOn((v) => !v)}
+            active={camEnabled}
+            onClick={() => {
+              void toggleCam();
+            }}
             label="Cam"
+          />
+          <ControlButton
+            active={screenShareEnabled}
+            onClick={() => {
+              void toggleScreenShare();
+            }}
+            label={screenShareEnabled ? 'Stop écran' : 'Écran'}
           />
           <button
             onClick={handleLeave}

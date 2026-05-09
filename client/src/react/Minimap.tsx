@@ -20,10 +20,10 @@ export function Minimap() {
         {Array.from(players.values()).map((p) => {
           const px = (p.x / MAP_W) * SIZE;
           const py = (p.y / MAP_H) * SIZE;
-          const isSelf = p.id === localId;
+          const isSelf = p.playerId === localId;
           return (
             <div
-              key={p.id}
+              key={p.playerId}
               className="absolute rounded-full"
               style={{
                 left: px - 3,

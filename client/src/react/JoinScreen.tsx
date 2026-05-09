@@ -1,22 +1,200 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { socketManager } from '../network/SocketManager';
+import type { Appearance } from '../types';
+import { DEFAULT_APPEARANCE } from '../types';
 
-const AVATAR_COLORS = [
+const STORAGE_KEY = 'webinti-town:profile';
+
+interface StoredProfile {
+  name: string;
+  appearance: Appearance;
+}
+
+function loadProfile(): StoredProfile | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredProfile>;
+    if (typeof parsed.name !== 'string') return null;
+    const a = parsed.appearance;
+    if (!a || typeof a !== 'object') return null;
+    const clamp = (v: unknown, max: number): number => {
+      const n = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : 0;
+      return Math.max(0, Math.min(max, n));
+    };
+    return {
+      name: parsed.name.slice(0, 20),
+      appearance: {
+        skin: clamp(a.skin, 2) as Appearance['skin'],
+        hairStyle: clamp(a.hairStyle, 5) as Appearance['hairStyle'],
+        hairColor: clamp(a.hairColor, 5) as Appearance['hairColor'],
+        shirt: clamp(a.shirt, 9) as Appearance['shirt'],
+        pants: clamp(a.pants, 5) as Appearance['pants'],
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveProfile(p: StoredProfile): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+  } catch {
+    // ignore quota / private mode failures
+  }
+}
+
+const FRAME_W = 32;
+const FRAME_H = 48;
+
+const SKIN_COLORS = ['#f4c79a', '#c79870', '#8b5a3a'];
+const HAIR_STYLE_LABELS = ['Aucun', 'Court', 'Mi-long', 'Queue', 'Casquette', 'Mohawk'];
+const HAIR_COLORS = ['#1a1a1a', '#5c3a1e', '#e8c870', '#a64427', '#9aa0a6', '#f0f0f0'];
+const SHIRT_COLORS = [
   '#ef4444',
   '#f97316',
   '#eab308',
   '#22c55e',
-  '#06b6d4',
+  '#14b8a6',
   '#3b82f6',
+  '#6366f1',
   '#a855f7',
   '#ec4899',
+  '#f3f4f6',
 ];
+const PANTS_COLORS = ['#2d3a5a', '#1f2937', '#a08868', '#6b4426', '#6b7280', '#7c8862'];
+
+const HAIR_COLS = 6;
+
+interface AvatarPreviewProps {
+  appearance: Appearance;
+  scale: number;
+}
+
+function AvatarPreview({ appearance, scale }: AvatarPreviewProps) {
+  const w = FRAME_W * scale;
+  const h = FRAME_H * scale;
+  const hairFrame = appearance.hairColor * HAIR_COLS + appearance.hairStyle;
+  const hairCol = hairFrame % HAIR_COLS;
+  const hairRow = Math.floor(hairFrame / HAIR_COLS);
+
+  const layerStyle = {
+    position: 'absolute' as const,
+    left: 0,
+    top: 0,
+    width: w,
+    height: h,
+    imageRendering: 'pixelated' as const,
+    backgroundRepeat: 'no-repeat' as const,
+  };
+
+  return (
+    <div style={{ position: 'relative', width: w, height: h }}>
+      <div
+        style={{
+          ...layerStyle,
+          backgroundImage: "url('/assets/avatars/hair_back.png')",
+          backgroundSize: `${HAIR_COLS * w}px ${HAIR_COLORS.length * h}px`,
+          backgroundPosition: `-${hairCol * w}px -${hairRow * h}px`,
+        }}
+      />
+      <div
+        style={{
+          ...layerStyle,
+          backgroundImage: "url('/assets/avatars/body.png')",
+          backgroundSize: `${SKIN_COLORS.length * w}px ${h}px`,
+          backgroundPosition: `-${appearance.skin * w}px 0px`,
+        }}
+      />
+      <div
+        style={{
+          ...layerStyle,
+          backgroundImage: "url('/assets/avatars/pants.png')",
+          backgroundSize: `${PANTS_COLORS.length * w}px ${h}px`,
+          backgroundPosition: `-${appearance.pants * w}px 0px`,
+        }}
+      />
+      <div
+        style={{
+          ...layerStyle,
+          backgroundImage: "url('/assets/avatars/shirt.png')",
+          backgroundSize: `${SHIRT_COLORS.length * w}px ${h}px`,
+          backgroundPosition: `-${appearance.shirt * w}px 0px`,
+        }}
+      />
+      <div
+        style={{
+          ...layerStyle,
+          backgroundImage: "url('/assets/avatars/hair.png')",
+          backgroundSize: `${HAIR_COLS * w}px ${HAIR_COLORS.length * h}px`,
+          backgroundPosition: `-${hairCol * w}px -${hairRow * h}px`,
+        }}
+      />
+    </div>
+  );
+}
+
+interface SwatchProps {
+  color: string;
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+}
+
+function Swatch({ color, selected, onClick, label }: SwatchProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`h-8 w-8 rounded-full ring-2 transition ${
+        selected ? 'ring-indigo-400 scale-110' : 'ring-slate-700 hover:ring-slate-500'
+      }`}
+      style={{ backgroundColor: color }}
+    />
+  );
+}
+
+interface HairStyleThumbProps {
+  styleIndex: number;
+  selected: boolean;
+  onClick: () => void;
+  appearance: Appearance;
+}
+
+function HairStyleThumb({ styleIndex, selected, onClick, appearance }: HairStyleThumbProps) {
+  const previewAppearance: Appearance = { ...appearance, hairStyle: styleIndex as Appearance['hairStyle'] };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={HAIR_STYLE_LABELS[styleIndex]}
+      className={`flex flex-col items-center rounded-lg bg-slate-900/60 p-1 ring-2 transition ${
+        selected ? 'ring-indigo-400 bg-indigo-500/20' : 'ring-transparent hover:ring-slate-600'
+      }`}
+    >
+      <AvatarPreview appearance={previewAppearance} scale={1} />
+      <span className="mt-1 text-[10px] text-slate-300">{HAIR_STYLE_LABELS[styleIndex]}</span>
+    </button>
+  );
+}
 
 export function JoinScreen() {
-  const [pseudo, setPseudo] = useState('');
-  const [avatar, setAvatar] = useState(0);
+  const stored = loadProfile();
+  const [pseudo, setPseudo] = useState(stored?.name ?? '');
+  const [appearance, setAppearance] = useState<Appearance>(stored?.appearance ?? DEFAULT_APPEARANCE);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    saveProfile({ name: pseudo, appearance });
+  }, [pseudo, appearance]);
+
+  const update = <K extends keyof Appearance>(key: K, value: Appearance[K]) => {
+    setAppearance((a) => ({ ...a, [key]: value }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,21 +202,26 @@ export function JoinScreen() {
     if (!name) return;
     setSubmitting(true);
     useGameStore.getState().setName(name);
-    useGameStore.getState().setAvatar(avatar);
+    useGameStore.getState().setAppearance(appearance);
+    saveProfile({ name, appearance });
     socketManager.connect();
-    socketManager.joinRoom({ slug: 'demo', name, avatar });
+    socketManager.joinRoom({ roomSlug: 'demo', playerName: name, appearance });
   };
 
   return (
     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-slate-100">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl bg-slate-800/80 p-8 shadow-2xl ring-1 ring-white/10 backdrop-blur"
+        className="w-full max-w-xl rounded-2xl bg-slate-800/80 p-8 shadow-2xl ring-1 ring-white/10 backdrop-blur"
       >
-        <h1 className="mb-1 text-3xl font-bold tracking-tight">WebintiSpace</h1>
-        <p className="mb-6 text-sm text-slate-400">
-          Rejoignez la salle pour explorer.
-        </p>
+        <h1 className="mb-1 text-3xl font-bold tracking-tight">Webinti Town</h1>
+        <p className="mb-4 text-sm text-slate-400">Personnalisez votre avatar.</p>
+
+        <div className="mb-4 flex justify-center">
+          <div className="rounded-lg bg-slate-900/60 p-3 ring-1 ring-slate-700">
+            <AvatarPreview appearance={appearance} scale={3} />
+          </div>
+        </div>
 
         <label className="mb-1 block text-sm font-medium">Pseudo</label>
         <input
@@ -51,20 +234,79 @@ export function JoinScreen() {
           autoFocus
         />
 
-        <label className="mb-2 block text-sm font-medium">Avatar</label>
-        <div className="mb-6 grid grid-cols-8 gap-2">
-          {AVATAR_COLORS.map((color, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setAvatar(i)}
-              className={`h-10 w-10 rounded-full ring-2 transition ${
-                avatar === i ? 'ring-white scale-110' : 'ring-transparent'
-              }`}
-              style={{ backgroundColor: color }}
-              aria-label={`Avatar ${i}`}
-            />
-          ))}
+        <div className="mb-3">
+          <label className="mb-2 block text-sm font-medium">Peau</label>
+          <div className="flex gap-2">
+            {SKIN_COLORS.map((c, i) => (
+              <Swatch
+                key={i}
+                color={c}
+                selected={appearance.skin === i}
+                onClick={() => update('skin', i as Appearance['skin'])}
+                label={`Peau ${i + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="mb-2 block text-sm font-medium">Coiffure</label>
+          <div className="flex flex-wrap gap-2">
+            {HAIR_STYLE_LABELS.map((_label, i) => (
+              <HairStyleThumb
+                key={i}
+                styleIndex={i}
+                selected={appearance.hairStyle === i}
+                onClick={() => update('hairStyle', i as Appearance['hairStyle'])}
+                appearance={appearance}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="mb-2 block text-sm font-medium">Couleur des cheveux</label>
+          <div className="flex gap-2">
+            {HAIR_COLORS.map((c, i) => (
+              <Swatch
+                key={i}
+                color={c}
+                selected={appearance.hairColor === i}
+                onClick={() => update('hairColor', i as Appearance['hairColor'])}
+                label={`Cheveux ${i + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="mb-2 block text-sm font-medium">Haut</label>
+          <div className="flex flex-wrap gap-2">
+            {SHIRT_COLORS.map((c, i) => (
+              <Swatch
+                key={i}
+                color={c}
+                selected={appearance.shirt === i}
+                onClick={() => update('shirt', i as Appearance['shirt'])}
+                label={`Haut ${i + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="mb-2 block text-sm font-medium">Pantalon</label>
+          <div className="flex gap-2">
+            {PANTS_COLORS.map((c, i) => (
+              <Swatch
+                key={i}
+                color={c}
+                selected={appearance.pants === i}
+                onClick={() => update('pants', i as Appearance['pants'])}
+                label={`Pantalon ${i + 1}`}
+              />
+            ))}
+          </div>
         </div>
 
         <button

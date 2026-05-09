@@ -12,4 +12,7 @@ export const config = {
   proximityRateHz: 4,
   proximityRadiusPx: 5 * 32,
   defaultSpawn: { x: 400, y: 300 } as const,
+  livekitUrl: process.env.LIVEKIT_URL ?? 'ws://localhost:7880',
+  livekitApiKey: process.env.LIVEKIT_API_KEY ?? 'devkey',
+  livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? '',
 };

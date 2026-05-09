@@ -12,7 +12,24 @@ export class BootScene extends Phaser.Scene {
 
     this.load.image('tileset_basic', '/assets/tilesets/basic.png');
     this.load.tilemapTiledJSON('map_default', '/maps/default.tmj');
-    this.load.spritesheet('avatars', '/assets/avatars/avatars.png', {
+
+    this.load.spritesheet('layer_body', '/assets/avatars/body.png', {
+      frameWidth: 32,
+      frameHeight: 48,
+    });
+    this.load.spritesheet('layer_hair', '/assets/avatars/hair.png', {
+      frameWidth: 32,
+      frameHeight: 48,
+    });
+    this.load.spritesheet('layer_hair_back', '/assets/avatars/hair_back.png', {
+      frameWidth: 32,
+      frameHeight: 48,
+    });
+    this.load.spritesheet('layer_shirt', '/assets/avatars/shirt.png', {
+      frameWidth: 32,
+      frameHeight: 48,
+    });
+    this.load.spritesheet('layer_pants', '/assets/avatars/pants.png', {
       frameWidth: 32,
       frameHeight: 48,
     });

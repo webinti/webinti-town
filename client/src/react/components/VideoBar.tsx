@@ -1,0 +1,190 @@
+import { useEffect, useRef } from 'react';
+import type {
+  LocalVideoTrack,
+  RemoteAudioTrack,
+  RemoteVideoTrack,
+} from 'livekit-client';
+import { useGameStore } from '../../stores/gameStore';
+import type { RemoteSnapshot } from '../../livekit/LiveKitManager';
+
+interface VideoBarProps {
+  localCamTrack: LocalVideoTrack | null;
+  localScreenTrack: LocalVideoTrack | null;
+  localName: string;
+  remotes: RemoteSnapshot[];
+}
+
+function computeVolume(d: number): number {
+  if (d <= 96) return 1;
+  if (d >= 160) return 0;
+  return 1 - (d - 96) / 64;
+}
+
+export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }: VideoBarProps) {
+  const visibleRemotes = remotes.filter((r) => r.videoTrack || r.audioTrack || r.screenTrack);
+  const remoteScreens = remotes.filter((r) => r.screenTrack);
+  const hasAnything =
+    localCamTrack || localScreenTrack || visibleRemotes.length > 0 || remoteScreens.length > 0;
+  if (!hasAnything) return null;
+
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-14 z-20 flex -translate-x-1/2 flex-col items-center gap-2">
+      {localScreenTrack && (
+        <ScreenSharePanel
+          track={localScreenTrack}
+          label={`${localName} (votre écran)`}
+        />
+      )}
+      {remoteScreens.map((r) => (
+        <RemoteScreenPanel key={`screen-${r.identity}`} remote={r} />
+      ))}
+      {(localCamTrack || visibleRemotes.length > 0) && (
+        <div className="pointer-events-auto flex gap-2 rounded-xl bg-slate-900/70 p-2 ring-1 ring-white/10 backdrop-blur">
+          {localCamTrack && <LocalTile track={localCamTrack} name={localName} />}
+          {visibleRemotes.map((r) => (
+            <RemoteTile key={r.identity} remote={r} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScreenSharePanel({ track, label }: { track: LocalVideoTrack | RemoteVideoTrack; label: string }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    track.attach(el);
+    return () => {
+      track.detach(el);
+    };
+  }, [track]);
+  return (
+    <div className="pointer-events-auto relative max-w-[640px] overflow-hidden rounded-lg bg-black ring-2 ring-indigo-400/60 shadow-2xl">
+      <video ref={ref} autoPlay playsInline className="h-auto w-full max-h-[360px] object-contain" />
+      <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1 text-xs text-white">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function RemoteScreenPanel({ remote }: { remote: RemoteSnapshot }) {
+  const t = remote.screenTrack;
+  if (!t) return null;
+  return <ScreenSharePanel track={t} label={`${remote.name} (écran partagé)`} />;
+}
+
+function colorFor(id: string): string {
+  const palette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899'];
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return palette[h % palette.length]!;
+}
+
+function Initial({ name, id }: { name: string; id: string }) {
+  const ch = (name || '?').slice(0, 1).toUpperCase();
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-slate-800">
+      <div
+        className="flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold text-white"
+        style={{ backgroundColor: colorFor(id) }}
+      >
+        {ch}
+      </div>
+    </div>
+  );
+}
+
+function MicBadge({ muted }: { muted: boolean }) {
+  return (
+    <div className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[10px] text-white">
+      {muted ? (
+        <span className="relative">
+          M
+          <span className="absolute inset-0 -rotate-45 border-t border-red-400" />
+        </span>
+      ) : (
+        <span>M</span>
+      )}
+    </div>
+  );
+}
+
+function LocalTile({ track, name }: { track: LocalVideoTrack; name: string }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    track.attach(el);
+    return () => {
+      track.detach(el);
+    };
+  }, [track]);
+  return (
+    <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">
+      <video ref={ref} autoPlay muted playsInline className="h-full w-full object-cover" />
+      <div className="absolute bottom-0 left-0 right-0 truncate bg-black/60 px-2 py-0.5 text-xs text-white">
+        {name} (vous)
+      </div>
+    </div>
+  );
+}
+
+function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const localPlayerId = useGameStore((s) => s.localPlayerId);
+  const players = useGameStore((s) => s.players);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    const t = remote.videoTrack as RemoteVideoTrack | null;
+    if (!el || !t) return;
+    t.attach(el);
+    return () => {
+      t.detach(el);
+    };
+  }, [remote.videoTrack]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    const t = remote.audioTrack as RemoteAudioTrack | null;
+    if (!el || !t) return;
+    t.attach(el);
+    return () => {
+      t.detach(el);
+    };
+  }, [remote.audioTrack]);
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const local = localPlayerId ? players.get(localPlayerId) : undefined;
+    const remotePlayer = players.get(remote.identity);
+    if (!local || !remotePlayer) {
+      el.volume = 1;
+      return;
+    }
+    const dx = local.x - remotePlayer.x;
+    const dy = local.y - remotePlayer.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    el.volume = computeVolume(d);
+  }, [players, localPlayerId, remote.identity, remote.audioTrack]);
+
+  return (
+    <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">
+      {remote.videoTrack ? (
+        <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
+      ) : (
+        <Initial name={remote.name} id={remote.identity} />
+      )}
+      <audio ref={audioRef} autoPlay className="hidden" />
+      <div className="absolute bottom-0 left-0 right-0 truncate bg-black/60 px-2 py-0.5 text-xs text-white">
+        {remote.name}
+      </div>
+      <MicBadge muted={remote.isMuted} />
+    </div>
+  );
+}

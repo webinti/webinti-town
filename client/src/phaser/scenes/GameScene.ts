@@ -6,8 +6,10 @@ import { socketManager } from '../../network/SocketManager';
 import type { PlayerState } from '../../types';
 
 const TILE = 32;
-const MAP_W = 50;
-const MAP_H = 40;
+const DEFAULT_MAP_W = 60;
+const DEFAULT_MAP_H = 42;
+const DEFAULT_SPAWN_X = 320;
+const DEFAULT_SPAWN_Y = 256;
 
 export class GameScene extends Phaser.Scene {
   private player?: Player;
@@ -15,8 +17,11 @@ export class GameScene extends Phaser.Scene {
   private wasdKeys?: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private wallsLayer?: Phaser.Tilemaps.TilemapLayer;
+  private furnitureLayer?: Phaser.Tilemaps.TilemapLayer;
   private wallsGroup?: Phaser.Physics.Arcade.StaticGroup;
-  private hasAvatars = false;
+  private mapW = DEFAULT_MAP_W;
+  private mapH = DEFAULT_MAP_H;
+  private hasLayers = false;
   private lastSentX = -9999;
   private lastSentY = -9999;
   private lastSentDir = '';
@@ -30,7 +35,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.hasAvatars = this.textures.exists('avatars');
+    this.hasLayers =
+      this.textures.exists('layer_body') &&
+      this.textures.exists('layer_hair') &&
+      this.textures.exists('layer_shirt') &&
+      this.textures.exists('layer_pants');
 
     const tilemapKey = 'map_default';
     const cacheHasMap = this.cache.tilemap.has(tilemapKey);
@@ -42,28 +51,31 @@ export class GameScene extends Phaser.Scene {
       this.buildFallbackMap();
     }
 
-    const worldW = MAP_W * TILE;
-    const worldH = MAP_H * TILE;
+    const worldW = this.mapW * TILE;
+    const worldH = this.mapH * TILE;
     this.physics.world.setBounds(0, 0, worldW, worldH);
     this.cameras.main.setBounds(0, 0, worldW, worldH);
 
     const store = useGameStore.getState();
     const localId = store.localPlayerId;
     const localState = localId ? store.players.get(localId) : undefined;
-    const startX = localState?.x ?? worldW / 2;
-    const startY = localState?.y ?? worldH / 2;
+    const startX = localState?.x ?? DEFAULT_SPAWN_X;
+    const startY = localState?.y ?? DEFAULT_SPAWN_Y;
 
     this.player = new Player(
       this,
       startX,
       startY,
-      store.avatar,
+      store.appearance,
       store.name || 'Vous',
-      this.hasAvatars,
+      this.hasLayers,
     );
 
     if (this.wallsLayer) {
       this.physics.add.collider(this.player.sprite, this.wallsLayer);
+    }
+    if (this.furnitureLayer) {
+      this.physics.add.collider(this.player.sprite, this.furnitureLayer);
     }
     if (this.wallsGroup) {
       this.physics.add.collider(this.player.sprite, this.wallsGroup);
@@ -106,6 +118,8 @@ export class GameScene extends Phaser.Scene {
 
   private buildTilemap(): void {
     const map = this.make.tilemap({ key: 'map_default' });
+    this.mapW = map.width;
+    this.mapH = map.height;
     const tilesetName = map.tilesets[0]?.name ?? 'basic';
     const tileset = map.addTilesetImage(tilesetName, 'tileset_basic');
     if (!tileset) {
@@ -115,54 +129,57 @@ export class GameScene extends Phaser.Scene {
     for (const layerData of map.layers) {
       const layer = map.createLayer(layerData.name, tileset, 0, 0);
       if (!layer) continue;
-      const isWalls = /wall|collide|collision/i.test(layerData.name);
-      if (isWalls) {
-        layer.setCollisionByExclusion([-1, 0]);
+      const name = layerData.name.toLowerCase();
+      if (/wall|collide|collision/.test(name)) {
+        layer.setCollisionByProperty({ collides: true });
         this.wallsLayer = layer;
+      } else if (/furniture/.test(name)) {
+        layer.setCollisionByProperty({ collides: true });
+        this.furnitureLayer = layer;
       }
     }
   }
 
   private buildFallbackMap(): void {
     const g = this.add.graphics();
-    for (let y = 0; y < MAP_H; y++) {
-      for (let x = 0; x < MAP_W; x++) {
-        const isBorder = x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1;
+    for (let y = 0; y < this.mapH; y++) {
+      for (let x = 0; x < this.mapW; x++) {
+        const isBorder = x === 0 || y === 0 || x === this.mapW - 1 || y === this.mapH - 1;
         const color = isBorder ? 0x334155 : (x + y) % 2 === 0 ? 0x1f8a4c : 0x22a55a;
         g.fillStyle(color, 1);
         g.fillRect(x * TILE, y * TILE, TILE, TILE);
       }
     }
     g.lineStyle(1, 0x000000, 0.06);
-    for (let x = 0; x <= MAP_W; x++) {
-      g.lineBetween(x * TILE, 0, x * TILE, MAP_H * TILE);
+    for (let x = 0; x <= this.mapW; x++) {
+      g.lineBetween(x * TILE, 0, x * TILE, this.mapH * TILE);
     }
-    for (let y = 0; y <= MAP_H; y++) {
-      g.lineBetween(0, y * TILE, MAP_W * TILE, y * TILE);
+    for (let y = 0; y <= this.mapH; y++) {
+      g.lineBetween(0, y * TILE, this.mapW * TILE, y * TILE);
     }
 
     const walls = this.physics.add.staticGroup();
-    for (let x = 0; x < MAP_W; x++) {
+    for (let x = 0; x < this.mapW; x++) {
       walls.create(x * TILE + TILE / 2, TILE / 2, '').setSize(TILE, TILE).setVisible(false).refreshBody();
-      walls.create(x * TILE + TILE / 2, (MAP_H - 1) * TILE + TILE / 2, '').setSize(TILE, TILE).setVisible(false).refreshBody();
+      walls.create(x * TILE + TILE / 2, (this.mapH - 1) * TILE + TILE / 2, '').setSize(TILE, TILE).setVisible(false).refreshBody();
     }
-    for (let y = 1; y < MAP_H - 1; y++) {
+    for (let y = 1; y < this.mapH - 1; y++) {
       walls.create(TILE / 2, y * TILE + TILE / 2, '').setSize(TILE, TILE).setVisible(false).refreshBody();
-      walls.create((MAP_W - 1) * TILE + TILE / 2, y * TILE + TILE / 2, '').setSize(TILE, TILE).setVisible(false).refreshBody();
+      walls.create((this.mapW - 1) * TILE + TILE / 2, y * TILE + TILE / 2, '').setSize(TILE, TILE).setVisible(false).refreshBody();
     }
     this.wallsGroup = walls;
   }
 
   private spawnRemote(p: PlayerState): void {
-    if (this.remotePlayers.has(p.id)) return;
-    const rp = new RemotePlayer(this, p, this.hasAvatars);
-    this.remotePlayers.set(p.id, rp);
+    if (this.remotePlayers.has(p.playerId)) return;
+    const rp = new RemotePlayer(this, p, this.hasLayers);
+    this.remotePlayers.set(p.playerId, rp);
   }
 
   private handleRemoteUpdate(p: PlayerState): void {
     const localId = useGameStore.getState().localPlayerId;
-    if (p.id === localId) return;
-    const existing = this.remotePlayers.get(p.id);
+    if (p.playerId === localId) return;
+    const existing = this.remotePlayers.get(p.playerId);
     if (existing) existing.setTarget(p);
     else this.spawnRemote(p);
   }
@@ -203,7 +220,7 @@ export class GameScene extends Phaser.Scene {
       this.lastSentY = y;
       this.lastSentDir = dir;
       this.lastSentMoving = moving;
-      socketManager.sendMove({ x, y, direction: dir, moving });
+      socketManager.sendMove({ x, y, direction: dir, isMoving: moving });
     }
   }
 }

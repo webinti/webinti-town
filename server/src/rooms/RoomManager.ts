@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import type { PlayerState, RoomState, PublicRoomInfo, Direction } from '../types.js';
+import type {
+  PlayerState,
+  RoomState,
+  PublicRoomInfo,
+  Direction,
+  Appearance,
+} from '../types.js';
+import { DEFAULT_APPEARANCE } from '../types.js';
 import { config } from '../config.js';
 
 function slugify(name: string): string {
@@ -66,7 +73,7 @@ export class RoomManager {
     slug: string,
     socketId: string,
     name: string,
-    avatarIndex: number,
+    appearance: Appearance = DEFAULT_APPEARANCE,
   ): PlayerState | undefined {
     const room = this.rooms.get(slug);
     if (!room) return undefined;
@@ -75,7 +82,7 @@ export class RoomManager {
       playerId,
       socketId,
       name,
-      avatarIndex: Math.max(0, Math.min(7, Math.floor(avatarIndex))),
+      appearance,
       x: config.defaultSpawn.x,
       y: config.defaultSpawn.y,
       direction: 'down',
