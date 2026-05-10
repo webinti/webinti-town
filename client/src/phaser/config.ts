@@ -21,6 +21,11 @@ export function createPhaserConfig(parent: HTMLElement): Phaser.Types.Core.GameC
         debug: false,
       },
     },
+    input: {
+      keyboard: {
+        capture: [],
+      },
+    },
     scene: [BootScene, GameScene],
   };
 }

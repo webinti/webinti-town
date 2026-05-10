@@ -42,12 +42,31 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface WhiteboardStroke {
+  id: string;
+  playerId: string;
+  color: string;
+  size: number;
+  points: Array<{ x: number; y: number }>;
+  isErase: boolean;
+}
+
+export type InteractiveObject =
+  | { id: string; type: 'screen'; x: number; y: number; data: { sharedByPlayerId?: string } }
+  | { id: string; type: 'whiteboard'; x: number; y: number; data: { strokes: WhiteboardStroke[] } }
+  | { id: string; type: 'note'; x: number; y: number; data: { title: string; content: string } }
+  | { id: string; type: 'link'; x: number; y: number; data: { url: string; label: string } };
+
 export interface RoomState {
   slug: string;
   name: string;
   adminToken: string;
   players: Map<string, PlayerState>;
   createdAt: number;
+  chatHistory: ChatMessage[];
+  interactiveObjects: InteractiveObject[];
+  hostPlayerId: string | null;
+  isRecording: boolean;
 }
 
 export interface PublicRoomInfo {

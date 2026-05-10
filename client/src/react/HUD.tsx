@@ -1,13 +1,30 @@
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { socketManager } from '../network/SocketManager';
 import { Minimap } from './Minimap';
 import { useLiveKit } from './hooks/useLiveKit';
 import { VideoBar } from './components/VideoBar';
+import { ChatPanel } from './components/ChatPanel';
+import { EmoteBar } from './components/EmoteBar';
+import { RecordingControls } from './components/RecordingControls';
+import { WhiteboardModal } from './components/WhiteboardModal';
+import { HelpPanel } from './components/HelpPanel';
+import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/sounds';
 
 export function HUD() {
   const name = useGameStore((s) => s.name);
   const connected = useGameStore((s) => s.connected);
   const playerCount = useGameStore((s) => s.players.size);
+  const localPlayerId = useGameStore((s) => s.localPlayerId);
+  const hostPlayerId = useGameStore((s) => s.hostPlayerId);
+  const isHost = !!localPlayerId && localPlayerId === hostPlayerId;
+  const [soundsMuted, setSoundsMutedState] = useState(soundsIsMuted());
+
+  const toggleSounds = () => {
+    const next = !soundsMuted;
+    setSoundsMuted(next);
+    setSoundsMutedState(next);
+  };
   const {
     micEnabled,
     camEnabled,
@@ -26,6 +43,28 @@ export function HUD() {
     useGameStore.getState().reset();
   };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if (useGameStore.getState().inputFocused) return;
+      const k = e.key.toLowerCase();
+      if (k === 'm') {
+        e.preventDefault();
+        void toggleMic();
+      } else if (k === 'v') {
+        e.preventDefault();
+        void toggleCam();
+      } else if (k === 'h' || e.key === '?') {
+        e.preventDefault();
+        const s = useGameStore.getState();
+        s.setHelpOpen(!s.helpOpen);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleMic, toggleCam]);
+
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col">
       <div className="pointer-events-auto flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-4 py-3 text-slate-100">
@@ -33,6 +72,11 @@ export function HUD() {
           <div className="rounded-full bg-indigo-500/30 px-3 py-1 text-sm font-semibold ring-1 ring-indigo-400/50">
             {name || 'Anonyme'}
           </div>
+          {isHost && (
+            <div className="rounded-full bg-amber-500/30 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/50">
+              Hôte
+            </div>
+          )}
           <div className="text-xs text-slate-300">
             {connected ? 'Connecté' : 'Déconnecté'} · {playerCount} joueur(s)
           </div>
@@ -57,8 +101,31 @@ export function HUD() {
 
       <div className="flex-1" />
 
+      <ChatPanel />
+
+      <div className="pointer-events-none absolute right-4 top-3 z-30 flex items-center gap-2">
+        <button
+          onClick={toggleSounds}
+          title={soundsMuted ? 'Activer les sons' : 'Couper les sons'}
+          className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/80 text-base text-slate-100 ring-1 ring-white/10 backdrop-blur hover:bg-slate-800"
+        >
+          {soundsMuted ? '🔇' : '🔊'}
+        </button>
+        <button
+          onClick={() => useGameStore.getState().setHelpOpen(true)}
+          title="Raccourcis clavier (H)"
+          className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/80 text-base font-bold text-slate-100 ring-1 ring-white/10 backdrop-blur hover:bg-slate-800"
+        >
+          ?
+        </button>
+        <RecordingControls />
+      </div>
+
+      <WhiteboardModal />
+      <HelpPanel />
+
       <div className="pointer-events-none flex items-end justify-between p-4">
-        <div className="pointer-events-auto flex gap-2 rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">
+        <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">
           <ControlButton
             active={micEnabled}
             onClick={() => {
@@ -80,6 +147,9 @@ export function HUD() {
             }}
             label={screenShareEnabled ? 'Stop écran' : 'Écran'}
           />
+          <div className="mx-1 h-6 w-px bg-white/10" />
+          <EmoteBar />
+          <div className="mx-1 h-6 w-px bg-white/10" />
           <button
             onClick={handleLeave}
             className="rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-400"

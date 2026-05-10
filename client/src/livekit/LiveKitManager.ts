@@ -212,6 +212,20 @@ class LiveKitManager {
     };
   }
 
+  getRemoteAudioMediaStreamTracks(): MediaStreamTrack[] {
+    if (!this.room) return [];
+    const out: MediaStreamTrack[] = [];
+    for (const p of this.room.remoteParticipants.values()) {
+      for (const pub of p.trackPublications.values()) {
+        if (pub.kind === Track.Kind.Audio && pub.track && pub.source !== Track.Source.ScreenShareAudio) {
+          const mst = pub.track.mediaStreamTrack;
+          if (mst && mst.readyState === 'live') out.push(mst);
+        }
+      }
+    }
+    return out;
+  }
+
   async disconnect(): Promise<void> {
     const room = this.room;
     this.room = null;

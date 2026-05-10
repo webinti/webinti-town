@@ -37,6 +37,34 @@ export function useLiveKit() {
     return off;
   }, []);
 
+  useEffect(() => {
+    if (!localPlayerId) return;
+    const off = socketManager.onObjectUpdate((obj) => {
+      if (obj.type !== 'screen') return;
+      const sharer = obj.data.sharedByPlayerId;
+      const isMeSharing = sharer === localPlayerId;
+      const currentlySharing = liveKitManager.getSnapshot().localScreenEnabled;
+      if (isMeSharing && !currentlySharing) {
+        void liveKitManager.setScreenShareEnabled(true).catch((err) => {
+          setError(err instanceof Error ? err.message : String(err));
+        });
+      } else if (!isMeSharing && currentlySharing) {
+        // If the screen no longer references me as sharer, stop my screen share.
+        // Cheap check: if no screen object lists me, stop. Iterate store.
+        const objs = useGameStore.getState().interactiveObjects;
+        const stillSharing = objs.some(
+          (o) => o.type === 'screen' && o.data.sharedByPlayerId === localPlayerId,
+        );
+        if (!stillSharing) {
+          void liveKitManager.setScreenShareEnabled(false).catch(() => {
+            // ignore
+          });
+        }
+      }
+    });
+    return off;
+  }, [localPlayerId]);
+
   const toggleMic = useCallback(async () => {
     setError(null);
     try {

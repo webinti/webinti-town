@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { Appearance, Direction } from '../../types';
+import { advanceWalkTick, animatedFrame } from './avatarFrames';
 
 const SHIRT_FALLBACK_COLORS = [
   0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x14b8a6,
@@ -24,6 +25,12 @@ export class Player {
   moving = false;
   speed = 160;
   hasLayers: boolean;
+  appearance: Appearance;
+
+  // Walk-cycle state
+  private walkTick = 0;
+  private walkAccumMs = 0;
+  private lastFrameUpdateMs: number;
 
   constructor(
     scene: Phaser.Scene,
@@ -35,17 +42,32 @@ export class Player {
   ) {
     this.scene = scene;
     this.hasLayers = hasLayers;
+    this.appearance = appearance;
+    this.lastFrameUpdateMs = scene.time.now;
 
     if (hasLayers) {
-      const body = scene.physics.add.sprite(x, y, 'layer_body', appearance.skin);
+      const body = scene.physics.add.sprite(
+        x,
+        y,
+        'layer_body',
+        animatedFrame(appearance.skin, 'down', false, 0),
+      );
       body.setSize(24, 16).setOffset(4, 28);
       body.setDepth(9.0);
       this.sprite = body;
 
-      this.hairBackLayer = scene.add.sprite(x, y, 'layer_hair_back', hairFrame(appearance)).setDepth(8.9);
-      this.pantsLayer = scene.add.sprite(x, y, 'layer_pants', appearance.pants).setDepth(9.1);
-      this.shirtLayer = scene.add.sprite(x, y, 'layer_shirt', appearance.shirt).setDepth(9.2);
-      this.hairLayer = scene.add.sprite(x, y, 'layer_hair', hairFrame(appearance)).setDepth(9.3);
+      this.hairBackLayer = scene.add
+        .sprite(x, y, 'layer_hair_back', hairFrame(appearance))
+        .setDepth(8.9);
+      this.pantsLayer = scene.add
+        .sprite(x, y, 'layer_pants', animatedFrame(appearance.pants, 'down', false, 0))
+        .setDepth(9.1);
+      this.shirtLayer = scene.add
+        .sprite(x, y, 'layer_shirt', animatedFrame(appearance.shirt, 'down', false, 0))
+        .setDepth(9.2);
+      this.hairLayer = scene.add
+        .sprite(x, y, 'layer_hair', hairFrame(appearance))
+        .setDepth(9.3);
     } else {
       const tex = `avatar_circle_${appearance.shirt}`;
       if (!scene.textures.exists(tex)) {
@@ -85,6 +107,19 @@ export class Player {
     if (this.hairLayer) this.hairLayer.setPosition(x, y);
   }
 
+  private updateAnimatedFrames(): void {
+    if (!this.hasLayers) return;
+    const dir = this.direction;
+    const moving = this.moving;
+    const tick = this.walkTick;
+    if (this.sprite instanceof Phaser.Physics.Arcade.Sprite) {
+      this.sprite.setFrame(animatedFrame(this.appearance.skin, dir, moving, tick));
+    }
+    this.pantsLayer?.setFrame(animatedFrame(this.appearance.pants, dir, moving, tick));
+    this.shirtLayer?.setFrame(animatedFrame(this.appearance.shirt, dir, moving, tick));
+    // hair / hair_back are static (front-facing) -- no per-direction update needed.
+  }
+
   update(cursors: {
     up: boolean;
     down: boolean;
@@ -115,6 +150,15 @@ export class Player {
       this.direction = vy > 0 ? 'down' : 'up';
     }
 
+    // Advance walk cycle
+    const now = this.scene.time.now;
+    const dt = now - this.lastFrameUpdateMs;
+    this.lastFrameUpdateMs = now;
+    const advanced = advanceWalkTick(this.walkTick, this.walkAccumMs, dt, this.moving);
+    this.walkTick = advanced.walkTick;
+    this.walkAccumMs = advanced.accumMs;
+
+    this.updateAnimatedFrames();
     this.syncLayers();
     this.label.setPosition(this.sprite.x, this.sprite.y - 28);
 

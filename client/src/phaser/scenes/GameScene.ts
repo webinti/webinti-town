@@ -3,7 +3,23 @@ import { Player } from '../entities/Player';
 import { RemotePlayer } from '../entities/RemotePlayer';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
-import type { PlayerState } from '../../types';
+import type { EmoteType, InteractiveObject, PlayerState } from '../../types';
+
+const EMOTE_EMOJI: Record<EmoteType, string> = {
+  wave: '\u{1F44B}',
+  thumbsup: '\u{1F44D}',
+  laugh: '\u{1F602}',
+  heart: '❤️',
+  question: '❓',
+  exclaim: '❗',
+};
+
+interface ObjectVisual {
+  obj: InteractiveObject;
+  icon: Phaser.GameObjects.Text;
+  hint: Phaser.GameObjects.Text;
+  liveLabel: Phaser.GameObjects.Text;
+}
 
 const TILE = 32;
 const DEFAULT_MAP_W = 60;
@@ -29,6 +45,12 @@ export class GameScene extends Phaser.Scene {
   private unsubUpdate?: () => void;
   private unsubRemove?: () => void;
   private unsubStore?: () => void;
+  private unsubEmote?: () => void;
+  private unsubObject?: () => void;
+  private emoteStacks = new Map<string, Phaser.GameObjects.Text[]>();
+  private objectVisuals = new Map<string, ObjectVisual>();
+  private nearbyObjectId: string | null = null;
+  private eKey?: Phaser.Input.Keyboard.Key;
 
   constructor() {
     super('GameScene');
@@ -95,6 +117,26 @@ export class GameScene extends Phaser.Scene {
 
     this.unsubUpdate = socketManager.onPlayerUpdate((p) => this.handleRemoteUpdate(p));
     this.unsubRemove = socketManager.onPlayerRemoved((id) => this.handleRemoteRemove(id));
+    this.unsubEmote = socketManager.onEmote((e) => this.handleEmote(e.playerId, e.emoteType));
+    this.unsubObject = socketManager.onObjectUpdate((obj) => this.refreshObject(obj));
+
+    this.eKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    this.input.keyboard?.clearCaptures();
+    this.eKey?.on('down', () => {
+      const store = useGameStore.getState();
+      if (store.inputFocused) return;
+      if (!this.nearbyObjectId) return;
+      const obj = store.interactiveObjects.find((o) => o.id === this.nearbyObjectId);
+      if (obj && obj.type === 'whiteboard') {
+        store.setOpenWhiteboard(obj.id);
+        return;
+      }
+      socketManager.interactObject(this.nearbyObjectId);
+    });
+
+    for (const obj of useGameStore.getState().interactiveObjects) {
+      this.refreshObject(obj);
+    }
 
     this.unsubStore = useGameStore.subscribe((s) => {
       const lid = s.localPlayerId;
@@ -107,12 +149,15 @@ export class GameScene extends Phaser.Scene {
       for (const id of this.remotePlayers.keys()) {
         if (!s.players.has(id)) this.handleRemoteRemove(id);
       }
+      for (const obj of s.interactiveObjects) this.refreshObject(obj);
     });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubUpdate?.();
       this.unsubRemove?.();
       this.unsubStore?.();
+      this.unsubEmote?.();
+      this.unsubObject?.();
     });
   }
 
@@ -194,17 +239,23 @@ export class GameScene extends Phaser.Scene {
 
   update(): void {
     if (!this.player) return;
+    const focused = useGameStore.getState().inputFocused;
     const c = this.cursors;
     const w = this.wasdKeys;
-    const input = {
-      up: !!(c?.up.isDown || w?.W.isDown),
-      down: !!(c?.down.isDown || w?.S.isDown),
-      left: !!(c?.left.isDown || w?.A.isDown),
-      right: !!(c?.right.isDown || w?.D.isDown),
-    };
+    const input = focused
+      ? { up: false, down: false, left: false, right: false }
+      : {
+          up: !!(c?.up.isDown || w?.W.isDown),
+          down: !!(c?.down.isDown || w?.S.isDown),
+          left: !!(c?.left.isDown || w?.A.isDown),
+          right: !!(c?.right.isDown || w?.D.isDown),
+        };
     this.player.update(input);
 
     for (const rp of this.remotePlayers.values()) rp.update();
+
+    this.updateEmoteStacks();
+    this.updateObjectProximity();
 
     const x = this.player.sprite.x;
     const y = this.player.sprite.y;
@@ -222,5 +273,156 @@ export class GameScene extends Phaser.Scene {
       this.lastSentMoving = moving;
       socketManager.sendMove({ x, y, direction: dir, isMoving: moving });
     }
+  }
+
+  private getPlayerSprite(playerId: string): { x: number; y: number } | null {
+    const localId = useGameStore.getState().localPlayerId;
+    if (playerId === localId && this.player) {
+      return { x: this.player.sprite.x, y: this.player.sprite.y };
+    }
+    const rp = this.remotePlayers.get(playerId);
+    if (rp) {
+      const anyRp = rp as unknown as { sprite?: { x: number; y: number } };
+      if (anyRp.sprite) return { x: anyRp.sprite.x, y: anyRp.sprite.y };
+    }
+    const p = useGameStore.getState().players.get(playerId);
+    if (p) return { x: p.x, y: p.y };
+    return null;
+  }
+
+  private handleEmote(playerId: string, emoteType: EmoteType): void {
+    const emoji = EMOTE_EMOJI[emoteType];
+    if (!emoji) return;
+    const text = this.add.text(0, 0, emoji, {
+      fontSize: '24px',
+      fontFamily: 'system-ui, sans-serif',
+    });
+    text.setOrigin(0.5, 1).setDepth(12).setScale(0.2);
+
+    const stack = this.emoteStacks.get(playerId) ?? [];
+    stack.push(text);
+    this.emoteStacks.set(playerId, stack);
+
+    this.tweens.add({
+      targets: text,
+      scale: 1,
+      duration: 220,
+      ease: 'Back.Out',
+    });
+    this.tweens.add({
+      targets: text,
+      alpha: 0,
+      duration: 400,
+      delay: 2100,
+      onComplete: () => {
+        text.destroy();
+        const arr = this.emoteStacks.get(playerId);
+        if (arr) {
+          const idx = arr.indexOf(text);
+          if (idx >= 0) arr.splice(idx, 1);
+          if (arr.length === 0) this.emoteStacks.delete(playerId);
+        }
+      },
+    });
+  }
+
+  private updateEmoteStacks(): void {
+    for (const [playerId, stack] of this.emoteStacks) {
+      const pos = this.getPlayerSprite(playerId);
+      if (!pos) continue;
+      let yOffset = -42;
+      for (let i = stack.length - 1; i >= 0; i--) {
+        const t = stack[i]!;
+        t.x = pos.x;
+        t.y = pos.y + yOffset;
+        yOffset -= 26;
+      }
+    }
+  }
+
+  private refreshObject(obj: InteractiveObject): void {
+    const cx = obj.x + 16;
+    const cy = obj.y + 16;
+    let visual = this.objectVisuals.get(obj.id);
+    if (!visual) {
+      const emoji =
+        obj.type === 'screen'
+          ? '\u{1F4FA}'
+          : obj.type === 'whiteboard'
+            ? '\u{1F3A8}'
+            : obj.type === 'note'
+              ? '\u{1F4DD}'
+              : '\u{1F517}';
+      const icon = this.add
+        .text(cx, cy, emoji, { fontSize: '28px', fontFamily: 'system-ui, sans-serif' })
+        .setOrigin(0.5, 0.5)
+        .setDepth(8);
+      const hint = this.add
+        .text(cx, cy - 28, '[E] Interagir', {
+          fontSize: '12px',
+          fontFamily: 'system-ui, sans-serif',
+          color: '#ffffff',
+          backgroundColor: '#1e293b',
+          padding: { left: 4, right: 4, top: 2, bottom: 2 },
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(11);
+      hint.setVisible(false);
+      const liveLabel = this.add
+        .text(cx, cy - 44, '', {
+          fontSize: '11px',
+          fontFamily: 'system-ui, sans-serif',
+          color: '#ffffff',
+          backgroundColor: '#dc2626',
+          padding: { left: 4, right: 4, top: 1, bottom: 1 },
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(11);
+      liveLabel.setVisible(false);
+      visual = { obj, icon, hint, liveLabel };
+      this.objectVisuals.set(obj.id, visual);
+    }
+    visual.obj = obj;
+
+    if (obj.type === 'screen') {
+      const sharerId = obj.data.sharedByPlayerId;
+      if (sharerId) {
+        const sharer = useGameStore.getState().players.get(sharerId);
+        const name = sharer?.name ?? '...';
+        visual.liveLabel.setText(`LIVE · ${name}`);
+        visual.liveLabel.setVisible(true);
+        visual.icon.setTint(0xff5555);
+      } else {
+        visual.liveLabel.setVisible(false);
+        visual.icon.clearTint();
+      }
+    }
+  }
+
+  private updateObjectProximity(): void {
+    if (!this.player) return;
+    const px = this.player.sprite.x;
+    const py = this.player.sprite.y;
+    let nearestId: string | null = null;
+    let nearestDistSq = 32 * 32;
+    const t = this.time.now;
+    for (const [id, v] of this.objectVisuals) {
+      const dx = v.obj.x + 16 - px;
+      const dy = v.obj.y + 16 - py;
+      const dsq = dx * dx + dy * dy;
+      const inRange = dsq <= 32 * 32;
+      v.hint.setVisible(inRange);
+      if (inRange) {
+        const pulse = 1 + Math.sin(t / 200) * 0.08;
+        v.icon.setScale(pulse);
+        if (dsq < nearestDistSq) {
+          nearestDistSq = dsq;
+          nearestId = id;
+        }
+      } else {
+        v.icon.setScale(1);
+      }
+    }
+    this.nearbyObjectId = nearestId;
   }
 }

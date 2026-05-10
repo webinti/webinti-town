@@ -28,17 +28,56 @@ export interface PlayerState {
   joinedAt?: number;
 }
 
+export type ChatMessageType = 'local' | 'global' | 'system';
+
+export type EmoteType = 'wave' | 'heart' | 'laugh' | 'thumbsup' | 'question' | 'exclaim';
+
+export interface ChatMessage {
+  id: string;
+  playerId: string;
+  playerName: string;
+  text: string;
+  type: ChatMessageType;
+  timestamp: number;
+}
+
+export interface WhiteboardStroke {
+  id: string;
+  playerId: string;
+  color: string;
+  size: number;
+  points: Array<{ x: number; y: number }>;
+  isErase: boolean;
+}
+
+export type InteractiveObject =
+  | { id: string; type: 'screen'; x: number; y: number; data: { sharedByPlayerId?: string } }
+  | { id: string; type: 'whiteboard'; x: number; y: number; data: { strokes: WhiteboardStroke[] } }
+  | { id: string; type: 'note'; x: number; y: number; data: { title: string; content: string } }
+  | { id: string; type: 'link'; x: number; y: number; data: { url: string; label: string } };
+
+export interface EmoteEvent {
+  playerId: string;
+  emoteType: EmoteType;
+  timestamp: number;
+}
+
 export interface RoomState {
   playerId: string;
   roomSlug: string;
   roomName: string;
   players: PlayerState[];
+  chatHistory?: ChatMessage[];
+  interactiveObjects?: InteractiveObject[];
+  hostPlayerId?: string | null;
+  isRecording?: boolean;
 }
 
 export interface JoinRoomPayload {
   roomSlug: string;
   playerName: string;
   appearance: Appearance;
+  hostToken?: string;
 }
 
 export interface PlayerMovePayload {

@@ -5,6 +5,8 @@ import type {
   PublicRoomInfo,
   Direction,
   Appearance,
+  ChatMessage,
+  InteractiveObject,
 } from '../types.js';
 import { DEFAULT_APPEARANCE } from '../types.js';
 import { config } from '../config.js';
@@ -16,6 +18,27 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 32);
   return base || 'room';
+}
+
+const CHAT_HISTORY_CAP = 200;
+
+function defaultInteractiveObjects(): InteractiveObject[] {
+  return [
+    {
+      id: 'screen-meeting-1',
+      type: 'screen',
+      x: 13 * 32,
+      y: 24 * 32,
+      data: {},
+    },
+    {
+      id: 'whiteboard-lounge-1',
+      type: 'whiteboard',
+      x: 8 * 32,
+      y: 36 * 32,
+      data: { strokes: [] },
+    },
+  ];
 }
 
 export class RoomManager {
@@ -36,6 +59,10 @@ export class RoomManager {
       adminToken,
       players: new Map(),
       createdAt: Date.now(),
+      chatHistory: [],
+      interactiveObjects: defaultInteractiveObjects(),
+      hostPlayerId: null,
+      isRecording: false,
     });
     return { slug, adminToken };
   }
@@ -50,9 +77,28 @@ export class RoomManager {
       adminToken,
       players: new Map(),
       createdAt: Date.now(),
+      chatHistory: [],
+      interactiveObjects: defaultInteractiveObjects(),
+      hostPlayerId: null,
+      isRecording: false,
     };
     this.rooms.set(slug, room);
     return room;
+  }
+
+  pushChat(slug: string, msg: ChatMessage): void {
+    const room = this.rooms.get(slug);
+    if (!room) return;
+    room.chatHistory.push(msg);
+    if (room.chatHistory.length > CHAT_HISTORY_CAP) {
+      room.chatHistory.splice(0, room.chatHistory.length - CHAT_HISTORY_CAP);
+    }
+  }
+
+  getInteractiveObject(slug: string, objectId: string): InteractiveObject | undefined {
+    const room = this.rooms.get(slug);
+    if (!room) return undefined;
+    return room.interactiveObjects.find((o) => o.id === objectId);
   }
 
   getRoom(slug: string): RoomState | undefined {
@@ -91,6 +137,7 @@ export class RoomManager {
       joinedAt: Date.now(),
     };
     room.players.set(playerId, player);
+    if (!room.hostPlayerId) room.hostPlayerId = playerId;
     return player;
   }
 
@@ -100,6 +147,11 @@ export class RoomManager {
     const player = room.players.get(playerId);
     if (!player) return undefined;
     room.players.delete(playerId);
+    if (room.hostPlayerId === playerId) {
+      const next = room.players.values().next();
+      room.hostPlayerId = next.done ? null : next.value.playerId;
+      room.isRecording = false;
+    }
     return player;
   }
 
@@ -108,11 +160,31 @@ export class RoomManager {
       for (const player of room.players.values()) {
         if (player.socketId === socketId) {
           room.players.delete(player.playerId);
+          if (room.hostPlayerId === player.playerId) {
+            const next = room.players.values().next();
+            room.hostPlayerId = next.done ? null : next.value.playerId;
+            room.isRecording = false;
+          }
           return { slug: room.slug, player };
         }
       }
     }
     return undefined;
+  }
+
+  promoteToHost(slug: string, playerId: string): void {
+    const room = this.rooms.get(slug);
+    if (!room) return;
+    if (!room.players.has(playerId)) return;
+    room.hostPlayerId = playerId;
+  }
+
+  setRecording(slug: string, playerId: string, on: boolean): boolean {
+    const room = this.rooms.get(slug);
+    if (!room) return false;
+    if (room.hostPlayerId !== playerId) return false;
+    room.isRecording = on;
+    return true;
   }
 
   updatePlayerPosition(

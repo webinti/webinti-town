@@ -15,4 +15,5 @@ export const config = {
   livekitUrl: process.env.LIVEKIT_URL ?? 'ws://localhost:7880',
   livekitApiKey: process.env.LIVEKIT_API_KEY ?? 'devkey',
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? '',
+  hostToken: process.env.HOST_TOKEN ?? '',
 };

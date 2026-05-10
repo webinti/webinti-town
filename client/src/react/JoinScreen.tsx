@@ -5,6 +5,21 @@ import type { Appearance } from '../types';
 import { DEFAULT_APPEARANCE } from '../types';
 
 const STORAGE_KEY = 'webinti-town:profile';
+const HOST_TOKEN_KEY = 'webinti-town:hostToken';
+
+function readHostToken(): string {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get('host');
+    if (fromUrl) {
+      localStorage.setItem(HOST_TOKEN_KEY, fromUrl);
+      return fromUrl;
+    }
+    return localStorage.getItem(HOST_TOKEN_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
 
 interface StoredProfile {
   name: string;
@@ -204,8 +219,9 @@ export function JoinScreen() {
     useGameStore.getState().setName(name);
     useGameStore.getState().setAppearance(appearance);
     saveProfile({ name, appearance });
+    const hostToken = readHostToken();
     socketManager.connect();
-    socketManager.joinRoom({ roomSlug: 'demo', playerName: name, appearance });
+    socketManager.joinRoom({ roomSlug: 'demo', playerName: name, appearance, hostToken });
   };
 
   return (

@@ -1,11 +1,28 @@
 import { io, Socket } from 'socket.io-client';
 import type {
+  ChatMessage,
+  ChatMessageType,
+  EmoteEvent,
+  EmoteType,
+  InteractiveObject,
   JoinRoomPayload,
   PlayerMovePayload,
   PlayerState,
   RoomState,
+  WhiteboardStroke,
 } from '../types';
+
+interface WhiteboardStrokePayload {
+  objectId: string;
+  stroke: WhiteboardStroke;
+}
+interface WhiteboardClearPayload {
+  objectId: string;
+}
 import { useGameStore } from '../stores/gameStore';
+import { playJoin, playLeave, playChat, playApplause } from '../sounds/sounds';
+
+const recentEmotes: Array<{ playerId: string; t: number }> = [];
 
 const SERVER_URL = 'http://localhost:3001';
 
@@ -14,6 +31,11 @@ class SocketManager {
   private listeners = new Set<(p: PlayerState) => void>();
   private removalListeners = new Set<(id: string) => void>();
   private proximityListeners = new Set<(ids: string[]) => void>();
+  private chatListeners = new Set<(msg: ChatMessage) => void>();
+  private emoteListeners = new Set<(e: EmoteEvent) => void>();
+  private objectListeners = new Set<(obj: InteractiveObject) => void>();
+  private whiteboardStrokeListeners = new Set<(p: WhiteboardStrokePayload) => void>();
+  private whiteboardClearListeners = new Set<(p: WhiteboardClearPayload) => void>();
 
   connect(): Socket {
     if (this.socket && this.socket.connected) return this.socket;
@@ -31,8 +53,26 @@ class SocketManager {
       const store = useGameStore.getState();
       store.setLocalPlayerId(state.playerId);
       store.setPlayers(state.players);
+      if (state.chatHistory) store.setChatHistory(state.chatHistory);
+      if (state.interactiveObjects) store.setInteractiveObjects(state.interactiveObjects);
+      store.setHost(state.hostPlayerId ?? null);
+      const hostName = state.hostPlayerId
+        ? state.players.find((p) => p.playerId === state.hostPlayerId)?.name ?? ''
+        : '';
+      store.setRecording(state.isRecording === true, hostName);
       store.setJoined(true);
     });
+
+    socket.on('host_changed', (payload: { hostPlayerId: string | null }) => {
+      useGameStore.getState().setHost(payload?.hostPlayerId ?? null);
+    });
+
+    socket.on(
+      'recording_state',
+      (payload: { isRecording: boolean; hostPlayerId: string | null; hostName: string }) => {
+        useGameStore.getState().setRecording(payload?.isRecording === true, payload?.hostName ?? '');
+      },
+    );
 
     socket.on('join_error', (e: { message?: string }) => {
       console.error('[join_error]', e?.message ?? 'unknown');
@@ -48,6 +88,7 @@ class SocketManager {
 
     socket.on('player_joined', (p: PlayerState) => {
       useGameStore.getState().upsertPlayer(p);
+      playJoin();
       for (const fn of this.listeners) fn(p);
     });
 
@@ -65,7 +106,49 @@ class SocketManager {
       const id = payload?.playerId;
       if (!id) return;
       useGameStore.getState().removePlayer(id);
+      playLeave();
       for (const fn of this.removalListeners) fn(id);
+    });
+
+    socket.on('chat_message', (msg: ChatMessage) => {
+      useGameStore.getState().addChatMessage(msg);
+      const localId = useGameStore.getState().localPlayerId;
+      if (msg.playerId !== localId) playChat();
+      for (const fn of this.chatListeners) fn(msg);
+    });
+
+    socket.on('emote', (e: EmoteEvent) => {
+      const now = Date.now();
+      while (recentEmotes.length > 0 && now - recentEmotes[0]!.t > 2000) recentEmotes.shift();
+      if (!recentEmotes.some((r) => r.playerId === e.playerId)) {
+        recentEmotes.push({ playerId: e.playerId, t: now });
+      }
+      if (recentEmotes.length >= 3) {
+        recentEmotes.length = 0;
+        playApplause();
+      }
+      for (const fn of this.emoteListeners) fn(e);
+    });
+
+    socket.on('object_update', (obj: InteractiveObject) => {
+      useGameStore.getState().upsertInteractiveObject(obj);
+      for (const fn of this.objectListeners) fn(obj);
+    });
+
+    socket.on('object_interaction', (payload: unknown) => {
+      console.log('[object_interaction]', payload);
+    });
+
+    socket.on('whiteboard_stroke', (payload: WhiteboardStrokePayload) => {
+      if (!payload || typeof payload.objectId !== 'string' || !payload.stroke) return;
+      useGameStore.getState().appendWhiteboardStroke(payload.objectId, payload.stroke);
+      for (const fn of this.whiteboardStrokeListeners) fn(payload);
+    });
+
+    socket.on('whiteboard_clear', (payload: WhiteboardClearPayload) => {
+      if (!payload || typeof payload.objectId !== 'string') return;
+      useGameStore.getState().clearWhiteboard(payload.objectId);
+      for (const fn of this.whiteboardClearListeners) fn(payload);
     });
 
     return socket;
@@ -77,6 +160,22 @@ class SocketManager {
 
   sendMove(payload: PlayerMovePayload): void {
     this.socket?.emit('player_move', payload);
+  }
+
+  sendChat(text: string, type: ChatMessageType): void {
+    this.socket?.emit('chat_message', { text, type });
+  }
+
+  sendEmote(emoteType: EmoteType): void {
+    this.socket?.emit('emote', { emoteType });
+  }
+
+  interactObject(objectId: string): void {
+    this.socket?.emit('interact_object', { objectId });
+  }
+
+  sendRecordingState(on: boolean): void {
+    this.socket?.emit('recording_state', { on });
   }
 
   onPlayerUpdate(fn: (p: PlayerState) => void): () => void {
@@ -94,6 +193,49 @@ class SocketManager {
     return () => {
       this.proximityListeners.delete(fn);
     };
+  }
+
+  onChatMessage(fn: (msg: ChatMessage) => void): () => void {
+    this.chatListeners.add(fn);
+    return () => {
+      this.chatListeners.delete(fn);
+    };
+  }
+
+  onEmote(fn: (e: EmoteEvent) => void): () => void {
+    this.emoteListeners.add(fn);
+    return () => {
+      this.emoteListeners.delete(fn);
+    };
+  }
+
+  onObjectUpdate(fn: (obj: InteractiveObject) => void): () => void {
+    this.objectListeners.add(fn);
+    return () => {
+      this.objectListeners.delete(fn);
+    };
+  }
+
+  onWhiteboardStroke(fn: (p: WhiteboardStrokePayload) => void): () => void {
+    this.whiteboardStrokeListeners.add(fn);
+    return () => {
+      this.whiteboardStrokeListeners.delete(fn);
+    };
+  }
+
+  onWhiteboardClear(fn: (p: WhiteboardClearPayload) => void): () => void {
+    this.whiteboardClearListeners.add(fn);
+    return () => {
+      this.whiteboardClearListeners.delete(fn);
+    };
+  }
+
+  sendWhiteboardStroke(objectId: string, stroke: WhiteboardStroke): void {
+    this.socket?.emit('whiteboard_stroke', { objectId, stroke });
+  }
+
+  sendWhiteboardClear(objectId: string): void {
+    this.socket?.emit('whiteboard_clear', { objectId });
   }
 
   disconnect(): void {
