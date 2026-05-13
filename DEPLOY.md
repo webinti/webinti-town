@@ -9,6 +9,20 @@ Cible : `https://live.webinti.com` sur un VPS Ubuntu 22.04 LTS (ou 24.04), nginx
 
 ## 1. Préparation du VPS (one-shot)
 
+### 1.0. Cloner le repo sur le VPS
+
+C'est juste pour avoir les configs (`nginx.conf`, `livekit.prod.yaml`, units systemd) à portée de main. Le code source qui tourne en prod, lui, sera envoyé via `deploy.sh` plus tard.
+
+```bash
+ssh root@live.webinti.com  # ou avec ton user sudo habituel
+sudo apt-get update && sudo apt-get install -y git
+cd ~
+git clone https://github.com/webinti/webinti-town.git
+cd webinti-town
+```
+
+À partir d'ici, toutes les commandes `cp deploy/...` du guide partent du principe que tu es dans `~/webinti-town/`.
+
 ### 1.1. Utilisateurs système
 
 ```bash
