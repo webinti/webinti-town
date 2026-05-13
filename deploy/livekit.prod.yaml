@@ -1,0 +1,24 @@
+# LiveKit production config. Copy to /etc/livekit/livekit.yaml on the VPS.
+
+port: 7880
+
+rtc:
+  # UDP port range for media. Open these in your firewall (ufw allow 50000:60000/udp).
+  port_range_start: 50000
+  port_range_end: 60000
+
+  # TCP fallback for clients that can't do UDP. Open ufw allow 7881/tcp.
+  tcp_port: 7881
+
+  # Auto-detect the VPS public IP and advertise it as ICE candidate.
+  # If this fails, replace with: node_ip: <YOUR.PUBLIC.IP.HERE>
+  use_external_ip: true
+
+keys:
+  # Must match LIVEKIT_API_KEY and LIVEKIT_API_SECRET in the server .env.
+  # Generate the secret with: openssl rand -hex 32
+  webinti: <changeme-32-chars-min>
+
+logging:
+  level: info
+  json: false

@@ -1,0 +1,23 @@
+# /etc/systemd/system/livekit-server.service
+# Enable + start:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now livekit-server
+
+[Unit]
+Description=LiveKit SFU
+After=network.target
+
+[Service]
+Type=simple
+User=livekit
+ExecStart=/usr/local/bin/livekit-server --config /etc/livekit/livekit.yaml
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+# LiveKit needs to open many UDP ports; allow it.
+LimitNOFILE=500000
+
+[Install]
+WantedBy=multi-user.target

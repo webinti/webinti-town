@@ -39,7 +39,11 @@ import { playJoin, playLeave, playChat, playApplause } from '../sounds/sounds';
 
 const recentEmotes: Array<{ playerId: string; t: number }> = [];
 
-const SERVER_URL = 'http://localhost:3001';
+// In prod build, same-origin (empty string → io defaults to window.location.origin).
+// In dev, http://localhost:3001. Override via VITE_SERVER_URL.
+const SERVER_URL =
+  (import.meta.env.VITE_SERVER_URL as string | undefined) ??
+  (import.meta.env.PROD ? '' : 'http://localhost:3001');
 
 class SocketManager {
   private socket: Socket | null = null;

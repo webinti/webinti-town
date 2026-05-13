@@ -10,7 +10,10 @@ import {
   type RemoteVideoTrack,
 } from 'livekit-client';
 
-const TOKEN_URL = 'http://localhost:3001/api/livekit/token';
+const SERVER_BASE =
+  (import.meta.env.VITE_SERVER_URL as string | undefined) ??
+  (import.meta.env.PROD ? '' : 'http://localhost:3001');
+const TOKEN_URL = `${SERVER_BASE}/api/livekit/token`;
 
 export interface RemoteSnapshot {
   identity: string;

@@ -1,0 +1,28 @@
+# /etc/systemd/system/webinti-server.service
+# Enable + start:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now webinti-server
+
+[Unit]
+Description=Webinti Town — Node game server
+After=network.target
+
+[Service]
+Type=simple
+User=webinti
+WorkingDirectory=/var/www/webinti-town/server
+EnvironmentFile=/var/www/webinti-town/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
