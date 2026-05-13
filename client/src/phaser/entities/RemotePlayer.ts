@@ -27,6 +27,7 @@ export class RemotePlayer {
   appearance: Appearance;
   direction: Direction = 'down';
   isMoving = false;
+  isGhost = false;
 
   private walkTick = 0;
   private walkAccumMs = 0;
@@ -83,6 +84,8 @@ export class RemotePlayer {
       })
       .setOrigin(0.5, 1)
       .setDepth(11);
+
+    if (state.isGhost === true) this.setGhost(true);
   }
 
   setTarget(state: PlayerState): void {
@@ -90,6 +93,19 @@ export class RemotePlayer {
     this.targetY = state.y;
     this.direction = state.direction;
     this.isMoving = state.isMoving;
+    this.setGhost(state.isGhost === true);
+  }
+
+  setGhost(isGhost: boolean): void {
+    if (this.isGhost === isGhost) return;
+    this.isGhost = isGhost;
+    const a = isGhost ? 0.5 : 1;
+    this.sprite.setAlpha(a);
+    this.hairBackLayer?.setAlpha(a);
+    this.pantsLayer?.setAlpha(a);
+    this.shirtLayer?.setAlpha(a);
+    this.hairLayer?.setAlpha(a);
+    this.label.setAlpha(a);
   }
 
   private updateAnimatedFrames(): void {

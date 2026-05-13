@@ -6,6 +6,8 @@ import { DEFAULT_APPEARANCE } from '../types';
 
 const STORAGE_KEY = 'webinti-town:profile';
 const HOST_TOKEN_KEY = 'webinti-town:hostToken';
+const ROOM_SLUG_KEY = 'webinti-town:roomSlug';
+const ROOM_SLUG_RE = /^[a-z0-9-]{1,50}$/;
 
 function readHostToken(): string {
   try {
@@ -18,6 +20,22 @@ function readHostToken(): string {
     return localStorage.getItem(HOST_TOKEN_KEY) ?? '';
   } catch {
     return '';
+  }
+}
+
+function readRoomSlug(): string {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get('room');
+    if (fromUrl && ROOM_SLUG_RE.test(fromUrl)) {
+      localStorage.setItem(ROOM_SLUG_KEY, fromUrl);
+      return fromUrl;
+    }
+    const stored = localStorage.getItem(ROOM_SLUG_KEY);
+    if (stored && ROOM_SLUG_RE.test(stored)) return stored;
+    return 'demo';
+  } catch {
+    return 'demo';
   }
 }
 
@@ -119,24 +137,24 @@ function AvatarPreview({ appearance, scale }: AvatarPreviewProps) {
         style={{
           ...layerStyle,
           backgroundImage: "url('/assets/avatars/body.png')",
-          backgroundSize: `${SKIN_COLORS.length * w}px ${h}px`,
-          backgroundPosition: `-${appearance.skin * w}px 0px`,
+          backgroundSize: `${3 * w}px ${SKIN_COLORS.length * 4 * h}px`,
+          backgroundPosition: `0px -${appearance.skin * 4 * h}px`,
         }}
       />
       <div
         style={{
           ...layerStyle,
           backgroundImage: "url('/assets/avatars/pants.png')",
-          backgroundSize: `${PANTS_COLORS.length * w}px ${h}px`,
-          backgroundPosition: `-${appearance.pants * w}px 0px`,
+          backgroundSize: `${3 * w}px ${PANTS_COLORS.length * 4 * h}px`,
+          backgroundPosition: `0px -${appearance.pants * 4 * h}px`,
         }}
       />
       <div
         style={{
           ...layerStyle,
           backgroundImage: "url('/assets/avatars/shirt.png')",
-          backgroundSize: `${SHIRT_COLORS.length * w}px ${h}px`,
-          backgroundPosition: `-${appearance.shirt * w}px 0px`,
+          backgroundSize: `${3 * w}px ${SHIRT_COLORS.length * 4 * h}px`,
+          backgroundPosition: `0px -${appearance.shirt * 4 * h}px`,
         }}
       />
       <div
@@ -199,6 +217,7 @@ function HairStyleThumb({ styleIndex, selected, onClick, appearance }: HairStyle
 
 export function JoinScreen() {
   const stored = loadProfile();
+  const [roomSlug] = useState<string>(() => readRoomSlug());
   const [pseudo, setPseudo] = useState(stored?.name ?? '');
   const [appearance, setAppearance] = useState<Appearance>(stored?.appearance ?? DEFAULT_APPEARANCE);
   const [submitting, setSubmitting] = useState(false);
@@ -220,8 +239,10 @@ export function JoinScreen() {
     useGameStore.getState().setAppearance(appearance);
     saveProfile({ name, appearance });
     const hostToken = readHostToken();
+    const roomSlug = readRoomSlug();
+    useGameStore.getState().setCurrentRoomSlug(roomSlug);
     socketManager.connect();
-    socketManager.joinRoom({ roomSlug: 'demo', playerName: name, appearance, hostToken });
+    socketManager.joinRoom({ roomSlug, playerName: name, appearance, hostToken });
   };
 
   return (
@@ -233,10 +254,13 @@ export function JoinScreen() {
         <h1 className="mb-1 text-3xl font-bold tracking-tight">Webinti Town</h1>
         <p className="mb-4 text-sm text-slate-400">Personnalisez votre avatar.</p>
 
-        <div className="mb-4 flex justify-center">
+        <div className="mb-2 flex justify-center">
           <div className="rounded-lg bg-slate-900/60 p-3 ring-1 ring-slate-700">
             <AvatarPreview appearance={appearance} scale={3} />
           </div>
+        </div>
+        <div className="mb-4 text-center text-xs text-slate-400">
+          Salle : <span className="font-mono text-slate-200">{roomSlug}</span>
         </div>
 
         <label className="mb-1 block text-sm font-medium">Pseudo</label>

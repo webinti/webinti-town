@@ -3,7 +3,15 @@ import { Player } from '../entities/Player';
 import { RemotePlayer } from '../entities/RemotePlayer';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
+import { setFireVolume } from '../../sounds/sounds';
 import type { EmoteType, InteractiveObject, PlayerState } from '../../types';
+
+// Fireplace anchor in pixel coords — tile (x, y) center is (x*32+16, y*32+16).
+// Tile (1, 30): against the west wall of the meeting room.
+// The fireplace faces east — opening pointing toward the meeting table.
+const FIREPLACE_X = 1 * 32 + 16;
+const FIREPLACE_Y = 30 * 32 + 16;
+const FIRE_AUDIBLE_RADIUS = 6 * 32;
 
 const EMOTE_EMOJI: Record<EmoteType, string> = {
   wave: '\u{1F44B}',
@@ -51,6 +59,7 @@ export class GameScene extends Phaser.Scene {
   private objectVisuals = new Map<string, ObjectVisual>();
   private nearbyObjectId: string | null = null;
   private eKey?: Phaser.Input.Keyboard.Key;
+  private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
 
   constructor() {
     super('GameScene');
@@ -77,6 +86,8 @@ export class GameScene extends Phaser.Scene {
     const worldH = this.mapH * TILE;
     this.physics.world.setBounds(0, 0, worldW, worldH);
     this.cameras.main.setBounds(0, 0, worldW, worldH);
+
+    this.buildFireplace();
 
     const store = useGameStore.getState();
     const localId = store.localPlayerId;
@@ -131,6 +142,14 @@ export class GameScene extends Phaser.Scene {
         store.setOpenWhiteboard(obj.id);
         return;
       }
+      if (obj && obj.type === 'note') {
+        store.setOpenNote(obj.id);
+        return;
+      }
+      if (obj && obj.type === 'link') {
+        store.setOpenLink(obj.id);
+        return;
+      }
       socketManager.interactObject(this.nearbyObjectId);
     });
 
@@ -140,6 +159,10 @@ export class GameScene extends Phaser.Scene {
 
     this.unsubStore = useGameStore.subscribe((s) => {
       const lid = s.localPlayerId;
+      const localState = lid ? s.players.get(lid) : undefined;
+      if (this.player && localState) {
+        this.player.setGhost(localState.isGhost === true);
+      }
       for (const [id, p] of s.players) {
         if (id === lid) continue;
         const existing = this.remotePlayers.get(id);
@@ -159,6 +182,82 @@ export class GameScene extends Phaser.Scene {
       this.unsubEmote?.();
       this.unsubObject?.();
     });
+  }
+
+  private buildFireplace(): void {
+    const x = FIREPLACE_X;
+    const y = FIREPLACE_Y;
+
+    // East-facing fireplace built into a west wall.
+    // Local origin (0, 0) = center of the opening (where the flame anchors on the log).
+    //
+    //   -16  ┌─┐                            stone backing (against wall)
+    //        │█│
+    //        │█│ ┌────────────────┐        opening extending east
+    //        │█│ │ ░░░░░░░░░░░░░░░│        hearth interior
+    //        │█│ │ ░░░░ flame ░░░░│
+    //        │█│ │ ──── log ──────│
+    //   +16  └─┘ └────────────────┘
+    //
+    //   x = -18 to -10 : stone backing (8 wide)
+    //   x = -10 to +18 : opening (28 wide)
+    //   y = -14 to +14 : full height (28 tall)
+    //   log: x = -8 to +16, y = +8 to +14
+    //   flame anchored at local (4, 8) — center of log, sticking up and slightly east
+    const container = this.add.container(x, y);
+    container.setDepth(7);
+
+    const base = this.add.graphics();
+    // Stone backing (vertical pillar against the wall)
+    base.fillStyle(0x9ca3af, 1).fillRect(-18, -16, 8, 32);
+    base.lineStyle(1, 0x4b5563, 1).strokeRect(-18, -16, 8, 32);
+    // Top trim of the opening (lintel)
+    base.fillStyle(0x6b7280, 1).fillRect(-10, -16, 28, 4);
+    base.lineStyle(1, 0x4b5563, 1).strokeRect(-10, -16, 28, 4);
+    // Bottom trim (floor edge of opening)
+    base.fillStyle(0x6b7280, 1).fillRect(-10, 12, 28, 4);
+    base.lineStyle(1, 0x4b5563, 1).strokeRect(-10, 12, 28, 4);
+    // Hearth interior (dark) — opens to the east
+    base.fillStyle(0x0f172a, 1).fillRect(-10, -12, 28, 24);
+    base.lineStyle(1, 0x000000, 1).strokeRect(-10, -12, 28, 24);
+    // Log at the bottom of the hearth (horizontal)
+    base.fillStyle(0x57321a, 1).fillRect(-8, 6, 24, 6);
+    base.fillStyle(0x7a4625, 1).fillRect(-8, 6, 24, 2);
+    container.add(base);
+
+    // Glow contained inside the hearth, slightly east-biased
+    const glow = this.add.graphics();
+    glow.fillStyle(0xffb35a, 0.35).fillRect(-8, -10, 24, 18);
+    glow.fillStyle(0xff8a3a, 0.55).fillRect(-6, -4, 22, 12);
+    glow.setAlpha(0.85);
+    container.add(glow);
+
+    // Flame — anchored on the log, slightly east of center for "facing east" feel
+    const flame = this.add.graphics();
+    flame.setPosition(4, 8);
+    flame.fillStyle(0xffe27a, 1).fillTriangle(0, -16, -6, 0, 6, 0);
+    flame.fillStyle(0xff8a1a, 1).fillTriangle(0, -11, -4, 0, 4, 0);
+    flame.fillStyle(0xff3b1a, 1).fillTriangle(0, -7, -2, 0, 2, 0);
+    container.add(flame);
+
+    this.tweens.add({
+      targets: flame,
+      scaleY: 0.78,
+      duration: 320,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    });
+    this.tweens.add({
+      targets: glow,
+      alpha: 0.55,
+      duration: 480,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    });
+
+    this.fireplace = { x, y, glow, flame };
   }
 
   private buildTilemap(): void {
@@ -239,6 +338,13 @@ export class GameScene extends Phaser.Scene {
 
   update(): void {
     if (!this.player) return;
+    if (this.fireplace) {
+      const dx = this.player.sprite.x - this.fireplace.x;
+      const dy = this.player.sprite.y - this.fireplace.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      const v = Math.max(0, Math.min(1, 1 - d / FIRE_AUDIBLE_RADIUS));
+      setFireVolume(v * 0.7);
+    }
     const focused = useGameStore.getState().inputFocused;
     const c = this.cursors;
     const w = this.wasdKeys;

@@ -8,7 +8,10 @@ import { ChatPanel } from './components/ChatPanel';
 import { EmoteBar } from './components/EmoteBar';
 import { RecordingControls } from './components/RecordingControls';
 import { WhiteboardModal } from './components/WhiteboardModal';
+import { NoteModal } from './components/NoteModal';
+import { LinkModal } from './components/LinkModal';
 import { HelpPanel } from './components/HelpPanel';
+import { AdminPanel } from './components/AdminPanel';
 import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/sounds';
 
 export function HUD() {
@@ -18,6 +21,7 @@ export function HUD() {
   const localPlayerId = useGameStore((s) => s.localPlayerId);
   const hostPlayerId = useGameStore((s) => s.hostPlayerId);
   const isHost = !!localPlayerId && localPlayerId === hostPlayerId;
+  const currentRoomSlug = useGameStore((s) => s.currentRoomSlug);
   const [soundsMuted, setSoundsMutedState] = useState(soundsIsMuted());
 
   const toggleSounds = () => {
@@ -55,6 +59,9 @@ export function HUD() {
       } else if (k === 'v') {
         e.preventDefault();
         void toggleCam();
+      } else if (k === 'g') {
+        e.preventDefault();
+        socketManager.toggleGhost();
       } else if (k === 'h' || e.key === '?') {
         e.preventDefault();
         const s = useGameStore.getState();
@@ -64,6 +71,21 @@ export function HUD() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [toggleMic, toggleCam]);
+
+  const [kickedReason, setKickedReason] = useState<string | null>(null);
+  useEffect(() => {
+    const off = socketManager.onKicked((reason) => {
+      setKickedReason(reason);
+      socketManager.disconnect();
+      useGameStore.getState().reset();
+    });
+    return off;
+  }, []);
+  useEffect(() => {
+    if (!kickedReason) return;
+    const t = window.setTimeout(() => setKickedReason(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [kickedReason]);
 
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col">
@@ -82,7 +104,7 @@ export function HUD() {
           </div>
         </div>
         <div className="text-sm font-semibold tracking-wide text-slate-300">
-          Webinti Town · demo
+          Webinti Town · {currentRoomSlug}
         </div>
       </div>
 
@@ -104,6 +126,19 @@ export function HUD() {
       <ChatPanel />
 
       <div className="pointer-events-none absolute right-4 top-3 z-30 flex items-center gap-2">
+        {isHost && (
+          <button
+            onClick={() => {
+              const s = useGameStore.getState();
+              s.setAdminPanelOpen(!s.adminPanelOpen);
+            }}
+            title="Panneau admin"
+            className="pointer-events-auto flex h-9 items-center gap-1 rounded-full bg-amber-600/90 px-3 text-sm font-semibold text-white ring-1 ring-amber-300/40 backdrop-blur hover:bg-amber-500"
+          >
+            <span>👥</span>
+            <span>Admin</span>
+          </button>
+        )}
         <button
           onClick={toggleSounds}
           title={soundsMuted ? 'Activer les sons' : 'Couper les sons'}
@@ -122,7 +157,16 @@ export function HUD() {
       </div>
 
       <WhiteboardModal />
+      <NoteModal />
+      <LinkModal />
       <HelpPanel />
+      <AdminPanel />
+
+      {kickedReason && (
+        <div className="pointer-events-auto fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-md bg-red-600/95 px-4 py-2 text-sm font-semibold text-white shadow-lg ring-1 ring-red-300/40">
+          Vous avez été déconnecté par l'hôte
+        </div>
+      )}
 
       <div className="pointer-events-none flex items-end justify-between p-4">
         <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">

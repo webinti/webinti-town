@@ -50,9 +50,19 @@ export interface WhiteboardStroke {
   isErase: boolean;
 }
 
+export interface WhiteboardText {
+  id: string;
+  playerId: string;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  size: number;
+}
+
 export type InteractiveObject =
   | { id: string; type: 'screen'; x: number; y: number; data: { sharedByPlayerId?: string } }
-  | { id: string; type: 'whiteboard'; x: number; y: number; data: { strokes: WhiteboardStroke[] } }
+  | { id: string; type: 'whiteboard'; x: number; y: number; data: { strokes: WhiteboardStroke[]; texts?: WhiteboardText[] } }
   | { id: string; type: 'note'; x: number; y: number; data: { title: string; content: string } }
   | { id: string; type: 'link'; x: number; y: number; data: { url: string; label: string } };
 

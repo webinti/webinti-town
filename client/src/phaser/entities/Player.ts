@@ -26,6 +26,7 @@ export class Player {
   speed = 160;
   hasLayers: boolean;
   appearance: Appearance;
+  isGhost = false;
 
   // Walk-cycle state
   private walkTick = 0;
@@ -163,6 +164,18 @@ export class Player {
     this.label.setPosition(this.sprite.x, this.sprite.y - 28);
 
     return this.moving !== wasMoving || this.direction !== prevDir || this.moving;
+  }
+
+  setGhost(isGhost: boolean): void {
+    if (this.isGhost === isGhost) return;
+    this.isGhost = isGhost;
+    const a = isGhost ? 0.5 : 1;
+    this.sprite.setAlpha(a);
+    this.hairBackLayer?.setAlpha(a);
+    this.pantsLayer?.setAlpha(a);
+    this.shirtLayer?.setAlpha(a);
+    this.hairLayer?.setAlpha(a);
+    this.label.setAlpha(a);
   }
 
   destroy(): void {

@@ -36,13 +36,22 @@ const GROUPS: ShortcutGroup[] = [
   },
   {
     title: 'Interaction',
-    rows: [{ keys: 'E', desc: 'Interagir avec un objet (écran, tableau, ...)' }],
+    rows: [
+      { keys: 'E', desc: 'Interagir avec un objet (écran, tableau, ...)' },
+      { keys: 'G', desc: 'Mode fantôme (traverser les avatars)' },
+    ],
   },
   {
     title: 'Interface',
     rows: [
       { keys: 'H ou ?', desc: 'Afficher cette aide' },
       { keys: 'Esc', desc: 'Fermer une fenêtre' },
+    ],
+  },
+  {
+    title: 'Hôte uniquement',
+    rows: [
+      { keys: '👥 Admin', desc: 'Liste des joueurs · mute / kick / fermer la salle' },
     ],
   },
 ];

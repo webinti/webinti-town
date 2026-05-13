@@ -10,14 +10,29 @@ import type {
   PlayerState,
   RoomState,
   WhiteboardStroke,
+  WhiteboardText,
 } from '../types';
 
 interface WhiteboardStrokePayload {
   objectId: string;
   stroke: WhiteboardStroke;
 }
+interface WhiteboardTextPayload {
+  objectId: string;
+  text: WhiteboardText;
+}
 interface WhiteboardClearPayload {
   objectId: string;
+}
+interface WhiteboardTextUpdatePayload {
+  objectId: string;
+  textId: string;
+  x: number;
+  y: number;
+}
+interface WhiteboardTextDeletePayload {
+  objectId: string;
+  textId: string;
 }
 import { useGameStore } from '../stores/gameStore';
 import { playJoin, playLeave, playChat, playApplause } from '../sounds/sounds';
@@ -35,7 +50,12 @@ class SocketManager {
   private emoteListeners = new Set<(e: EmoteEvent) => void>();
   private objectListeners = new Set<(obj: InteractiveObject) => void>();
   private whiteboardStrokeListeners = new Set<(p: WhiteboardStrokePayload) => void>();
+  private whiteboardTextListeners = new Set<(p: WhiteboardTextPayload) => void>();
   private whiteboardClearListeners = new Set<(p: WhiteboardClearPayload) => void>();
+  private whiteboardTextUpdateListeners = new Set<(p: WhiteboardTextUpdatePayload) => void>();
+  private whiteboardTextDeleteListeners = new Set<(p: WhiteboardTextDeletePayload) => void>();
+  private playerGhostListeners = new Set<(p: { playerId: string; isGhost: boolean }) => void>();
+  private kickedListeners = new Set<(reason: string) => void>();
 
   connect(): Socket {
     if (this.socket && this.socket.connected) return this.socket;
@@ -52,6 +72,7 @@ class SocketManager {
     socket.on('room_state', (state: RoomState) => {
       const store = useGameStore.getState();
       store.setLocalPlayerId(state.playerId);
+      if (typeof state.roomSlug === 'string') store.setCurrentRoomSlug(state.roomSlug);
       store.setPlayers(state.players);
       if (state.chatHistory) store.setChatHistory(state.chatHistory);
       if (state.interactiveObjects) store.setInteractiveObjects(state.interactiveObjects);
@@ -123,7 +144,7 @@ class SocketManager {
       if (!recentEmotes.some((r) => r.playerId === e.playerId)) {
         recentEmotes.push({ playerId: e.playerId, t: now });
       }
-      if (recentEmotes.length >= 3) {
+      if (recentEmotes.length >= 2) {
         recentEmotes.length = 0;
         playApplause();
       }
@@ -143,6 +164,40 @@ class SocketManager {
       if (!payload || typeof payload.objectId !== 'string' || !payload.stroke) return;
       useGameStore.getState().appendWhiteboardStroke(payload.objectId, payload.stroke);
       for (const fn of this.whiteboardStrokeListeners) fn(payload);
+    });
+
+    socket.on('whiteboard_text', (payload: WhiteboardTextPayload) => {
+      if (!payload || typeof payload.objectId !== 'string' || !payload.text) return;
+      useGameStore.getState().appendWhiteboardText(payload.objectId, payload.text);
+      for (const fn of this.whiteboardTextListeners) fn(payload);
+    });
+
+    socket.on('player_ghost', (payload: { playerId: string; isGhost: boolean }) => {
+      if (!payload || typeof payload.playerId !== 'string') return;
+      const store = useGameStore.getState();
+      const existing = store.players.get(payload.playerId);
+      if (existing) {
+        store.upsertPlayer({ ...existing, isGhost: payload.isGhost });
+      }
+      for (const fn of this.playerGhostListeners) fn(payload);
+    });
+
+    socket.on('kicked', (payload: { reason?: string }) => {
+      const reason = payload?.reason ?? 'kicked by host';
+      for (const fn of this.kickedListeners) fn(reason);
+    });
+
+    socket.on('whiteboard_text_update', (payload: WhiteboardTextUpdatePayload) => {
+      if (!payload || typeof payload.objectId !== 'string' || typeof payload.textId !== 'string') return;
+      if (typeof payload.x !== 'number' || typeof payload.y !== 'number') return;
+      useGameStore.getState().updateWhiteboardText(payload.objectId, payload.textId, payload.x, payload.y);
+      for (const fn of this.whiteboardTextUpdateListeners) fn(payload);
+    });
+
+    socket.on('whiteboard_text_delete', (payload: WhiteboardTextDeletePayload) => {
+      if (!payload || typeof payload.objectId !== 'string' || typeof payload.textId !== 'string') return;
+      useGameStore.getState().removeWhiteboardText(payload.objectId, payload.textId);
+      for (const fn of this.whiteboardTextDeleteListeners) fn(payload);
     });
 
     socket.on('whiteboard_clear', (payload: WhiteboardClearPayload) => {
@@ -176,6 +231,48 @@ class SocketManager {
 
   sendRecordingState(on: boolean): void {
     this.socket?.emit('recording_state', { on });
+  }
+
+  toggleGhost(): void {
+    this.socket?.emit('toggle_ghost');
+  }
+
+  adminKick(targetPlayerId: string): void {
+    this.socket?.emit('admin_kick', { targetPlayerId });
+  }
+
+  adminMute(targetPlayerId: string): void {
+    this.socket?.emit('admin_mute', { targetPlayerId });
+  }
+
+  adminMuteAll(): void {
+    this.socket?.emit('admin_mute_all');
+  }
+
+  adminCloseRoom(): void {
+    this.socket?.emit('admin_close_room');
+  }
+
+  updateNote(objectId: string, title: string, content: string): void {
+    this.socket?.emit('update_note', { objectId, title, content });
+  }
+
+  adminTransferHost(targetPlayerId: string): void {
+    this.socket?.emit('admin_transfer_host', { targetPlayerId });
+  }
+
+  onPlayerGhost(fn: (p: { playerId: string; isGhost: boolean }) => void): () => void {
+    this.playerGhostListeners.add(fn);
+    return () => {
+      this.playerGhostListeners.delete(fn);
+    };
+  }
+
+  onKicked(fn: (reason: string) => void): () => void {
+    this.kickedListeners.add(fn);
+    return () => {
+      this.kickedListeners.delete(fn);
+    };
   }
 
   onPlayerUpdate(fn: (p: PlayerState) => void): () => void {
@@ -234,8 +331,41 @@ class SocketManager {
     this.socket?.emit('whiteboard_stroke', { objectId, stroke });
   }
 
+  sendWhiteboardText(objectId: string, text: WhiteboardText): void {
+    this.socket?.emit('whiteboard_text', { objectId, text });
+  }
+
+  onWhiteboardText(fn: (p: WhiteboardTextPayload) => void): () => void {
+    this.whiteboardTextListeners.add(fn);
+    return () => {
+      this.whiteboardTextListeners.delete(fn);
+    };
+  }
+
   sendWhiteboardClear(objectId: string): void {
     this.socket?.emit('whiteboard_clear', { objectId });
+  }
+
+  sendWhiteboardTextUpdate(objectId: string, textId: string, x: number, y: number): void {
+    this.socket?.emit('whiteboard_text_update', { objectId, textId, x, y });
+  }
+
+  sendWhiteboardTextDelete(objectId: string, textId: string): void {
+    this.socket?.emit('whiteboard_text_delete', { objectId, textId });
+  }
+
+  onWhiteboardTextUpdate(fn: (p: WhiteboardTextUpdatePayload) => void): () => void {
+    this.whiteboardTextUpdateListeners.add(fn);
+    return () => {
+      this.whiteboardTextUpdateListeners.delete(fn);
+    };
+  }
+
+  onWhiteboardTextDelete(fn: (p: WhiteboardTextDeletePayload) => void): () => void {
+    this.whiteboardTextDeleteListeners.add(fn);
+    return () => {
+      this.whiteboardTextDeleteListeners.delete(fn);
+    };
   }
 
   disconnect(): void {

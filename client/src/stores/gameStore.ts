@@ -5,6 +5,7 @@ import type {
   InteractiveObject,
   PlayerState,
   WhiteboardStroke,
+  WhiteboardText,
 } from '../types';
 import { DEFAULT_APPEARANCE } from '../types';
 
@@ -41,10 +42,21 @@ interface GameStore {
   upsertInteractiveObject: (obj: InteractiveObject) => void;
   openWhiteboardId: string | null;
   setOpenWhiteboard: (id: string | null) => void;
+  openNoteId: string | null;
+  setOpenNote: (id: string | null) => void;
+  openLinkId: string | null;
+  setOpenLink: (id: string | null) => void;
+  currentRoomSlug: string;
+  setCurrentRoomSlug: (slug: string) => void;
   appendWhiteboardStroke: (objectId: string, stroke: WhiteboardStroke) => void;
+  appendWhiteboardText: (objectId: string, text: WhiteboardText) => void;
+  updateWhiteboardText: (objectId: string, textId: string, x: number, y: number) => void;
+  removeWhiteboardText: (objectId: string, textId: string) => void;
   clearWhiteboard: (objectId: string) => void;
   helpOpen: boolean;
   setHelpOpen: (v: boolean) => void;
+  adminPanelOpen: boolean;
+  setAdminPanelOpen: (v: boolean) => void;
   hostPlayerId: string | null;
   isRecording: boolean;
   recordingHostName: string;
@@ -115,6 +127,20 @@ export const useGameStore = create<GameStore>((set) => ({
     }),
   openWhiteboardId: null,
   setOpenWhiteboard: (id) => set({ openWhiteboardId: id, inputFocused: id !== null }),
+  openNoteId: null,
+  setOpenNote: (id) =>
+    set((s) => ({
+      openNoteId: id,
+      inputFocused: id !== null || s.openWhiteboardId !== null || s.openLinkId !== null,
+    })),
+  openLinkId: null,
+  setOpenLink: (id) =>
+    set((s) => ({
+      openLinkId: id,
+      inputFocused: id !== null || s.openWhiteboardId !== null || s.openNoteId !== null,
+    })),
+  currentRoomSlug: 'demo',
+  setCurrentRoomSlug: (slug) => set({ currentRoomSlug: slug }),
   appendWhiteboardStroke: (objectId, stroke) =>
     set((s) => {
       const next = s.interactiveObjects.slice();
@@ -126,7 +152,56 @@ export const useGameStore = create<GameStore>((set) => ({
       if (strokes.length > WHITEBOARD_STROKE_CAP) {
         strokes.splice(0, strokes.length - WHITEBOARD_STROKE_CAP);
       }
-      next[idx] = { ...obj, data: { strokes } };
+      next[idx] = { ...obj, data: { ...obj.data, strokes } };
+      return { interactiveObjects: next };
+    }),
+  appendWhiteboardText: (objectId, text) =>
+    set((s) => {
+      const next = s.interactiveObjects.slice();
+      const idx = next.findIndex((o) => o.id === objectId);
+      if (idx < 0) return {};
+      const obj = next[idx]!;
+      if (obj.type !== 'whiteboard') return {};
+      const existing = obj.data.texts ?? [];
+      const texts = existing.concat(text);
+      const total = obj.data.strokes.length + texts.length;
+      if (total > WHITEBOARD_STROKE_CAP) {
+        texts.splice(0, total - WHITEBOARD_STROKE_CAP);
+      }
+      next[idx] = { ...obj, data: { ...obj.data, texts } };
+      return { interactiveObjects: next };
+    }),
+  updateWhiteboardText: (objectId, textId, x, y) =>
+    set((s) => {
+      const next = s.interactiveObjects.slice();
+      const idx = next.findIndex((o) => o.id === objectId);
+      if (idx < 0) return {};
+      const obj = next[idx]!;
+      if (obj.type !== 'whiteboard') return {};
+      const existing = obj.data.texts ?? [];
+      let changed = false;
+      const texts = existing.map((t) => {
+        if (t.id === textId) {
+          changed = true;
+          return { ...t, x, y };
+        }
+        return t;
+      });
+      if (!changed) return {};
+      next[idx] = { ...obj, data: { ...obj.data, texts } };
+      return { interactiveObjects: next };
+    }),
+  removeWhiteboardText: (objectId, textId) =>
+    set((s) => {
+      const next = s.interactiveObjects.slice();
+      const idx = next.findIndex((o) => o.id === objectId);
+      if (idx < 0) return {};
+      const obj = next[idx]!;
+      if (obj.type !== 'whiteboard') return {};
+      const existing = obj.data.texts ?? [];
+      const texts = existing.filter((t) => t.id !== textId);
+      if (texts.length === existing.length) return {};
+      next[idx] = { ...obj, data: { ...obj.data, texts } };
       return { interactiveObjects: next };
     }),
   clearWhiteboard: (objectId) =>
@@ -136,11 +211,13 @@ export const useGameStore = create<GameStore>((set) => ({
       if (idx < 0) return {};
       const obj = next[idx]!;
       if (obj.type !== 'whiteboard') return {};
-      next[idx] = { ...obj, data: { strokes: [] } };
+      next[idx] = { ...obj, data: { strokes: [], texts: [] } };
       return { interactiveObjects: next };
     }),
   helpOpen: false,
   setHelpOpen: (v) => set({ helpOpen: v }),
+  adminPanelOpen: false,
+  setAdminPanelOpen: (v) => set({ adminPanelOpen: v }),
   hostPlayerId: null,
   isRecording: false,
   recordingHostName: '',
@@ -158,7 +235,10 @@ export const useGameStore = create<GameStore>((set) => ({
       inputFocused: false,
       interactiveObjects: [],
       openWhiteboardId: null,
+      openNoteId: null,
+      openLinkId: null,
       helpOpen: false,
+      adminPanelOpen: false,
       hostPlayerId: null,
       isRecording: false,
       recordingHostName: '',

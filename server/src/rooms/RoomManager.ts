@@ -38,6 +38,16 @@ function defaultInteractiveObjects(): InteractiveObject[] {
       y: 36 * 32,
       data: { strokes: [] },
     },
+    {
+      id: 'note-agenda-1',
+      type: 'note',
+      x: 15 * 32,
+      y: 12 * 32,
+      data: {
+        title: 'Agenda du live',
+        content: 'À remplir par l\'hôte.',
+      },
+    },
   ];
 }
 
