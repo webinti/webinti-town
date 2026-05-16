@@ -22,6 +22,7 @@ export function HUD() {
   const hostPlayerId = useGameStore((s) => s.hostPlayerId);
   const isHost = !!localPlayerId && localPlayerId === hostPlayerId;
   const currentRoomSlug = useGameStore((s) => s.currentRoomSlug);
+  const mapZoom = useGameStore((s) => s.mapZoom);
   const [soundsMuted, setSoundsMutedState] = useState(soundsIsMuted());
 
   const toggleSounds = () => {
@@ -66,6 +67,14 @@ export function HUD() {
         e.preventDefault();
         const s = useGameStore.getState();
         s.setHelpOpen(!s.helpOpen);
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        const s = useGameStore.getState();
+        s.setMapZoom(s.mapZoom + 0.25);
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        const s = useGameStore.getState();
+        s.setMapZoom(s.mapZoom - 0.25);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -201,7 +210,34 @@ export function HUD() {
             Quitter
           </button>
         </div>
-        <Minimap />
+        <div className="pointer-events-none flex flex-col items-end gap-2">
+          <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-slate-900/80 p-1 ring-1 ring-white/10 backdrop-blur">
+            <button
+              onClick={() => {
+                const s = useGameStore.getState();
+                s.setMapZoom(s.mapZoom - 0.25);
+              }}
+              title="Dézoomer (-)"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-lg font-bold text-slate-100 hover:bg-slate-600"
+            >
+              −
+            </button>
+            <span className="min-w-[3.5rem] text-center text-xs font-semibold text-slate-200">
+              {Math.round(mapZoom * 100)}%
+            </span>
+            <button
+              onClick={() => {
+                const s = useGameStore.getState();
+                s.setMapZoom(s.mapZoom + 0.25);
+              }}
+              title="Zoomer (+)"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-lg font-bold text-slate-100 hover:bg-slate-600"
+            >
+              +
+            </button>
+          </div>
+          <Minimap />
+        </div>
       </div>
     </div>
   );
