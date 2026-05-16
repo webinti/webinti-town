@@ -62,7 +62,17 @@ interface GameStore {
   recordingHostName: string;
   setHost: (id: string | null) => void;
   setRecording: (on: boolean, hostName: string) => void;
+  cameraZoom: number;
+  setCameraZoom: (z: number) => void;
   reset: () => void;
+}
+
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 2.0;
+
+function clampZoom(z: number): number {
+  if (!Number.isFinite(z)) return 1;
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(z * 100) / 100));
 }
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -223,6 +233,12 @@ export const useGameStore = create<GameStore>((set) => ({
   recordingHostName: '',
   setHost: (id) => set({ hostPlayerId: id }),
   setRecording: (on, hostName) => set({ isRecording: on, recordingHostName: hostName }),
+  cameraZoom: 1,
+  setCameraZoom: (z) =>
+    set((s) => {
+      const next = clampZoom(z);
+      return next === s.cameraZoom ? {} : { cameraZoom: next };
+    }),
   reset: () =>
     set({
       connected: false,
@@ -242,5 +258,6 @@ export const useGameStore = create<GameStore>((set) => ({
       hostPlayerId: null,
       isRecording: false,
       recordingHostName: '',
+      cameraZoom: 1,
     }),
 }));

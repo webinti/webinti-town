@@ -66,6 +66,14 @@ export function HUD() {
         e.preventDefault();
         const s = useGameStore.getState();
         s.setHelpOpen(!s.helpOpen);
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        const s = useGameStore.getState();
+        s.setCameraZoom(s.cameraZoom + 0.1);
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        const s = useGameStore.getState();
+        s.setCameraZoom(s.cameraZoom - 0.1);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -201,8 +209,37 @@ export function HUD() {
             Quitter
           </button>
         </div>
-        <Minimap />
+        <div className="flex flex-col items-end gap-2">
+          <ZoomControl />
+          <Minimap />
+        </div>
       </div>
+    </div>
+  );
+}
+
+function ZoomControl() {
+  const cameraZoom = useGameStore((s) => s.cameraZoom);
+  const setCameraZoom = useGameStore((s) => s.setCameraZoom);
+  return (
+    <div className="pointer-events-auto flex flex-col items-center gap-1 rounded-full bg-slate-900/80 px-1 py-2 ring-1 ring-white/10 backdrop-blur">
+      <button
+        onClick={() => setCameraZoom(cameraZoom + 0.1)}
+        title="Zoom avant"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-lg font-bold text-slate-100 hover:bg-slate-600"
+      >
+        +
+      </button>
+      <div className="select-none text-center text-[11px] font-semibold tabular-nums text-slate-200">
+        {Math.round(cameraZoom * 100)}%
+      </div>
+      <button
+        onClick={() => setCameraZoom(cameraZoom - 0.1)}
+        title="Zoom arrière"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-lg font-bold text-slate-100 hover:bg-slate-600"
+      >
+        &minus;
+      </button>
     </div>
   );
 }

@@ -58,6 +58,7 @@ export class GameScene extends Phaser.Scene {
   private emoteStacks = new Map<string, Phaser.GameObjects.Text[]>();
   private objectVisuals = new Map<string, ObjectVisual>();
   private nearbyObjectId: string | null = null;
+  private appliedZoom = 1;
   private eKey?: Phaser.Input.Keyboard.Key;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
 
@@ -115,6 +116,22 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+    this.appliedZoom = store.cameraZoom;
+    this.cameras.main.setZoom(this.appliedZoom);
+
+    this.input.on(
+      'wheel',
+      (
+        _pointer: Phaser.Input.Pointer,
+        _over: unknown,
+        _dx: number,
+        dy: number,
+      ) => {
+        const cur = useGameStore.getState().cameraZoom;
+        const step = dy < 0 ? 0.1 : -0.1;
+        useGameStore.getState().setCameraZoom(cur + step);
+      },
+    );
 
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.wasdKeys = this.input.keyboard?.addKeys('W,A,S,D') as Record<
@@ -158,6 +175,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.unsubStore = useGameStore.subscribe((s) => {
+      if (s.cameraZoom !== this.appliedZoom) {
+        this.appliedZoom = s.cameraZoom;
+        this.cameras.main.setZoom(this.appliedZoom);
+      }
       const lid = s.localPlayerId;
       const localState = lid ? s.players.get(lid) : undefined;
       if (this.player && localState) {

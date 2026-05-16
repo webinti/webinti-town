@@ -1,5 +1,18 @@
 import type { InteractiveObject, PlayerState } from '../types.js';
 
+// Pixel AABB of the conference room. Mirrored on the client in
+// client/src/conferenceZone.ts.
+const CONFERENCE_ZONE = { minX: 32, minY: 736, maxX: 960, maxY: 1312 } as const;
+
+function inConferenceZone(p: PlayerState): boolean {
+  return (
+    p.x >= CONFERENCE_ZONE.minX &&
+    p.x <= CONFERENCE_ZONE.maxX &&
+    p.y >= CONFERENCE_ZONE.minY &&
+    p.y <= CONFERENCE_ZONE.maxY
+  );
+}
+
 export function computeProximity(
   players: PlayerState[],
   radiusPx: number,
@@ -53,6 +66,21 @@ export function computeProximity(
       if (!obsNearby) continue;
       if (!obsNearby.includes(sharerId)) obsNearby.push(sharerId);
     }
+  }
+
+  // Conference room: any two players both inside the conference AABB stay
+  // mutually subscribed and audible at full volume, so a meeting works even when
+  // participants spread out beyond the normal proximity radius.
+  const conferenceIds = players.filter(inConferenceZone).map((p) => p.playerId);
+  for (const aId of conferenceIds) {
+    const aNearby = result.get(aId);
+    if (!aNearby) continue;
+    const set = new Set(aNearby);
+    for (const bId of conferenceIds) {
+      if (aId === bId) continue;
+      set.add(bId);
+    }
+    result.set(aId, Array.from(set));
   }
 
   return result;
