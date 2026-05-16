@@ -3,6 +3,7 @@ import { Player } from '../entities/Player';
 import { RemotePlayer } from '../entities/RemotePlayer';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
+import { stepMapZoom } from '../../mapZoom';
 import { setFireVolume } from '../../sounds/sounds';
 import type { EmoteType, InteractiveObject, PlayerState } from '../../types';
 
@@ -58,6 +59,7 @@ export class GameScene extends Phaser.Scene {
   private emoteStacks = new Map<string, Phaser.GameObjects.Text[]>();
   private objectVisuals = new Map<string, ObjectVisual>();
   private nearbyObjectId: string | null = null;
+  private appliedZoom = 1;
   private eKey?: Phaser.Input.Keyboard.Key;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
 
@@ -115,6 +117,20 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+
+    this.input.on(
+      'wheel',
+      (
+        _pointer: Phaser.Input.Pointer,
+        _objects: unknown,
+        _dx: number,
+        dy: number,
+      ) => {
+        const store = useGameStore.getState();
+        const dir: 1 | -1 = dy > 0 ? -1 : 1; // wheel down -> zoom out
+        store.setMapZoom(stepMapZoom(store.mapZoom, dir, 0.1));
+      },
+    );
 
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.wasdKeys = this.input.keyboard?.addKeys('W,A,S,D') as Record<
@@ -338,6 +354,11 @@ export class GameScene extends Phaser.Scene {
 
   update(): void {
     if (!this.player) return;
+    const desiredZoom = useGameStore.getState().mapZoom;
+    if (desiredZoom !== this.appliedZoom) {
+      this.appliedZoom = desiredZoom;
+      this.cameras.main.setZoom(desiredZoom);
+    }
     if (this.fireplace) {
       const dx = this.player.sprite.x - this.fireplace.x;
       const dy = this.player.sprite.y - this.fireplace.y;
