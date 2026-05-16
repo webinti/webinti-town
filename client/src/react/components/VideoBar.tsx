@@ -5,6 +5,7 @@ import type {
   RemoteVideoTrack,
 } from 'livekit-client';
 import { useGameStore } from '../../stores/gameStore';
+import { isInConferenceZone } from '../../conferenceZone';
 import type { RemoteSnapshot } from '../../livekit/LiveKitManager';
 
 interface VideoBarProps {
@@ -164,6 +165,13 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
     const local = localPlayerId ? players.get(localPlayerId) : undefined;
     const remotePlayer = players.get(remote.identity);
     if (!local || !remotePlayer) {
+      el.volume = 1;
+      return;
+    }
+    if (
+      isInConferenceZone(local.x, local.y) &&
+      isInConferenceZone(remotePlayer.x, remotePlayer.y)
+    ) {
       el.volume = 1;
       return;
     }
