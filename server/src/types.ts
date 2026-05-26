@@ -96,6 +96,9 @@ export interface RoomState {
   createdAt: number;
   chatHistory: ChatMessage[];
   interactiveObjects: InteractiveObject[];
+  // Cards are owned by an in-memory store + JSON file per room — not embedded
+  // in the InteractiveObject's `data` field. See server/src/kanban/KanbanStore.
+  kanbanStore: import('./kanban/KanbanStore.js').KanbanStore;
   hostPlayerId: string | null;
   isRecording: boolean;
 }

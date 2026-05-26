@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { KanbanStore } from '../kanban/KanbanStore.js';
 import type {
   PlayerState,
   RoomState,
@@ -39,6 +40,13 @@ function defaultInteractiveObjects(): InteractiveObject[] {
       data: { strokes: [] },
     },
     {
+      id: 'kanban-ideas-1',
+      type: 'kanban',
+      x: 10 * 32,        // tile (10, 36) — 2 tiles east of the whiteboard
+      y: 36 * 32,
+      data: {},
+    },
+    {
       id: 'note-agenda-1',
       type: 'note',
       x: 15 * 32,
@@ -63,6 +71,9 @@ export class RoomManager {
       slug = `${slugify(cleanName)}-${suffix}`;
     }
     const adminToken = randomUUID();
+    const kanbanStore = new KanbanStore({ roomSlug: slug, persist: true });
+    // fire-and-forget; getCards returns empty until load resolves
+    void kanbanStore.load();
     this.rooms.set(slug, {
       slug,
       name: cleanName,
@@ -71,6 +82,7 @@ export class RoomManager {
       createdAt: Date.now(),
       chatHistory: [],
       interactiveObjects: defaultInteractiveObjects(),
+      kanbanStore,
       hostPlayerId: null,
       isRecording: false,
     });
@@ -81,6 +93,9 @@ export class RoomManager {
     const existing = this.rooms.get(slug);
     if (existing) return existing;
     const adminToken = randomUUID();
+    const kanbanStore = new KanbanStore({ roomSlug: slug, persist: true });
+    // fire-and-forget; getCards returns empty until load resolves
+    void kanbanStore.load();
     const room: RoomState = {
       slug,
       name,
@@ -89,6 +104,7 @@ export class RoomManager {
       createdAt: Date.now(),
       chatHistory: [],
       interactiveObjects: defaultInteractiveObjects(),
+      kanbanStore,
       hostPlayerId: null,
       isRecording: false,
     };

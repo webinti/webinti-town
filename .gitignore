@@ -8,3 +8,6 @@ build/
 .vite/
 coverage/
 pgdata/
+
+# Kanban persistent data — not committed (one file per room)
+server/data/*.json
