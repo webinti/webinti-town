@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { KanbanStore } from './KanbanStore.js';
 
 const A = { id: 'pA', name: 'Alice' };
@@ -171,5 +171,56 @@ describe('KanbanStore — move + reorder', () => {
 
   it('invalid column → false', () => {
     expect(s.move(A.id, false, aCard, 'banana' as never, 0)).toBe(false);
+  });
+});
+
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+describe('KanbanStore — persistence', () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'kanban-test-'));
+  });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('writes an atomic JSON file on mutation', async () => {
+    const s = new KanbanStore({ roomSlug: 'r1', persist: true, dataDir: dir });
+    s.create(A.id, A.name, 'hello', '');
+    await s.flush();
+    const path = join(dir, 'kanban-r1.json');
+    expect(existsSync(path)).toBe(true);
+    const parsed = JSON.parse(readFileSync(path, 'utf8'));
+    expect(parsed.version).toBe(1);
+    expect(parsed.cards).toHaveLength(1);
+    expect(parsed.cards[0].title).toBe('hello');
+  });
+
+  it('loads from existing JSON file on construction', async () => {
+    const s = new KanbanStore({ roomSlug: 'r2', persist: true, dataDir: dir });
+    s.create(A.id, A.name, 'first', '');
+    await s.flush();
+
+    const s2 = new KanbanStore({ roomSlug: 'r2', persist: true, dataDir: dir });
+    await s2.load();
+    expect(s2.getCards()).toHaveLength(1);
+    expect(s2.getCards()[0]!.title).toBe('first');
+  });
+
+  it('starts empty + warns if file is corrupt', async () => {
+    const path = join(dir, 'kanban-r3.json');
+    require('node:fs').writeFileSync(path, '{not json');
+    const s = new KanbanStore({ roomSlug: 'r3', persist: true, dataDir: dir });
+    await s.load();
+    expect(s.getCards()).toHaveLength(0);
+  });
+
+  it('starts empty if file does not exist (no throw)', async () => {
+    const s = new KanbanStore({ roomSlug: 'r4', persist: true, dataDir: dir });
+    await s.load();
+    expect(s.getCards()).toHaveLength(0);
   });
 });

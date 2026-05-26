@@ -1,5 +1,17 @@
 import { randomUUID } from 'node:crypto';
+import { promises as fs } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { KanbanCard, KanbanColumn } from '../types.js';
+
+const DEFAULT_DATA_DIR = (() => {
+  // server/src/kanban/KanbanStore.ts → ../../data == server/data
+  const here = dirname(fileURLToPath(import.meta.url));
+  return join(here, '..', '..', 'data');
+})();
+
+const SAVE_DEBOUNCE_MS = 50;
+const FILE_VERSION = 1;
 
 const TITLE_MAX = 80;
 const DESCRIPTION_MAX = 500;
@@ -15,10 +27,14 @@ export class KanbanStore {
   private cards: KanbanCard[] = [];
   protected readonly roomSlug: string;
   protected readonly persistEnabled: boolean;
+  private readonly dataDir: string;
+  private saveTimer: NodeJS.Timeout | null = null;
+  private savePending: Promise<void> | null = null;
 
   constructor(opts: KanbanStoreOptions) {
     this.roomSlug = opts.roomSlug;
     this.persistEnabled = opts.persist;
+    this.dataDir = opts.dataDir ?? DEFAULT_DATA_DIR;
   }
 
   getCards(): KanbanCard[] {
@@ -161,6 +177,73 @@ export class KanbanStore {
     return sameColumnIdx[pos]!;
   }
 
-  // Hooks overridden by the persisting subclass in Task 3.
-  protected scheduleSave(): void { /* no-op in base class */ }
+  protected scheduleSave(): void {
+    if (!this.persistEnabled) return;
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      this.savePending = this.saveNow().catch((err) => {
+        console.warn('[kanban] save failed for', this.roomSlug, err);
+      });
+    }, SAVE_DEBOUNCE_MS);
+  }
+
+  async flush(): Promise<void> {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+      await this.saveNow();
+      return;
+    }
+    if (this.savePending) await this.savePending;
+  }
+
+  async load(): Promise<void> {
+    if (!this.persistEnabled) return;
+    const path = this.filePath();
+    try {
+      const raw = await fs.readFile(path, 'utf8');
+      const parsed = JSON.parse(raw) as { version?: number; cards?: KanbanCard[] };
+      if (parsed && Array.isArray(parsed.cards)) {
+        // Strict-shape filter: drop entries that don't look like a card.
+        this.cards = parsed.cards.filter((c) => isWellShapedCard(c));
+      }
+    } catch (err: unknown) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') return; // first run, fine
+      console.warn('[kanban] load failed for', this.roomSlug, '— starting empty', err);
+      this.cards = [];
+    }
+  }
+
+  private filePath(): string {
+    return join(this.dataDir, `kanban-${this.roomSlug}.json`);
+  }
+
+  private async saveNow(): Promise<void> {
+    const path = this.filePath();
+    const tmp = `${path}.tmp`;
+    await fs.mkdir(this.dataDir, { recursive: true });
+    const payload = JSON.stringify({ version: FILE_VERSION, cards: this.cards });
+    await fs.writeFile(tmp, payload, 'utf8');
+    await fs.rename(tmp, path);
+  }
+}
+
+function isWellShapedCard(c: unknown): c is KanbanCard {
+  if (typeof c !== 'object' || c === null) return false;
+  const r = c as Record<string, unknown>;
+  return (
+    typeof r.id === 'string' &&
+    typeof r.title === 'string' &&
+    typeof r.description === 'string' &&
+    typeof r.authorId === 'string' &&
+    typeof r.authorName === 'string' &&
+    (r.column === 'todo' || r.column === 'doing' || r.column === 'done') &&
+    typeof r.createdAt === 'number' &&
+    typeof r.updatedAt === 'number' &&
+    (r.completedAt === null || typeof r.completedAt === 'number') &&
+    (r.completedBy === null || typeof r.completedBy === 'string') &&
+    (r.completedByName === null || typeof r.completedByName === 'string')
+  );
 }
