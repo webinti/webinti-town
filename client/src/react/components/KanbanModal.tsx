@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { socketManager } from '../../network/SocketManager';
 import { useGameStore } from '../../stores/gameStore';
 import type { KanbanCard, KanbanColumn } from '../../types';
 
@@ -48,6 +50,7 @@ export function KanbanModal() {
                 <span className="text-xs text-slate-400">{byColumn[col].length}</span>
               </div>
               <div className="flex flex-1 flex-col gap-2 overflow-auto">
+                {col === 'todo' && <CreateCardForm />}
                 {byColumn[col].map((c) => (
                   <CardView key={c.id} card={c} />
                 ))}
@@ -60,6 +63,65 @@ export function KanbanModal() {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CreateCardForm() {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+
+  const submit = () => {
+    const t = title.trim();
+    if (t.length < 1 || t.length > 80) return;
+    socketManager.kanbanCreate(t, description.slice(0, 500));
+    setTitle('');
+    setDescription('');
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="rounded-md border border-dashed border-white/20 px-3 py-2 text-xs text-slate-300 hover:bg-white/5"
+      >
+        + Nouvelle idée
+      </button>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2 rounded-md bg-slate-800/80 p-3 ring-1 ring-indigo-400/40">
+      <input
+        autoFocus
+        value={title}
+        onChange={(e) => setTitle(e.target.value.slice(0, 80))}
+        placeholder="Titre de l'idée (max 80)"
+        className="rounded bg-slate-900 px-2 py-1 text-sm outline-none ring-1 ring-white/10 focus:ring-indigo-400"
+      />
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+        placeholder="Description (optionnel, max 500)"
+        rows={3}
+        className="resize-none rounded bg-slate-900 px-2 py-1 text-xs outline-none ring-1 ring-white/10 focus:ring-indigo-400"
+      />
+      <div className="flex gap-2">
+        <button
+          disabled={title.trim().length < 1}
+          onClick={submit}
+          className="rounded bg-indigo-600 px-3 py-1 text-xs font-semibold hover:bg-indigo-500 disabled:opacity-40"
+        >
+          Ajouter
+        </button>
+        <button
+          onClick={() => { setOpen(false); setTitle(''); setDescription(''); }}
+          className="rounded bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+        >
+          Annuler
+        </button>
       </div>
     </div>
   );
