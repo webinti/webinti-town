@@ -191,6 +191,10 @@ export class GameScene extends Phaser.Scene {
         store.setOpenLink(obj.id);
         return;
       }
+      if (obj && obj.type === 'kanban') {
+        store.setOpenKanban(obj.id);
+        return;
+      }
       socketManager.interactObject(this.nearbyObjectId);
     });
 
@@ -538,13 +542,19 @@ export class GameScene extends Phaser.Scene {
             ? '\u{1F3A8}'
             : obj.type === 'note'
               ? '\u{1F4DD}'
-              : '\u{1F517}';
+              : obj.type === 'kanban'
+                ? '\u{1F4CB}'
+                : '\u{1F517}';
+      const hintText =
+        obj.type === 'kanban'
+          ? "Appuyer sur E — Tableau d'idées"
+          : '[E] Interagir';
       const icon = this.add
         .text(cx, cy, emoji, { fontSize: '28px', fontFamily: 'system-ui, sans-serif' })
         .setOrigin(0.5, 0.5)
         .setDepth(8);
       const hint = this.add
-        .text(cx, cy - 28, '[E] Interagir', {
+        .text(cx, cy - 28, hintText, {
           fontSize: '12px',
           fontFamily: 'system-ui, sans-serif',
           color: '#ffffff',
