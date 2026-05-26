@@ -22,6 +22,11 @@ export interface RemoteSnapshot {
   videoTrack: RemoteVideoTrack | null;
   screenTrack: RemoteVideoTrack | null;
   isMuted: boolean;
+  // True when the remote's screen-share publication is muted — happens when
+  // the sharer minimizes / hides the source window. We propagate this
+  // manually from the sender side via the underlying MediaStreamTrack's
+  // 'mute' event (see attachScreenSourceVisibilityRelay).
+  screenMuted: boolean;
 }
 
 export interface LiveKitSnapshot {
@@ -29,6 +34,10 @@ export interface LiveKitSnapshot {
   localMicEnabled: boolean;
   localCamEnabled: boolean;
   localScreenEnabled: boolean;
+  // True when the local screen-share source window is currently hidden
+  // (minimized). The MediaStreamTrack fires 'mute' in that state; we relay
+  // it as a LiveKit mute so remotes can show a "paused" placeholder.
+  localScreenSourceHidden: boolean;
   localCamTrack: LocalVideoTrack | null;
   localMicTrack: LocalAudioTrack | null;
   localScreenTrack: LocalVideoTrack | null;
@@ -42,6 +51,12 @@ class LiveKitManager {
   private snapshotVersion = 0;
   private cachedSnapshot: LiveKitSnapshot | null = null;
   private cachedVersion = -1;
+  // Relay state for the local screen-share source visibility (see
+  // attachScreenSourceVisibilityRelay).
+  private screenRelayMst: MediaStreamTrack | null = null;
+  private screenRelayOnMute: (() => void) | null = null;
+  private screenRelayOnUnmute: (() => void) | null = null;
+  private localScreenSourceHidden = false;
 
   async connect(roomSlug: string, identity: string, name: string): Promise<void> {
     if (this.room) return;
@@ -67,7 +82,15 @@ class LiveKitManager {
       room.on(RoomEvent.ParticipantConnected, emit);
       room.on(RoomEvent.ParticipantDisconnected, emit);
       room.on(RoomEvent.LocalTrackPublished, emit);
-      room.on(RoomEvent.LocalTrackUnpublished, emit);
+      room.on(RoomEvent.LocalTrackUnpublished, (pub) => {
+        // If the user stopped screen sharing via the browser's native UI
+        // (not through our toggle), the source MediaStreamTrack is gone —
+        // drop our relay listeners so we don't hold a dead reference.
+        if (pub.source === Track.Source.ScreenShare) {
+          this.detachScreenSourceVisibilityRelay();
+        }
+        emit();
+      });
       room.on(RoomEvent.Disconnected, emit);
       room.on(RoomEvent.Connected, emit);
       await room.connect(data.url, data.token, { autoSubscribe: false });
@@ -106,11 +129,72 @@ class LiveKitManager {
     if (!this.room) return;
     try {
       await this.room.localParticipant.setScreenShareEnabled(enabled, { audio: true });
+      if (enabled) {
+        // Locate the freshly-published screen track and hook our visibility relay.
+        let track: LocalVideoTrack | null = null;
+        for (const pub of this.room.localParticipant.trackPublications.values()) {
+          if (pub.source === Track.Source.ScreenShare && pub.track) {
+            track = pub.track as LocalVideoTrack;
+            break;
+          }
+        }
+        if (track) this.attachScreenSourceVisibilityRelay(track);
+      } else {
+        this.detachScreenSourceVisibilityRelay();
+      }
       this.emit();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(`Partage d'écran: ${msg}`);
     }
+  }
+
+  /**
+   * Browsers fire 'mute' on a getDisplayMedia MediaStreamTrack when the OS
+   * stops compositing the source (window minimized, app hidden). LiveKit's
+   * built-in handler only pauses the upstream after a 5s debounce and does
+   * NOT propagate `isMuted` to remote participants — so the other side keeps
+   * displaying the last frozen frame (typically black) with no indication.
+   *
+   * We relay the native mute/unmute through LiveKit's own mute() / unmute()
+   * so `RemoteTrackPublication.isMuted` flips on every other client and the
+   * UI can show a "partage en pause" placeholder.
+   */
+  private attachScreenSourceVisibilityRelay(track: LocalVideoTrack): void {
+    this.detachScreenSourceVisibilityRelay();
+    const mst = track.mediaStreamTrack;
+    if (!mst) return;
+    const onMute = () => {
+      this.localScreenSourceHidden = true;
+      void track.mute().catch(() => undefined);
+      this.emit();
+    };
+    const onUnmute = () => {
+      this.localScreenSourceHidden = false;
+      void track.unmute().catch(() => undefined);
+      this.emit();
+    };
+    mst.addEventListener('mute', onMute);
+    mst.addEventListener('unmute', onUnmute);
+    this.screenRelayMst = mst;
+    this.screenRelayOnMute = onMute;
+    this.screenRelayOnUnmute = onUnmute;
+    // Initial state: if the browser already considers the track muted (rare,
+    // but happens if the user immediately switches apps), reflect it.
+    if (mst.muted) onMute();
+  }
+
+  private detachScreenSourceVisibilityRelay(): void {
+    if (this.screenRelayMst && this.screenRelayOnMute) {
+      this.screenRelayMst.removeEventListener('mute', this.screenRelayOnMute);
+    }
+    if (this.screenRelayMst && this.screenRelayOnUnmute) {
+      this.screenRelayMst.removeEventListener('unmute', this.screenRelayOnUnmute);
+    }
+    this.screenRelayMst = null;
+    this.screenRelayOnMute = null;
+    this.screenRelayOnUnmute = null;
+    this.localScreenSourceHidden = false;
   }
 
   async setSubscribedIdentities(identities: string[]): Promise<void> {
@@ -148,6 +232,7 @@ class LiveKitManager {
         localMicEnabled: false,
         localCamEnabled: false,
         localScreenEnabled: false,
+        localScreenSourceHidden: false,
         localCamTrack: null,
         localMicTrack: null,
         localScreenTrack: null,
@@ -175,6 +260,7 @@ class LiveKitManager {
       let videoTrack: RemoteVideoTrack | null = null;
       let screenTrack: RemoteVideoTrack | null = null;
       let isMuted = true;
+      let screenMuted = false;
       for (const pub of participant.trackPublications.values()) {
         if (pub.kind === Track.Kind.Audio && pub.source !== Track.Source.ScreenShareAudio) {
           if (pub.track) audioTrack = pub.track as RemoteAudioTrack;
@@ -182,6 +268,7 @@ class LiveKitManager {
         } else if (pub.kind === Track.Kind.Video && pub.track) {
           if (pub.source === Track.Source.ScreenShare) {
             screenTrack = pub.track as RemoteVideoTrack;
+            screenMuted = pub.isMuted;
           } else {
             videoTrack = pub.track as RemoteVideoTrack;
           }
@@ -194,6 +281,7 @@ class LiveKitManager {
         videoTrack,
         screenTrack,
         isMuted,
+        screenMuted,
       });
     }
     return {
@@ -201,6 +289,7 @@ class LiveKitManager {
       localMicEnabled: local.isMicrophoneEnabled,
       localCamEnabled: local.isCameraEnabled,
       localScreenEnabled: local.isScreenShareEnabled,
+      localScreenSourceHidden: this.localScreenSourceHidden,
       localCamTrack,
       localMicTrack,
       localScreenTrack,
@@ -230,6 +319,7 @@ class LiveKitManager {
   }
 
   async disconnect(): Promise<void> {
+    this.detachScreenSourceVisibilityRelay();
     const room = this.room;
     this.room = null;
     if (room) {

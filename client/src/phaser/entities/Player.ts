@@ -33,6 +33,13 @@ export class Player {
   private walkAccumMs = 0;
   private lastFrameUpdateMs: number;
 
+  // Dance state: when active and no real movement keys are pressed,
+  // we force the walk animation in place and rotate the facing direction
+  // to produce a "dancing" effect (matches the look of being stuck on a wall).
+  private danceAccumMs = 0;
+  private static readonly DANCE_DIRS: Direction[] = ['down', 'left', 'up', 'right'];
+  private static readonly DANCE_ROTATE_MS = 180;
+
   constructor(
     scene: Phaser.Scene,
     x: number,
@@ -126,6 +133,7 @@ export class Player {
     down: boolean;
     left: boolean;
     right: boolean;
+    dance?: boolean;
   }): boolean {
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     let vx = 0;
@@ -155,6 +163,19 @@ export class Player {
     const now = this.scene.time.now;
     const dt = now - this.lastFrameUpdateMs;
     this.lastFrameUpdateMs = now;
+
+    // Dance mode: when Z is held and no real movement is happening, force
+    // the walk animation in place and rotate facing direction so it reads
+    // as a dance. Real movement always takes priority.
+    const dancing = !!cursors.dance && !this.moving;
+    if (dancing) {
+      this.moving = true;
+      this.danceAccumMs += dt;
+      const idx = Math.floor(this.danceAccumMs / Player.DANCE_ROTATE_MS) % Player.DANCE_DIRS.length;
+      this.direction = Player.DANCE_DIRS[idx]!;
+    } else {
+      this.danceAccumMs = 0;
+    }
     const advanced = advanceWalkTick(this.walkTick, this.walkAccumMs, dt, this.moving);
     this.walkTick = advanced.walkTick;
     this.walkAccumMs = advanced.accumMs;

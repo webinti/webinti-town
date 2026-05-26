@@ -44,6 +44,10 @@ export class GameScene extends Phaser.Scene {
   private wallsLayer?: Phaser.Tilemaps.TilemapLayer;
   private furnitureLayer?: Phaser.Tilemaps.TilemapLayer;
   private wallsGroup?: Phaser.Physics.Arcade.StaticGroup;
+  // Physics group holding the remote players' (immovable) bodies, so a single
+  // collider against the local player handles all of them. Ghost mode is
+  // honored via the processCallback registered in create().
+  private remoteBodiesGroup?: Phaser.Physics.Arcade.Group;
   private mapW = DEFAULT_MAP_W;
   private mapH = DEFAULT_MAP_H;
   private hasLayers = false;
@@ -61,6 +65,7 @@ export class GameScene extends Phaser.Scene {
   private nearbyObjectId: string | null = null;
   private appliedZoom = 1;
   private eKey?: Phaser.Input.Keyboard.Key;
+  private zKey?: Phaser.Input.Keyboard.Key;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
 
   constructor() {
@@ -116,6 +121,25 @@ export class GameScene extends Phaser.Scene {
       this.physics.add.collider(this.player.sprite, this.wallsGroup);
     }
 
+    // Player-vs-player collisions. RemotePlayer bodies are added to this
+    // group when they spawn. The processCallback short-circuits the
+    // collision when either side is in ghost mode, which is the whole
+    // point of ghost mode existing.
+    this.remoteBodiesGroup = this.physics.add.group();
+    this.physics.add.collider(
+      this.player.sprite,
+      this.remoteBodiesGroup,
+      undefined,
+      (_localObj, remoteObj) => {
+        if (this.player?.isGhost) return false;
+        const sprite = remoteObj as Phaser.GameObjects.GameObject;
+        const rp = sprite.getData('remote') as RemotePlayer | undefined;
+        if (rp?.isGhost) return false;
+        return true;
+      },
+      this,
+    );
+
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
 
     this.input.on(
@@ -148,6 +172,7 @@ export class GameScene extends Phaser.Scene {
     this.unsubObject = socketManager.onObjectUpdate((obj) => this.refreshObject(obj));
 
     this.eKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this.input.keyboard?.clearCaptures();
     this.eKey?.on('down', () => {
       const store = useGameStore.getState();
@@ -298,6 +323,38 @@ export class GameScene extends Phaser.Scene {
         this.furnitureLayer = layer;
       }
     }
+    const objLayer = map.getObjectLayer('objects');
+    if (objLayer) {
+      for (const obj of objLayer.objects as Array<Record<string, unknown>>) {
+        const kind = String(obj.type ?? obj.class ?? '').toLowerCase();
+        if (kind !== 'sign') continue;
+        let text: string = '';
+        const props = obj.properties;
+        if (Array.isArray(props)) {
+          const found = props.find((p: { name: string }) => p.name === 'text') as
+            | { value?: unknown }
+            | undefined;
+          if (found?.value != null) text = String(found.value);
+        } else if (props && typeof props === 'object') {
+          const v = (props as Record<string, unknown>).text;
+          if (v != null) text = String(v);
+        }
+        if (!text) text = String(obj.name ?? '');
+        if (!text) continue;
+        const x = Number(obj.x ?? 0) + Number(obj.width ?? 0) / 2;
+        const y = Number(obj.y ?? 0) + Number(obj.height ?? 0) / 2;
+        this.add
+          .text(x, y, text, {
+            fontSize: '14px',
+            fontFamily: 'system-ui, sans-serif',
+            color: '#ffffff',
+            backgroundColor: '#0f172a',
+            padding: { left: 6, right: 6, top: 3, bottom: 3 },
+          })
+          .setOrigin(0.5, 0.5)
+          .setDepth(20);
+      }
+    }
   }
 
   private buildFallbackMap(): void {
@@ -334,6 +391,7 @@ export class GameScene extends Phaser.Scene {
     if (this.remotePlayers.has(p.playerId)) return;
     const rp = new RemotePlayer(this, p, this.hasLayers);
     this.remotePlayers.set(p.playerId, rp);
+    if (this.remoteBodiesGroup) rp.enableCollisionBody(this.remoteBodiesGroup);
   }
 
   private handleRemoteUpdate(p: PlayerState): void {
@@ -370,12 +428,13 @@ export class GameScene extends Phaser.Scene {
     const c = this.cursors;
     const w = this.wasdKeys;
     const input = focused
-      ? { up: false, down: false, left: false, right: false }
+      ? { up: false, down: false, left: false, right: false, dance: false }
       : {
           up: !!(c?.up.isDown || w?.W.isDown),
           down: !!(c?.down.isDown || w?.S.isDown),
           left: !!(c?.left.isDown || w?.A.isDown),
           right: !!(c?.right.isDown || w?.D.isDown),
+          dance: !!this.zKey?.isDown,
         };
     this.player.update(input);
 

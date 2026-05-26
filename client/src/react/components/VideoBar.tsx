@@ -105,17 +105,29 @@ function Initial({ name, id }: { name: string; id: string }) {
   );
 }
 
-function MicBadge({ muted }: { muted: boolean }) {
+function MicMutedBadge() {
   return (
-    <div className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[10px] text-white">
-      {muted ? (
-        <span className="relative">
-          M
-          <span className="absolute inset-0 -rotate-45 border-t border-red-400" />
-        </span>
-      ) : (
-        <span>M</span>
-      )}
+    <div
+      className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 ring-1 ring-red-500/70"
+      title="Micro coupé"
+      aria-label="Micro coupé"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="h-3.5 w-3.5 text-red-400"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 3a3 3 0 0 0-3 3v4.5" />
+        <path d="M15 10.5V6a3 3 0 0 0-3-3" opacity="0.6" />
+        <path d="M9 10.5V12a3 3 0 0 0 6 0v-1.5" />
+        <path d="M5.5 11.5a6.5 6.5 0 0 0 6.5 6.5 6.5 6.5 0 0 0 6.5-6.5" />
+        <path d="M12 18v3" />
+        <line x1="3.5" y1="3.5" x2="20.5" y2="20.5" stroke="currentColor" />
+      </svg>
     </div>
   );
 }
@@ -199,7 +211,7 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
       <div className="absolute bottom-0 left-0 right-0 truncate bg-black/60 px-2 py-0.5 text-xs text-white">
         {remote.name}
       </div>
-      <MicBadge muted={remote.isMuted} />
+      {remote.isMuted && <MicMutedBadge />}
     </div>
   );
 }

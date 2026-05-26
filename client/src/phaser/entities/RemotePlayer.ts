@@ -120,6 +120,28 @@ export class RemotePlayer {
     this.shirtLayer?.setFrame(animatedFrame(this.appearance.shirt, dir, moving, tick));
   }
 
+  /**
+   * Enable a physics body on this remote so the local player can collide
+   * with it. The body is immovable and `moves = false` because the remote's
+   * position is driven by network lerp, not physics velocity — Phaser still
+   * keeps the body synced to the sprite each step, so collisions work.
+   */
+  enableCollisionBody(group: Phaser.Physics.Arcade.Group): void {
+    if (!(this.sprite instanceof Phaser.GameObjects.Sprite || this.sprite instanceof Phaser.GameObjects.Image)) return;
+    this.scene.physics.add.existing(this.sprite);
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body | null;
+    if (!body) return;
+    body.setAllowGravity(false);
+    body.setImmovable(true);
+    body.moves = false;
+    // Match the local Player hitbox (24x16 with offset 4,28) when we have
+    // tall layered sprites; fall back to the circle's natural 24x24 otherwise.
+    if (this.hasLayers) body.setSize(24, 16).setOffset(4, 28);
+    else body.setSize(24, 24);
+    this.sprite.setData('remote', this);
+    group.add(this.sprite);
+  }
+
   update(): void {
     const lerp = 0.2;
     this.sprite.x = Phaser.Math.Linear(this.sprite.x, this.targetX, lerp);

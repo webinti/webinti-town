@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LocalVideoTrack, RemoteVideoTrack } from 'livekit-client';
 import {
   clampPan,
@@ -25,13 +25,17 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
   const dragWin = useRef<{ ox: number; oy: number } | null>(null);
   const dragPan = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
 
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    track.attach(el);
-    return () => {
-      track.detach(el);
-    };
+  // Switching modes (windowed → minimized → fullscreen) renders the <video>
+  // inside a different parent element, so React unmounts and remounts a fresh
+  // DOM node. A useEffect with [track] deps never re-fires across those mode
+  // changes, leaving the new <video> without an attached LiveKit track —
+  // hence the black preview. A callback ref fires on every DOM mount/unmount,
+  // so the track follows whichever <video> is currently in the DOM.
+  const attachVideo = useCallback((el: HTMLVideoElement | null) => {
+    const prev = videoRef.current;
+    if (prev && prev !== el) track.detach(prev);
+    videoRef.current = el;
+    if (el) track.attach(el);
   }, [track]);
 
   // Window drag (title bar)
@@ -124,7 +128,7 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
       style={{ cursor: zoom > 1 ? 'grab' : 'default' }}
     >
       <video
-        ref={videoRef}
+        ref={attachVideo}
         autoPlay
         playsInline
         className="h-full w-full object-contain"
