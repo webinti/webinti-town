@@ -3,6 +3,7 @@ import type {
   Appearance,
   ChatMessage,
   InteractiveObject,
+  KanbanCard,
   PlayerState,
   WhiteboardStroke,
   WhiteboardText,
@@ -47,6 +48,10 @@ interface GameStore {
   setOpenNote: (id: string | null) => void;
   openLinkId: string | null;
   setOpenLink: (id: string | null) => void;
+  openKanbanId: string | null;
+  setOpenKanban: (id: string | null) => void;
+  kanbanCards: KanbanCard[];
+  setKanbanCards: (cards: KanbanCard[]) => void;
   currentRoomSlug: string;
   setCurrentRoomSlug: (slug: string) => void;
   appendWhiteboardStroke: (objectId: string, stroke: WhiteboardStroke) => void;
@@ -142,6 +147,18 @@ export const useGameStore = create<GameStore>((set) => ({
       openLinkId: id,
       inputFocused: id !== null || s.openWhiteboardId !== null || s.openNoteId !== null,
     })),
+  openKanbanId: null,
+  setOpenKanban: (id) =>
+    set((s) => ({
+      openKanbanId: id,
+      inputFocused:
+        id !== null ||
+        s.openWhiteboardId !== null ||
+        s.openNoteId !== null ||
+        s.openLinkId !== null,
+    })),
+  kanbanCards: [],
+  setKanbanCards: (cards) => set({ kanbanCards: cards }),
   currentRoomSlug: 'demo',
   setCurrentRoomSlug: (slug) => set({ currentRoomSlug: slug }),
   appendWhiteboardStroke: (objectId, stroke) =>
@@ -242,6 +259,8 @@ export const useGameStore = create<GameStore>((set) => ({
       openWhiteboardId: null,
       openNoteId: null,
       openLinkId: null,
+      openKanbanId: null,
+      kanbanCards: [],
       helpOpen: false,
       adminPanelOpen: false,
       hostPlayerId: null,
