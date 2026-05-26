@@ -8,6 +8,7 @@ import type {
   WhiteboardText,
 } from '../types';
 import { DEFAULT_APPEARANCE } from '../types';
+import { clampMapZoom } from '../mapZoom';
 
 const CHAT_CAP = 200;
 const WHITEBOARD_STROKE_CAP = 5000;
@@ -62,6 +63,8 @@ interface GameStore {
   recordingHostName: string;
   setHost: (id: string | null) => void;
   setRecording: (on: boolean, hostName: string) => void;
+  mapZoom: number;
+  setMapZoom: (z: number) => void;
   reset: () => void;
 }
 
@@ -223,6 +226,8 @@ export const useGameStore = create<GameStore>((set) => ({
   recordingHostName: '',
   setHost: (id) => set({ hostPlayerId: id }),
   setRecording: (on, hostName) => set({ isRecording: on, recordingHostName: hostName }),
+  mapZoom: 1,
+  setMapZoom: (z) => set({ mapZoom: clampMapZoom(z) }),
   reset: () =>
     set({
       connected: false,
@@ -242,5 +247,6 @@ export const useGameStore = create<GameStore>((set) => ({
       hostPlayerId: null,
       isRecording: false,
       recordingHostName: '',
+      mapZoom: 1,
     }),
 }));

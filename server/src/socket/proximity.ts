@@ -1,4 +1,5 @@
 import type { InteractiveObject, PlayerState } from '../types.js';
+import { isInConferenceZone } from '../conferenceZone.js';
 
 export function computeProximity(
   players: PlayerState[],
@@ -52,6 +53,18 @@ export function computeProximity(
       const obsNearby = result.get(obsId);
       if (!obsNearby) continue;
       if (!obsNearby.includes(sharerId)) obsNearby.push(sharerId);
+    }
+  }
+
+  // Conference room: every pair of players both inside the zone is mutually
+  // "near" regardless of distance, so their tracks stay subscribed.
+  const zonePlayers = players.filter((p) => isInConferenceZone(p.x, p.y));
+  for (const a of zonePlayers) {
+    const list = result.get(a.playerId);
+    if (!list) continue;
+    for (const b of zonePlayers) {
+      if (a.playerId === b.playerId) continue;
+      if (!list.includes(b.playerId)) list.push(b.playerId);
     }
   }
 

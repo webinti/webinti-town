@@ -1,11 +1,14 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   LocalVideoTrack,
   RemoteAudioTrack,
   RemoteVideoTrack,
 } from 'livekit-client';
 import { useGameStore } from '../../stores/gameStore';
+import { isInConferenceZone } from '../../conferenceZone';
 import type { RemoteSnapshot } from '../../livekit/LiveKitManager';
+import { ScreenViewer } from './ScreenViewer';
 
 interface VideoBarProps {
   localCamTrack: LocalVideoTrack | null;
@@ -20,6 +23,40 @@ function computeVolume(d: number): number {
   return 1 - (d - 96) / 64;
 }
 
+function ScreenViewers({
+  localScreenTrack,
+  localName,
+  remoteScreens,
+}: {
+  localScreenTrack: LocalVideoTrack | null;
+  localName: string;
+  remoteScreens: RemoteSnapshot[];
+}) {
+  if (!localScreenTrack && remoteScreens.length === 0) return null;
+  return createPortal(
+    <>
+      {localScreenTrack && (
+        <ScreenViewer
+          track={localScreenTrack}
+          label={`${localName} (votre écran)`}
+          index={0}
+        />
+      )}
+      {remoteScreens.map((r, i) =>
+        r.screenTrack ? (
+          <ScreenViewer
+            key={`screen-${r.identity}`}
+            track={r.screenTrack}
+            label={`${r.name} (écran partagé)`}
+            index={(localScreenTrack ? 1 : 0) + i}
+          />
+        ) : null,
+      )}
+    </>,
+    document.body,
+  );
+}
+
 export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }: VideoBarProps) {
   const visibleRemotes = remotes.filter((r) => r.videoTrack || r.audioTrack || r.screenTrack);
   const remoteScreens = remotes.filter((r) => r.screenTrack);
@@ -29,15 +66,11 @@ export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }
 
   return (
     <div className="pointer-events-none absolute left-1/2 top-14 z-20 flex -translate-x-1/2 flex-col items-center gap-2">
-      {localScreenTrack && (
-        <ScreenSharePanel
-          track={localScreenTrack}
-          label={`${localName} (votre écran)`}
-        />
-      )}
-      {remoteScreens.map((r) => (
-        <RemoteScreenPanel key={`screen-${r.identity}`} remote={r} />
-      ))}
+      <ScreenViewers
+        localScreenTrack={localScreenTrack}
+        localName={localName}
+        remoteScreens={remoteScreens}
+      />
       {(localCamTrack || visibleRemotes.length > 0) && (
         <div className="pointer-events-auto flex gap-2 rounded-xl bg-slate-900/70 p-2 ring-1 ring-white/10 backdrop-blur">
           {localCamTrack && <LocalTile track={localCamTrack} name={localName} />}
@@ -50,31 +83,6 @@ export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }
   );
 }
 
-function ScreenSharePanel({ track, label }: { track: LocalVideoTrack | RemoteVideoTrack; label: string }) {
-  const ref = useRef<HTMLVideoElement | null>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    track.attach(el);
-    return () => {
-      track.detach(el);
-    };
-  }, [track]);
-  return (
-    <div className="pointer-events-auto relative max-w-[640px] overflow-hidden rounded-lg bg-black ring-2 ring-indigo-400/60 shadow-2xl">
-      <video ref={ref} autoPlay playsInline className="h-auto w-full max-h-[360px] object-contain" />
-      <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1 text-xs text-white">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function RemoteScreenPanel({ remote }: { remote: RemoteSnapshot }) {
-  const t = remote.screenTrack;
-  if (!t) return null;
-  return <ScreenSharePanel track={t} label={`${remote.name} (écran partagé)`} />;
-}
 
 function colorFor(id: string): string {
   const palette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899'];
@@ -164,6 +172,13 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
     const local = localPlayerId ? players.get(localPlayerId) : undefined;
     const remotePlayer = players.get(remote.identity);
     if (!local || !remotePlayer) {
+      el.volume = 1;
+      return;
+    }
+    if (
+      isInConferenceZone(local.x, local.y) &&
+      isInConferenceZone(remotePlayer.x, remotePlayer.y)
+    ) {
       el.volume = 1;
       return;
     }
