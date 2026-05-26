@@ -3,6 +3,13 @@ import { socketManager } from '../../network/SocketManager';
 import { useGameStore } from '../../stores/gameStore';
 import type { KanbanCard, KanbanColumn } from '../../types';
 
+function useIsHost(): boolean {
+  return useGameStore((s) => s.hostPlayerId !== null && s.hostPlayerId === s.localPlayerId);
+}
+function useLocalPlayerId(): string | null {
+  return useGameStore((s) => s.localPlayerId);
+}
+
 const COLUMN_LABELS: Record<KanbanColumn, string> = {
   todo: 'À faire',
   doing: 'En cours',
@@ -128,14 +135,78 @@ function CreateCardForm() {
 }
 
 function CardView({ card }: { card: KanbanCard }) {
+  const isHost = useIsHost();
+  const me = useLocalPlayerId();
+  const isMine = me !== null && card.authorId === me;
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(card.title);
+  const [description, setDescription] = useState(card.description);
+
+  const submit = () => {
+    const t = title.trim();
+    if (t.length < 1 || t.length > 80) return;
+    socketManager.kanbanUpdate(card.id, { title: t, description: description.slice(0, 500) });
+    setEditing(false);
+  };
+
+  const confirmDelete = () => {
+    if (!window.confirm('Supprimer cette carte ?')) return;
+    socketManager.kanbanDelete(card.id);
+  };
+
+  const markDone = () => socketManager.kanbanMove(card.id, 'done', 0);
+  const reactivate = () => socketManager.kanbanMove(card.id, 'doing', 0);
+
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-2 rounded-md bg-slate-800/80 p-3 ring-1 ring-indigo-400/40">
+        <input
+          autoFocus
+          value={title}
+          onChange={(e) => setTitle(e.target.value.slice(0, 80))}
+          className="rounded bg-slate-900 px-2 py-1 text-sm outline-none ring-1 ring-white/10 focus:ring-indigo-400"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+          rows={3}
+          className="resize-none rounded bg-slate-900 px-2 py-1 text-xs outline-none ring-1 ring-white/10 focus:ring-indigo-400"
+        />
+        <div className="flex gap-2">
+          <button onClick={submit} className="rounded bg-indigo-600 px-3 py-1 text-xs font-semibold hover:bg-indigo-500">Enregistrer</button>
+          <button onClick={() => { setEditing(false); setTitle(card.title); setDescription(card.description); }} className="rounded bg-white/10 px-3 py-1 text-xs hover:bg-white/20">Annuler</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-md bg-slate-800/80 p-3 ring-1 ring-white/10">
-      <div className="text-sm font-semibold">{card.title}</div>
+    <div className="group rounded-md bg-slate-800/80 p-3 ring-1 ring-white/10">
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-sm font-semibold">{card.title}</div>
+        <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          {isMine && card.column !== 'done' && (
+            <>
+              <button title="Éditer" onClick={() => setEditing(true)} className="rounded bg-white/10 px-1.5 text-xs hover:bg-white/20">✏️</button>
+              <button title="Supprimer" onClick={confirmDelete} className="rounded bg-white/10 px-1.5 text-xs hover:bg-white/20">🗑</button>
+            </>
+          )}
+          {isHost && card.column !== 'done' && (
+            <button title="Marquer terminé" onClick={markDone} className="rounded bg-emerald-600/80 px-1.5 text-xs hover:bg-emerald-500">✓</button>
+          )}
+          {isHost && card.column === 'done' && (
+            <button title="Réactiver" onClick={reactivate} className="rounded bg-white/10 px-1.5 text-xs hover:bg-white/20">↩</button>
+          )}
+        </div>
+      </div>
       {card.description && (
         <div className="mt-1 whitespace-pre-wrap text-xs text-slate-300">{card.description}</div>
       )}
       <div className="mt-2 text-[10px] uppercase tracking-wide text-slate-500">
         Par {card.authorName}
+        {card.column === 'done' && card.completedByName && (
+          <> · Terminé par {card.completedByName}</>
+        )}
       </div>
     </div>
   );
