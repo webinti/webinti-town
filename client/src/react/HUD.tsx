@@ -10,6 +10,7 @@ import { RecordingControls } from './components/RecordingControls';
 import { WhiteboardModal } from './components/WhiteboardModal';
 import { NoteModal } from './components/NoteModal';
 import { LinkModal } from './components/LinkModal';
+import { KanbanModal } from './components/KanbanModal';
 import { HelpPanel } from './components/HelpPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/sounds';
@@ -168,6 +169,7 @@ export function HUD() {
       <WhiteboardModal />
       <NoteModal />
       <LinkModal />
+      <KanbanModal />
       <HelpPanel />
       <AdminPanel />
 
