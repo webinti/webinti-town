@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { socketManager } from '../../network/SocketManager';
 import { useGameStore } from '../../stores/gameStore';
 import type { KanbanCard, KanbanColumn } from '../../types';
@@ -44,12 +44,56 @@ export function KanbanModal() {
   const cards = useGameStore((s) => s.kanbanCards);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [hoverColumn, setHoverColumn] = useState<KanbanColumn | null>(null);
+  const [hoverGap, setHoverGap] = useState<{ column: KanbanColumn; index: number } | null>(null);
   const isHost = useIsHost();
   const me = useLocalPlayerId();
   if (!openId) return null;
 
   const byColumn: Record<KanbanColumn, KanbanCard[]> = { todo: [], doing: [], done: [] };
   for (const c of cards) byColumn[c.column].push(c);
+
+  function renderDropGap(col: KanbanColumn, index: number) {
+    const dragged = cards.find((c) => c.id === draggedId);
+    const active = hoverGap?.column === col && hoverGap.index === index;
+    return (
+      <div
+        key={`gap-${col}-${index}`}
+        onDragOver={(e) => {
+          if (!dragged) return;
+          if (!canMove(dragged, col, isHost, me)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setHoverGap({ column: col, index });
+        }}
+        onDragLeave={() => {
+          if (active) setHoverGap(null);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setHoverGap(null);
+          setHoverColumn(null);
+          if (!dragged) return;
+          if (!canMove(dragged, col, isHost, me)) return;
+          // Adjust index: if the dragged card already sits in this column at
+          // index k and is being dropped at index > k, real insertion is at
+          // index-1 (because removing it first shifts everything up).
+          let pos = index;
+          if (dragged.column === col) {
+            const k = byColumn[col].findIndex((c) => c.id === dragged.id);
+            if (k !== -1 && index > k) pos = index - 1;
+          }
+          socketManager.kanbanMove(dragged.id, col, pos);
+          setDraggedId(null);
+        }}
+        className="h-2 transition-colors"
+        style={{
+          background: active ? 'rgba(99,102,241,0.7)' : 'transparent',
+          borderRadius: 2,
+        }}
+      />
+    );
+  }
 
   return (
     <div className="pointer-events-auto fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4">
@@ -99,15 +143,18 @@ export function KanbanModal() {
               </div>
               <div className="flex flex-1 flex-col gap-2 overflow-auto">
                 {col === 'todo' && <CreateCardForm />}
-                {byColumn[col].map((c) => (
-                  <CardView
-                    key={c.id}
-                    card={c}
-                    isHost={isHost}
-                    me={me}
-                    draggedId={draggedId}
-                    setDraggedId={setDraggedId}
-                  />
+                {renderDropGap(col, 0)}
+                {byColumn[col].map((c, i) => (
+                  <Fragment key={c.id}>
+                    <CardView
+                      card={c}
+                      isHost={isHost}
+                      me={me}
+                      draggedId={draggedId}
+                      setDraggedId={setDraggedId}
+                    />
+                    {renderDropGap(col, i + 1)}
+                  </Fragment>
                 ))}
                 {byColumn[col].length === 0 && (
                   <div className="rounded-md border border-dashed border-white/10 p-3 text-center text-xs text-slate-500">
