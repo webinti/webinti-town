@@ -105,6 +105,10 @@ export interface JoinRoomPayload {
   playerName: string;
   appearance: Appearance;
   hostToken?: string;
+  // Stable per-browser identity (UUID) persisted in localStorage. Lets the
+  // server preserve our playerId across reconnects so we keep ownership of
+  // resources we authored (e.g. Kanban cards).
+  clientKey?: string;
 }
 
 export interface PlayerMovePayload {

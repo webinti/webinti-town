@@ -146,10 +146,18 @@ export class RoomManager {
     socketId: string,
     name: string,
     appearance: Appearance = DEFAULT_APPEARANCE,
+    // Stable per-browser identity sent by the client. If present and well-shaped,
+    // we adopt it as the playerId so that author-owned resources (e.g. Kanban
+    // cards) remain editable by the same browser across reconnects. Falls back
+    // to a fresh UUID when missing or invalid.
+    clientKey?: string,
   ): PlayerState | undefined {
     const room = this.rooms.get(slug);
     if (!room) return undefined;
-    const playerId = randomUUID();
+    const playerId = isValidClientKey(clientKey) ? clientKey : randomUUID();
+    // If the same key is already in the room (e.g. opened a 2nd tab), drop
+    // the previous record so the new socket fully replaces it.
+    room.players.delete(playerId);
     const player: PlayerState = {
       playerId,
       socketId,
@@ -240,6 +248,13 @@ export class RoomManager {
     player.isGhost = !player.isGhost;
     return player;
   }
+}
+
+// Loose UUID-shape check: 32 hex chars with 4 dashes. We don't strictly enforce
+// v4 since the value is client-generated and only needs to be stable + unique
+// enough that collisions across browsers are negligible.
+function isValidClientKey(key: unknown): key is string {
+  return typeof key === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key);
 }
 
 export const roomManager = new RoomManager();

@@ -220,7 +220,7 @@ class SocketManager {
   }
 
   joinRoom(payload: JoinRoomPayload): void {
-    this.socket?.emit('join_room', payload);
+    this.socket?.emit('join_room', { ...payload, clientKey: getOrCreateClientKey() });
   }
 
   sendMove(payload: PlayerMovePayload): void {
@@ -397,6 +397,36 @@ class SocketManager {
   disconnect(): void {
     this.socket?.disconnect();
     this.socket = null;
+  }
+}
+
+/**
+ * Returns a stable per-browser UUID, persisted in localStorage. Used by the
+ * server to preserve our playerId across reconnects, so we keep ownership of
+ * resources we authored (e.g. Kanban cards) even after refresh.
+ */
+function getOrCreateClientKey(): string {
+  const STORAGE_KEY = 'webinti.clientKey';
+  try {
+    const existing = window.localStorage.getItem(STORAGE_KEY);
+    if (existing && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(existing)) {
+      return existing;
+    }
+    const fresh = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}-4xxx-yxxx-xxxxxxxxxxxx`
+          .replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+    window.localStorage.setItem(STORAGE_KEY, fresh);
+    return fresh;
+  } catch {
+    // Private mode / disabled storage: fall back to an ephemeral key.
+    return (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `${Date.now().toString(16)}-fallback-${Math.random().toString(36).slice(2)}`;
   }
 }
 
