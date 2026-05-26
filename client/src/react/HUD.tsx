@@ -11,6 +11,7 @@ import { WhiteboardModal } from './components/WhiteboardModal';
 import { NoteModal } from './components/NoteModal';
 import { LinkModal } from './components/LinkModal';
 import { KanbanModal } from './components/KanbanModal';
+import { KanbanToasts } from './components/KanbanToasts';
 import { HelpPanel } from './components/HelpPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/sounds';
@@ -172,6 +173,7 @@ export function HUD() {
       <KanbanModal />
       <HelpPanel />
       <AdminPanel />
+      <KanbanToasts />
 
       {kickedReason && (
         <div className="pointer-events-auto fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-md bg-red-600/95 px-4 py-2 text-sm font-semibold text-white shadow-lg ring-1 ring-red-300/40">
