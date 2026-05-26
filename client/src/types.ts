@@ -60,11 +60,28 @@ export interface WhiteboardText {
   size: number;
 }
 
+export type KanbanColumn = 'todo' | 'doing' | 'done';
+
+export interface KanbanCard {
+  id: string;
+  title: string;
+  description: string;
+  authorId: string;
+  authorName: string;
+  column: KanbanColumn;
+  createdAt: number;
+  updatedAt: number;
+  completedAt: number | null;
+  completedBy: string | null;
+  completedByName: string | null;
+}
+
 export type InteractiveObject =
   | { id: string; type: 'screen'; x: number; y: number; data: { sharedByPlayerId?: string } }
   | { id: string; type: 'whiteboard'; x: number; y: number; data: { strokes: WhiteboardStroke[]; texts?: WhiteboardText[] } }
   | { id: string; type: 'note'; x: number; y: number; data: { title: string; content: string } }
-  | { id: string; type: 'link'; x: number; y: number; data: { url: string; label: string } };
+  | { id: string; type: 'link'; x: number; y: number; data: { url: string; label: string } }
+  | { id: string; type: 'kanban'; x: number; y: number; data: Record<string, never> };
 
 export interface EmoteEvent {
   playerId: string;
