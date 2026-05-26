@@ -6,6 +6,7 @@ import type {
   EmoteType,
   InteractiveObject,
   JoinRoomPayload,
+  KanbanCard,
   PlayerMovePayload,
   PlayerState,
   RoomState,
@@ -210,6 +211,11 @@ class SocketManager {
       for (const fn of this.whiteboardClearListeners) fn(payload);
     });
 
+    socket.on('kanban:state', (payload: { cards: KanbanCard[] }) => {
+      if (!payload || !Array.isArray(payload.cards)) return;
+      useGameStore.getState().setKanbanCards(payload.cards);
+    });
+
     return socket;
   }
 
@@ -356,6 +362,22 @@ class SocketManager {
 
   sendWhiteboardTextDelete(objectId: string, textId: string): void {
     this.socket?.emit('whiteboard_text_delete', { objectId, textId });
+  }
+
+  kanbanCreate(title: string, description: string): void {
+    this.socket?.emit('kanban:create', { title, description });
+  }
+
+  kanbanUpdate(cardId: string, patch: { title?: string; description?: string }): void {
+    this.socket?.emit('kanban:update', { cardId, ...patch });
+  }
+
+  kanbanMove(cardId: string, column: 'todo' | 'doing' | 'done', position: number): void {
+    this.socket?.emit('kanban:move', { cardId, column, position });
+  }
+
+  kanbanDelete(cardId: string): void {
+    this.socket?.emit('kanban:delete', { cardId });
   }
 
   onWhiteboardTextUpdate(fn: (p: WhiteboardTextUpdatePayload) => void): () => void {
