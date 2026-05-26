@@ -10,6 +10,20 @@ function useLocalPlayerId(): string | null {
   return useGameStore((s) => s.localPlayerId);
 }
 
+function canMove(
+  card: KanbanCard,
+  targetColumn: KanbanColumn,
+  isHost: boolean,
+  me: string | null,
+): boolean {
+  if (me === null) return false;
+  const isAuthor = card.authorId === me;
+  if (targetColumn === 'done' || card.column === 'done') return isHost;
+  if (card.column === targetColumn) return isAuthor || isHost;
+  // todo ↔ doing cross-column move
+  return isAuthor;
+}
+
 const COLUMN_LABELS: Record<KanbanColumn, string> = {
   todo: 'À faire',
   doing: 'En cours',
@@ -28,6 +42,10 @@ export function KanbanModal() {
   const openId = useGameStore((s) => s.openKanbanId);
   const setOpen = useGameStore((s) => s.setOpenKanban);
   const cards = useGameStore((s) => s.kanbanCards);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [hoverColumn, setHoverColumn] = useState<KanbanColumn | null>(null);
+  const isHost = useIsHost();
+  const me = useLocalPlayerId();
   if (!openId) return null;
 
   const byColumn: Record<KanbanColumn, KanbanCard[]> = { todo: [], doing: [], done: [] };
@@ -50,7 +68,30 @@ export function KanbanModal() {
           {COLUMN_ORDER.map((col) => (
             <div
               key={col}
-              className={`flex w-1/3 min-w-[260px] flex-col gap-2 rounded-lg p-3 ring-1 ${COLUMN_BG[col]}`}
+              onDragOver={(e) => {
+                const card = cards.find((c) => c.id === draggedId);
+                if (!card) return;
+                if (!canMove(card, col, isHost, me)) {
+                  setHoverColumn(null);
+                  return; // do not preventDefault → cursor "not-allowed"
+                }
+                e.preventDefault();
+                setHoverColumn(col);
+              }}
+              onDragLeave={() => {
+                if (hoverColumn === col) setHoverColumn(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setHoverColumn(null);
+                const card = cards.find((c) => c.id === draggedId);
+                setDraggedId(null);
+                if (!card) return;
+                if (!canMove(card, col, isHost, me)) return;
+                // Drop at end of target column.
+                socketManager.kanbanMove(card.id, col, byColumn[col].length);
+              }}
+              className={`flex w-1/3 min-w-[260px] flex-col gap-2 rounded-lg p-3 ring-1 ${COLUMN_BG[col]} ${hoverColumn === col ? 'ring-2 ring-indigo-400' : ''}`}
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold uppercase tracking-wide">{COLUMN_LABELS[col]}</h3>
@@ -59,7 +100,14 @@ export function KanbanModal() {
               <div className="flex flex-1 flex-col gap-2 overflow-auto">
                 {col === 'todo' && <CreateCardForm />}
                 {byColumn[col].map((c) => (
-                  <CardView key={c.id} card={c} />
+                  <CardView
+                    key={c.id}
+                    card={c}
+                    isHost={isHost}
+                    me={me}
+                    draggedId={draggedId}
+                    setDraggedId={setDraggedId}
+                  />
                 ))}
                 {byColumn[col].length === 0 && (
                   <div className="rounded-md border border-dashed border-white/10 p-3 text-center text-xs text-slate-500">
@@ -134,10 +182,22 @@ function CreateCardForm() {
   );
 }
 
-function CardView({ card }: { card: KanbanCard }) {
-  const isHost = useIsHost();
-  const me = useLocalPlayerId();
+function CardView({
+  card,
+  isHost,
+  me,
+  draggedId,
+  setDraggedId,
+}: {
+  card: KanbanCard;
+  isHost: boolean;
+  me: string | null;
+  draggedId: string | null;
+  setDraggedId: (id: string | null) => void;
+}) {
   const isMine = me !== null && card.authorId === me;
+  const draggable = isMine || isHost;
+  const isBeingDragged = draggedId === card.id;
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description);
@@ -181,7 +241,13 @@ function CardView({ card }: { card: KanbanCard }) {
   }
 
   return (
-    <div className="group rounded-md bg-slate-800/80 p-3 ring-1 ring-white/10">
+    <div
+      className="group rounded-md bg-slate-800/80 p-3 ring-1 ring-white/10"
+      draggable={draggable}
+      onDragStart={() => setDraggedId(card.id)}
+      onDragEnd={() => setDraggedId(null)}
+      style={{ opacity: isBeingDragged ? 0.4 : 1, cursor: draggable ? 'grab' : 'default' }}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="text-sm font-semibold">{card.title}</div>
         <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
