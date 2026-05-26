@@ -35,7 +35,7 @@ interface KanbanBoard {
 }
 ```
 
-L'ordre des cartes dans `cards` détermine l'ordre vertical d'affichage dans leur colonne. Réordonner manuellement dans une colonne n'est **pas** dans le scope v1 — on garde l'ordre d'insertion (créées en haut de "À faire").
+L'ordre des cartes dans `cards` détermine l'ordre vertical d'affichage dans leur colonne. Une carte nouvellement créée est insérée en **haut** de "À faire" (index 0 dans sa colonne). Le réordonnage manuel intra-colonne est supporté en v1 — voir la section permissions ci-dessous.
 
 ## Persistance
 
@@ -58,6 +58,8 @@ Toute permission est **vérifiée côté serveur**. Le client peut afficher/cach
 | Éditer titre/description de SA carte | ✅ | ❌ | ❌ |
 | Supprimer SA carte | ✅ | ❌ | ❌ |
 | Déplacer SA carte entre `todo` ↔ `doing` | ✅ | ❌ | ❌ |
+| Réordonner SA carte verticalement dans sa colonne | ✅ | ✅ | ❌ |
+| Réordonner la carte d'un autre dans sa colonne | ❌ | ✅ | ❌ |
 | Déplacer n'importe quelle carte vers `done` (marquer terminé) | ❌ | ✅ | ❌ |
 | Réactiver une carte `done` → `doing` | ❌ | ✅ | ❌ |
 | Déplacer la carte d'un autre vers `todo` ou `doing` | ❌ | ❌ | ❌ |
@@ -73,7 +75,7 @@ Toute permission est **vérifiée côté serveur**. Le client peut afficher/cach
 ```ts
 'kanban:create'  payload: { title: string; description: string }
 'kanban:update'  payload: { cardId: string; title?: string; description?: string }
-'kanban:move'    payload: { cardId: string; column: 'todo' | 'doing' | 'done' }
+'kanban:move'    payload: { cardId: string; column: 'todo' | 'doing' | 'done'; position: number }
 'kanban:delete'  payload: { cardId: string }
 ```
 
@@ -94,6 +96,7 @@ Le serveur émet `kanban:state` :
 - `title` : trim, longueur 1..80 → sinon ignorer
 - `description` : trim, longueur 0..500 → tronquer si > 500 plutôt que rejeter
 - `column` ∈ enum → sinon ignorer
+- `position` : entier ≥ 0, clamp à `[0, nombre de cartes dans la colonne cible après retrait de la carte déplacée]`. Si la carte change de colonne, l'index s'applique à la colonne de destination.
 - `cardId` doit exister → sinon ignorer
 - Vérification de permission selon table ci-dessus → sinon ignorer
 - Logs serveur en `console.warn` pour les requêtes refusées (utile en debug, pas de spam)
@@ -163,10 +166,39 @@ Clic ✏️ → la carte se transforme en form inline (mêmes inputs préremplis
 
 ### Drag-and-drop
 
-- HTML5 natif (`draggable`, `onDragStart`, `onDragOver`, `onDrop`)
-- Une carte est `draggable` uniquement si l'utilisateur a la permission de la déplacer vers AU MOINS une autre colonne (sinon `draggable={false}` direct).
-- Sur `onDragOver` d'une colonne cible : tester si le drop est autorisé, sinon `event.preventDefault = false` (= curseur "not-allowed") et changer le visuel de la colonne (overlay rouge subtil).
-- Sur `onDrop` autorisé : emit `kanban:move`.
+HTML5 natif (`draggable`, `onDragStart`, `onDragOver`, `onDrop`). Pas de lib externe.
+
+**Conditions de drag** : une carte est `draggable={true}` ssi l'utilisateur a au moins une action de move autorisée sur cette carte (cross-column OU intra-column reorder). Voir table de permissions.
+
+**Drop targets** : deux niveaux superposés en utilisant `data-*` sur le DOM :
+1. **Colonne** entière (cross-column move) — drop n'importe où dans le body de la colonne.
+2. **Gap entre cartes** (intra-column reorder OU cross-column avec position précise) — une fine zone de drop de 6px entre chaque paire de cartes, plus une zone "fin de colonne".
+
+**Calcul de `position`** côté client lors du drop :
+- Drop sur la colonne (pas un gap) → position = fin de colonne (`column.length`).
+- Drop sur un gap entre card_i et card_{i+1} → position = i+1, en excluant la carte draggée si elle est déjà dans cette colonne (pour éviter un off-by-one quand on déplace une carte de bas en haut).
+
+**Feedback visuel** :
+- Pendant le drag : la carte source a `opacity: 0.4`.
+- Sur `onDragOver` d'une cible **autorisée** : `event.preventDefault()` (active le drop) + classe `bg-indigo-500/10` sur la zone survolée. Pour un gap, on dessine une ligne horizontale indigo 2px à la position du drop futur.
+- Sur `onDragOver` d'une cible **interdite** (permission refusée) : on ne preventDefault pas → le curseur natif passe à "not-allowed" + on ajoute un overlay `bg-red-500/5` pour signaler. Pas d'emit.
+- Sur `onDrop` autorisé : emit `kanban:move { cardId, column, position }`. On ne met pas à jour l'état local optimistiquement — on attend le broadcast `kanban:state` pour que ce soit toujours le serveur qui fasse foi (évite les bugs visuels de rollback).
+
+### Toast à la création d'une carte
+
+Quand un client reçoit un `kanban:state` qui contient une **nouvelle** carte (id pas vu auparavant) **créée par un autre joueur**, on affiche un toast léger : `« {authorName} a ajouté : {title} »`.
+
+Implémentation côté `KanbanModal` (ou un sous-hook `useKanbanToasts`) :
+- Garder un `Set<string>` des `cardId` connus en `useRef`.
+- À chaque update du board, differ les IDs nouveaux vs connus.
+- Pour chaque nouveau, si `authorId !== localPlayerId` → enqueue un toast.
+- Mettre à jour le Set avec tous les IDs actuels.
+
+**Pas de toast pour ses propres créations** (déjà visible dans l'UI), ni pour update / move / delete / done (ces actions sont visibles dans le board ouvert et trop bruyantes en background).
+
+Le système de toast :
+- Si l'app a déjà un container de toasts global → on s'y branche.
+- Sinon, un mini composant `<KanbanToasts>` rendu dans HUD : queue de max 3 toasts, auto-dismiss après 4s, animation fade-in-out, position top-right sous le HUD principal. ~60 lignes.
 
 ### Helper de relative time
 
@@ -218,7 +250,7 @@ class KanbanStore {
   // (permission, validation). Le caller broadcast 'kanban:state' si true.
   create(authorId: string, authorName: string, title: string, description: string): boolean;
   update(actorId: string, cardId: string, patch: { title?: string; description?: string }): boolean;
-  move(actorId: string, isHost: boolean, cardId: string, column: KanbanColumn): boolean;
+  move(actorId: string, isHost: boolean, cardId: string, column: KanbanColumn, position: number): boolean;
   delete(actorId: string, cardId: string): boolean;
 }
 ```
@@ -234,12 +266,14 @@ Persistance interne : `private save(): void` debounce 100ms (évite de réécrir
   - move auteur todo↔doing OK / vers done rejeté
   - move hôte vers done OK / non-hôte rejeté
   - move hôte done→doing OK (réactivation)
+  - reorder intra-colonne par auteur OK / par non-auteur non-hôte rejeté
+  - reorder intra-colonne par hôte sur n'importe quelle carte OK
+  - position clampée (négative → 0, > length → length)
   - persistance : créer, instancier nouveau store sur même slug → lit le JSON
 - `client/src/react/components/kanbanRelativeTime.test.ts` : cas limites (<1min, ~1h, ~24h, jours)
 
 ## Cas non couverts (YAGNI explicite)
 
-- Réordonnage manuel dans une colonne (drag dans la même colonne)
 - Tags / labels couleur
 - Pièces jointes / images
 - Mentions / notifications
