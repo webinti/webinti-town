@@ -2,6 +2,7 @@ import { useState, Fragment } from 'react';
 import { socketManager } from '../../network/SocketManager';
 import { useGameStore } from '../../stores/gameStore';
 import type { KanbanCard, KanbanColumn } from '../../types';
+import { relativeTimeFr } from './kanbanRelativeTime';
 
 function useIsHost(): boolean {
   return useGameStore((s) => s.hostPlayerId !== null && s.hostPlayerId === s.localPlayerId);
@@ -316,9 +317,9 @@ function CardView({
         <div className="mt-1 whitespace-pre-wrap text-xs text-slate-300">{card.description}</div>
       )}
       <div className="mt-2 text-[10px] uppercase tracking-wide text-slate-500">
-        Par {card.authorName}
-        {card.column === 'done' && card.completedByName && (
-          <> · Terminé par {card.completedByName}</>
+        Par {card.authorName} · {relativeTimeFr(card.createdAt)}
+        {card.column === 'done' && card.completedByName && card.completedAt && (
+          <> · Terminé par {card.completedByName} {relativeTimeFr(card.completedAt)}</>
         )}
       </div>
     </div>
