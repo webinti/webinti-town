@@ -223,10 +223,18 @@ export class KanbanStore {
   private async saveNow(): Promise<void> {
     const path = this.filePath();
     const tmp = `${path}.tmp`;
-    await fs.mkdir(this.dataDir, { recursive: true });
-    const payload = JSON.stringify({ version: FILE_VERSION, cards: this.cards });
-    await fs.writeFile(tmp, payload, 'utf8');
-    await fs.rename(tmp, path);
+    try {
+      await fs.mkdir(this.dataDir, { recursive: true });
+      const payload = JSON.stringify({ version: FILE_VERSION, cards: this.cards });
+      await fs.writeFile(tmp, payload, 'utf8');
+      await fs.rename(tmp, path);
+    } catch (err) {
+      // Clean up the orphan .tmp file on any failure.
+      try {
+        await fs.unlink(tmp);
+      } catch { /* ignore cleanup errors */ }
+      throw err;
+    }
   }
 }
 
