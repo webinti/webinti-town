@@ -134,18 +134,34 @@ export const useGameStore = create<GameStore>((set) => ({
       return { interactiveObjects: next };
     }),
   openWhiteboardId: null,
-  setOpenWhiteboard: (id) => set({ openWhiteboardId: id, inputFocused: id !== null }),
+  setOpenWhiteboard: (id) =>
+    set((s) => ({
+      openWhiteboardId: id,
+      inputFocused:
+        id !== null ||
+        s.openNoteId !== null ||
+        s.openLinkId !== null ||
+        s.openKanbanId !== null,
+    })),
   openNoteId: null,
   setOpenNote: (id) =>
     set((s) => ({
       openNoteId: id,
-      inputFocused: id !== null || s.openWhiteboardId !== null || s.openLinkId !== null,
+      inputFocused:
+        id !== null ||
+        s.openWhiteboardId !== null ||
+        s.openLinkId !== null ||
+        s.openKanbanId !== null,
     })),
   openLinkId: null,
   setOpenLink: (id) =>
     set((s) => ({
       openLinkId: id,
-      inputFocused: id !== null || s.openWhiteboardId !== null || s.openNoteId !== null,
+      inputFocused:
+        id !== null ||
+        s.openWhiteboardId !== null ||
+        s.openNoteId !== null ||
+        s.openKanbanId !== null,
     })),
   openKanbanId: null,
   setOpenKanban: (id) =>
