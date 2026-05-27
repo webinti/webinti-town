@@ -33,6 +33,7 @@ export function ChatPanel() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const scrollPosRef = useRef<number>(0);
+  const lastTypingEmitRef = useRef<number>(0);
 
   // Keyboard: C toggles, Esc closes
   useEffect(() => {
@@ -146,7 +147,14 @@ export function ChatPanel() {
         <textarea
           ref={inputRef}
           value={text}
-          onChange={(e) => setText(e.target.value.slice(0, 300))}
+          onChange={(e) => {
+            setText(e.target.value.slice(0, 300));
+            const now = Date.now();
+            if (now - lastTypingEmitRef.current >= 500) {
+              lastTypingEmitRef.current = now;
+              socketManager.sendTypingStart();
+            }
+          }}
           onFocus={() => setInputFocused(true)}
           onBlur={() => setInputFocused(false)}
           onKeyDown={(e) => {
