@@ -37,6 +37,13 @@ export interface PlayerState {
   lastActivityAt: number;   // serveur seulement — jamais diffusé au client
 }
 
+export interface ChatAttachment {
+  url: string;       // /api/uploads/<roomSlug>/<uuid>.<ext>
+  filename: string;  // sanitized original (max 80 chars)
+  mimeType: 'image/jpeg' | 'image/png' | 'image/svg+xml' | 'application/pdf';
+  sizeBytes: number;
+}
+
 export interface ChatMessage {
   id: string;
   playerId: string;
@@ -44,6 +51,7 @@ export interface ChatMessage {
   text: string;
   type: ChatMessageType;
   timestamp: number;
+  attachment?: ChatAttachment;  // F9 — pièce jointe optionnelle
 }
 
 export interface WhiteboardStroke {

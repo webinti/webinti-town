@@ -11,3 +11,7 @@ pgdata/
 
 # Kanban persistent data — not committed (one file per room)
 server/data/*.json
+
+# Upload files — stored on disk, not committed
+server/data/uploads/*
+!server/data/uploads/.gitkeep
