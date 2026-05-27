@@ -12,6 +12,8 @@ import type {
 } from '../types.js';
 import { DEFAULT_APPEARANCE } from '../types.js';
 import { config } from '../config.js';
+import { WorkstationManager } from '../workstations/WorkstationManager.js';
+import { WORKSTATIONS, workstationIdForPointIn } from '../workstations.js';
 
 function slugify(name: string): string {
   const base = name
@@ -79,6 +81,10 @@ export class RoomManager {
     const kanbanStore = new KanbanStore({ roomSlug: slug, persist: true });
     // fire-and-forget; getCards returns empty until load resolves
     void kanbanStore.load();
+    const workstationManager = new WorkstationManager(WORKSTATIONS);
+    const workstations = new Map(
+      workstationManager.getAllStates().map((s) => [s.id, s]),
+    );
     this.rooms.set(slug, {
       slug,
       name: cleanName,
@@ -90,6 +96,8 @@ export class RoomManager {
       kanbanStore,
       hostPlayerId: null,
       isRecording: false,
+      workstations,
+      workstationManager,
     });
     return { slug, adminToken };
   }
@@ -101,6 +109,10 @@ export class RoomManager {
     const kanbanStore = new KanbanStore({ roomSlug: slug, persist: true });
     // fire-and-forget; getCards returns empty until load resolves
     void kanbanStore.load();
+    const workstationManager = new WorkstationManager(WORKSTATIONS);
+    const workstations = new Map(
+      workstationManager.getAllStates().map((s) => [s.id, s]),
+    );
     const room: RoomState = {
       slug,
       name,
@@ -112,6 +124,8 @@ export class RoomManager {
       kanbanStore,
       hostPlayerId: null,
       isRecording: false,
+      workstations,
+      workstationManager,
     };
     this.rooms.set(slug, room);
     return room;
@@ -176,6 +190,7 @@ export class RoomManager {
       joinedAt: Date.now(),
       presence: 'available',
       lastActivityAt: Date.now(),
+      workstationId: null,
     };
     room.players.set(playerId, player);
     if (!room.hostPlayerId) room.hostPlayerId = playerId;
@@ -240,10 +255,22 @@ export class RoomManager {
     if (!room) return undefined;
     const player = room.players.get(playerId);
     if (!player) return undefined;
+
+    // Bloquer les moves dans une zone verrouillée non autorisée.
+    // Le joueur reste à sa position précédente (rubber-band côté client).
+    if (room.workstationManager.isInsideAnyLockedWorkstation(playerId, x, y)) {
+      // On met quand même à jour la direction + isMoving pour la fluidité visuelle.
+      player.direction = direction;
+      player.isMoving = isMoving;
+      return player;   // x, y inchangés → le serveur répond avec l'ancienne position
+    }
+
     player.x = x;
     player.y = y;
     player.direction = direction;
     player.isMoving = isMoving;
+    // Recalculer workstationId à partir des nouvelles coords.
+    player.workstationId = workstationIdForPointIn(WORKSTATIONS, x, y) ?? null;
     return player;
   }
 
