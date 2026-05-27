@@ -50,8 +50,14 @@ export function KanbanModal() {
   const me = useLocalPlayerId();
   if (!openId) return null;
 
+  // Tri d'affichage : plus récent en haut.
+  // - Terminé   → par completedAt desc (date où la carte a été marquée terminée)
+  // - À faire / En cours → par createdAt desc (date de création)
   const byColumn: Record<KanbanColumn, KanbanCard[]> = { todo: [], doing: [], done: [] };
   for (const c of cards) byColumn[c.column].push(c);
+  byColumn.done.sort((a, b) => (b.completedAt ?? b.updatedAt) - (a.completedAt ?? a.updatedAt));
+  byColumn.todo.sort((a, b) => b.createdAt - a.createdAt);
+  byColumn.doing.sort((a, b) => b.createdAt - a.createdAt);
 
   function renderDropGap(col: KanbanColumn, index: number) {
     const dragged = cards.find((c) => c.id === draggedId);
