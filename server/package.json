@@ -10,10 +10,16 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@types/dompurify": "^3.0.5",
+    "@types/jsdom": "^28.0.3",
+    "@types/multer": "^2.1.0",
     "cors": "^2.8.5",
+    "dompurify": "^3.4.6",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "jsdom": "^29.1.1",
     "livekit-server-sdk": "^2.15.2",
+    "multer": "^2.1.1",
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
