@@ -628,22 +628,35 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Mise à jour des bulles 💬 parlant
+    // Mise à jour des bulles 💬 — affichée UNIQUEMENT quand le joueur parle
+    // ET qu'il y a au moins une autre personne dans le même poste (sinon
+    // c'est inutile de signaler une conversation à soi-même).
     const speakingIds = storeState.speakingPlayerIds;
+    // Compte le nombre d'occupants par workstationId.
+    const occupancy = new Map<string, number>();
+    for (const p of storeState.players.values()) {
+      if (p.workstationId) {
+        occupancy.set(p.workstationId, (occupancy.get(p.workstationId) ?? 0) + 1);
+      }
+    }
+    const showBubbleFor = (wsId: string | null | undefined, isSpeaking: boolean): boolean => {
+      if (!isSpeaking) return false;
+      if (!wsId) return false;
+      return (occupancy.get(wsId) ?? 0) >= 2;
+    };
     for (const [id, rp] of this.remotePlayers) {
       const playerState = storeState.players.get(id);
       const wsId = playerState?.workstationId ?? null;
-      const wsState = wsId ? storeState.workstations.get(wsId) : null;
-      const shouldShow = !!wsId && !!wsState && wsState.claimedBy !== null;
-      rp.setSpeaking(shouldShow, speakingIds.has(id));
+      const isSpeaking = speakingIds.has(id);
+      const show = showBubbleFor(wsId, isSpeaking);
+      rp.setSpeaking(show, isSpeaking);
     }
-    // Bulle pour le joueur local
     if (this.player && localId) {
       const localState = storeState.players.get(localId);
       const wsId = localState?.workstationId ?? null;
-      const wsState = wsId ? storeState.workstations.get(wsId) : null;
-      const shouldShow = !!wsId && !!wsState && wsState.claimedBy !== null;
-      this.player.setSpeaking(shouldShow, speakingIds.has(localId));
+      const isSpeaking = speakingIds.has(localId);
+      const show = showBubbleFor(wsId, isSpeaking);
+      this.player.setSpeaking(show, isSpeaking);
     }
 
     const x = this.player.sprite.x;
