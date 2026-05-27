@@ -6,7 +6,6 @@ import type {
   RemoteVideoTrack,
 } from 'livekit-client';
 import { useGameStore } from '../../stores/gameStore';
-import { isInConferenceZone } from '../../conferenceZone';
 import type { RemoteSnapshot } from '../../livekit/LiveKitManager';
 import { ScreenViewer } from './ScreenViewer';
 import type { Presence } from '../../types';
@@ -16,12 +15,6 @@ interface VideoBarProps {
   localScreenTrack: LocalVideoTrack | null;
   localName: string;
   remotes: RemoteSnapshot[];
-}
-
-function computeVolume(d: number): number {
-  if (d <= 96) return 1;
-  if (d >= 160) return 0;
-  return 1 - (d - 96) / 64;
 }
 
 function ScreenViewers({
@@ -213,17 +206,19 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
       el.volume = 1;
       return;
     }
-    if (
-      isInConferenceZone(local.x, local.y) &&
-      isInConferenceZone(remotePlayer.x, remotePlayer.y)
-    ) {
-      el.volume = 1;
+    // Audio strictement isolé par poste de travail :
+    // - Si l'un des deux n'est dans AUCUN poste → silence total.
+    // - Si les deux sont dans des postes DIFFÉRENTS → silence total.
+    // - Si les deux sont dans le MÊME poste → volume plein.
+    // La proximité (distance) et la conference zone sont désactivées par cette règle :
+    // pour s'entendre, il faut explicitement se trouver dans la même zone de travail.
+    const localWs = local.workstationId ?? null;
+    const remoteWs = remotePlayer.workstationId ?? null;
+    if (localWs === null || remoteWs === null || localWs !== remoteWs) {
+      el.volume = 0;
       return;
     }
-    const dx = local.x - remotePlayer.x;
-    const dy = local.y - remotePlayer.y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    el.volume = computeVolume(d);
+    el.volume = 1;
   }, [players, localPlayerId, remote.identity, remote.audioTrack]);
 
   return (
