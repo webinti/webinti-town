@@ -22,6 +22,26 @@ interface TypingStatePayload {
   t: number;
 }
 
+interface WorkstationStatePayload {
+  id: string;
+  claimedBy: string | null;
+  claimedByName: string | null;
+  invitedPlayerIds: string[];
+  claimedAt: number | null;
+}
+
+interface WorkstationInvitePayload {
+  fromPlayerId: string;
+  fromPlayerName: string;
+  workstationId: string;
+  workstationName: string;
+}
+
+interface SpeakingStatePayload {
+  playerId: string;
+  speaking: boolean;
+}
+
 interface WhiteboardStrokePayload {
   objectId: string;
   stroke: WhiteboardStroke;
@@ -70,6 +90,9 @@ class SocketManager {
   private playerGhostListeners = new Set<(p: { playerId: string; isGhost: boolean }) => void>();
   private kickedListeners = new Set<(reason: string) => void>();
   private typingStateListeners = new Set<(p: TypingStatePayload) => void>();
+  private workstationStateListeners = new Set<(ws: WorkstationStatePayload) => void>();
+  private workstationInviteListeners = new Set<(inv: WorkstationInvitePayload) => void>();
+  private speakingStateListeners = new Set<(p: SpeakingStatePayload) => void>();
 
   connect(): Socket {
     if (this.socket && this.socket.connected) return this.socket;
@@ -243,6 +266,32 @@ class SocketManager {
     socket.on('kanban:state', (payload: { cards: KanbanCard[] }) => {
       if (!payload || !Array.isArray(payload.cards)) return;
       useGameStore.getState().setKanbanCards(payload.cards);
+    });
+
+    socket.on('workstation:initial', (payload: { workstations: WorkstationStatePayload[] }) => {
+      if (!payload || !Array.isArray(payload.workstations)) return;
+      useGameStore.getState().setWorkstationsInitial(payload.workstations);
+    });
+
+    socket.on('workstation:state', (payload: WorkstationStatePayload) => {
+      if (!payload || typeof payload.id !== 'string') return;
+      useGameStore.getState().setWorkstationState(payload);
+      for (const l of this.workstationStateListeners) l(payload);
+    });
+
+    socket.on('workstation:invite', (payload: WorkstationInvitePayload) => {
+      if (!payload || typeof payload.workstationId !== 'string') return;
+      useGameStore.getState().setPendingInvite({
+        fromPlayerName: payload.fromPlayerName,
+        workstationId: payload.workstationId,
+        workstationName: payload.workstationName,
+      });
+      for (const l of this.workstationInviteListeners) l(payload);
+    });
+
+    socket.on('speaking_state', (payload: SpeakingStatePayload) => {
+      if (!payload || typeof payload.playerId !== 'string') return;
+      for (const l of this.speakingStateListeners) l(payload);
     });
 
     return socket;
@@ -440,6 +489,41 @@ class SocketManager {
     return () => {
       this.whiteboardTextDeleteListeners.delete(fn);
     };
+  }
+
+  workstationClaim(workstationId: string): void {
+    this.socket?.emit('workstation:claim', { workstationId });
+  }
+
+  workstationRelease(workstationId: string): void {
+    this.socket?.emit('workstation:release', { workstationId });
+  }
+
+  workstationInvite(workstationId: string, targetPlayerId: string): void {
+    this.socket?.emit('workstation:invite', { workstationId, targetPlayerId });
+  }
+
+  workstationUninvite(workstationId: string, targetPlayerId: string): void {
+    this.socket?.emit('workstation:uninvite', { workstationId, targetPlayerId });
+  }
+
+  sendSpeakingState(speaking: boolean): void {
+    this.socket?.emit('speaking_state', { speaking });
+  }
+
+  onWorkstationState(cb: (ws: WorkstationStatePayload) => void): () => void {
+    this.workstationStateListeners.add(cb);
+    return () => this.workstationStateListeners.delete(cb);
+  }
+
+  onWorkstationInvite(cb: (inv: WorkstationInvitePayload) => void): () => void {
+    this.workstationInviteListeners.add(cb);
+    return () => this.workstationInviteListeners.delete(cb);
+  }
+
+  onSpeakingState(cb: (p: SpeakingStatePayload) => void): () => void {
+    this.speakingStateListeners.add(cb);
+    return () => this.speakingStateListeners.delete(cb);
   }
 
   disconnect(): void {
