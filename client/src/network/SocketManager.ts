@@ -194,6 +194,11 @@ class SocketManager {
       for (const fn of this.playerGhostListeners) fn(payload);
     });
 
+    socket.on('player_update', (p: PlayerState) => {
+      useGameStore.getState().upsertPlayer(p);
+      for (const fn of this.listeners) fn(p);
+    });
+
     socket.on('kicked', (payload: { reason?: string }) => {
       const reason = payload?.reason ?? 'kicked by host';
       for (const fn of this.kickedListeners) fn(reason);
