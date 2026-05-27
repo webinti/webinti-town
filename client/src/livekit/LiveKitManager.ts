@@ -297,6 +297,10 @@ class LiveKitManager {
     };
   }
 
+  getRoom(): Room | null {
+    return this.room;
+  }
+
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => {
