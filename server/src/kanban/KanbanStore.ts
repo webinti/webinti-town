@@ -198,22 +198,32 @@ export class KanbanStore {
     if (this.savePending) await this.savePending;
   }
 
+  // Memoized load promise — load() est appelé plusieurs fois (au création
+  // de la room ET au join de chaque joueur). On garde la même promesse pour
+  // qu'on lise le fichier au plus une fois, et que les callers puissent attendre
+  // la fin de la lecture avant de demander getCards().
+  private loadPromise: Promise<void> | null = null;
+
   async load(): Promise<void> {
     if (!this.persistEnabled) return;
-    const path = this.filePath();
-    try {
-      const raw = await fs.readFile(path, 'utf8');
-      const parsed = JSON.parse(raw) as { version?: number; cards?: KanbanCard[] };
-      if (parsed && Array.isArray(parsed.cards)) {
-        // Strict-shape filter: drop entries that don't look like a card.
-        this.cards = parsed.cards.filter((c) => isWellShapedCard(c));
+    if (this.loadPromise) return this.loadPromise;
+    this.loadPromise = (async () => {
+      const path = this.filePath();
+      try {
+        const raw = await fs.readFile(path, 'utf8');
+        const parsed = JSON.parse(raw) as { version?: number; cards?: KanbanCard[] };
+        if (parsed && Array.isArray(parsed.cards)) {
+          // Strict-shape filter: drop entries that don't look like a card.
+          this.cards = parsed.cards.filter((c) => isWellShapedCard(c));
+        }
+      } catch (err: unknown) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT') return; // first run, fine
+        console.warn('[kanban] load failed for', this.roomSlug, '— starting empty', err);
+        this.cards = [];
       }
-    } catch (err: unknown) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (code === 'ENOENT') return; // first run, fine
-      console.warn('[kanban] load failed for', this.roomSlug, '— starting empty', err);
-      this.cards = [];
-    }
+    })();
+    return this.loadPromise;
   }
 
   private filePath(): string {

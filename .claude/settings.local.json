@@ -53,7 +53,9 @@
       "Bash(awk '/sessions.set\\\\\\(socket.id/,/^      }\\\\\\);/' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
       "Bash(awk 'tolower\\($0\\) ~ /typing|workstation/' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
       "Bash(awk '/typing_start/,/^    \\\\}\\\\\\);/' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
-      "Bash(awk '/typing_start/{print NR; exit}' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)"
+      "Bash(awk '/typing_start/{print NR; exit}' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
+      "Bash(awk 'NR>=170 && NR<=235' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
+      "Bash(awk 'tolower\\($0\\) ~ /kanban/{print NR\": \"$0}' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)"
     ]
   }
 }
