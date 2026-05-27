@@ -21,6 +21,7 @@ export class RemotePlayer {
   hairLayer?: Phaser.GameObjects.Sprite;
   hairBackLayer?: Phaser.GameObjects.Sprite;
   label: Phaser.GameObjects.Text;
+  private typingBubble: Phaser.GameObjects.Text | null = null;
   targetX: number;
   targetY: number;
   hasLayers: boolean;
@@ -106,6 +107,26 @@ export class RemotePlayer {
     this.shirtLayer?.setAlpha(a);
     this.hairLayer?.setAlpha(a);
     this.label.setAlpha(a);
+    this.typingBubble?.setAlpha(a);
+  }
+
+  setTyping(active: boolean): void {
+    if (active) {
+      if (this.typingBubble) return; // déjà visible — ne rien faire
+      this.typingBubble = this.scene.add
+        .text(this.sprite.x, this.sprite.y - 42, '\u{1F4AC}', {
+          fontSize: '18px',
+          fontFamily: 'system-ui, sans-serif',
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(12);
+      // Appliquer l'alpha ghost si nécessaire.
+      if (this.isGhost) this.typingBubble.setAlpha(0.5);
+    } else {
+      if (!this.typingBubble) return; // déjà masqué — ne rien faire
+      this.typingBubble.destroy();
+      this.typingBubble = null;
+    }
   }
 
   private updateAnimatedFrames(): void {
@@ -153,6 +174,7 @@ export class RemotePlayer {
     if (this.shirtLayer) this.shirtLayer.setPosition(x, y);
     if (this.hairLayer) this.hairLayer.setPosition(x, y);
     this.label.setPosition(x, y - 28);
+    if (this.typingBubble) this.typingBubble.setPosition(x, y - 42);
 
     const now = this.scene.time.now;
     const dt = now - this.lastFrameUpdateMs;
@@ -171,5 +193,6 @@ export class RemotePlayer {
     this.shirtLayer?.destroy();
     this.hairLayer?.destroy();
     this.label.destroy();
+    this.typingBubble?.destroy();
   }
 }
