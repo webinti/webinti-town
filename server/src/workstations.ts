@@ -37,12 +37,13 @@ export const WORKSTATIONS: readonly Workstation[] = [
   { id: 'poste-10', name: 'Poste 10', minX: 1022, minY: 524, maxX: 1118, maxY: 620 },
   { id: 'poste-11', name: 'Poste 11', minX: 1175, minY: 524, maxX: 1271, maxY: 620 },
   { id: 'poste-12', name: 'Poste 12', minX: 1326, minY: 524, maxX: 1422, maxY: 620 },
-  // ── Salle blanche en haut-droite (Open R&D, table partagée 4 sièges) — TODO recalibrer ──
-  { id: 'poste-13', name: 'Open R&D',  minX: 1500, minY: 200, maxX: 1700, maxY: 360 },
+  // ── Salle blanche en haut-droite (Open R&D, table partagée 4 sièges) — Tim @ (1729, 572) ──
+  // Rect 128×96 (4 tiles × 3 tiles) pour couvrir la table partagée.
+  { id: 'poste-13', name: 'Open R&D',  minX: 1665, minY: 524, maxX: 1793, maxY: 620 },
   // ── 3 petits bureaux rouges en bas-droite (Y center = 988) ──
-  { id: 'poste-14', name: 'Bureau rouge 1', minX: 1037, minY: 940, maxX: 1133, maxY: 1036 },
-  { id: 'poste-15', name: 'Bureau rouge 2', minX: 1326, minY: 940, maxX: 1422, maxY: 1036 }, // TODO recalibrer
-  { id: 'poste-16', name: 'Bureau rouge 3', minX: 1612, minY: 940, maxX: 1708, maxY: 1036 }, // TODO recalibrer
+  { id: 'poste-14', name: 'Bureau rouge 1', minX: 1037, minY: 940, maxX: 1133, maxY: 1036 }, // Tim @ (1085, 988)
+  { id: 'poste-15', name: 'Bureau rouge 2', minX: 1359, minY: 940, maxX: 1455, maxY: 1036 }, // Tim @ (1407, 988)
+  { id: 'poste-16', name: 'Bureau rouge 3', minX: 1683, minY: 940, maxX: 1779, maxY: 1036 }, // Tim @ (1731, 988)
 ];
 
 /**
