@@ -48,7 +48,8 @@
       "Bash(ssh -o StrictHostKeyChecking=accept-new -T git@github.com)",
       "Bash(git fetch *)",
       "Bash(git pull *)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(journalctl -u webinti-server -n 30 --no-pager)"
     ]
   }
 }

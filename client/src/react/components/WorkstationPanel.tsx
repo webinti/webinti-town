@@ -13,6 +13,16 @@ export function WorkstationPanel() {
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // ⚠ TOUS les hooks DOIVENT être appelés AVANT le early return,
+  // sinon React jette "Rendered more hooks than during the previous render"
+  // dès que `nearbyId` passe de null à une string → app entière crash.
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
   if (!nearbyId || !localPlayerId) return null;
 
   const ws    = workstations.get(nearbyId);
@@ -38,14 +48,6 @@ export function WorkstationPanel() {
     setEditValue(ws?.customName ?? def?.name ?? nearbyId);
     setEditing(true);
   };
-
-  // Focus input when editing starts
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editing]);
 
   const commitEdit = () => {
     const trimmed = editValue.trim();
