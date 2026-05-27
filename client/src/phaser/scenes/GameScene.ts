@@ -536,30 +536,17 @@ export class GameScene extends Phaser.Scene {
           dance: !!this.zKey?.isDown,
         };
 
-    // Auto-walk : si une cible est définie (ex: "Aller au poste"), on force
-    // les directions vers (target.x, target.y). Une saisie manuelle (n'importe
-    // quelle flèche) annule immédiatement l'auto-walk. La physique gère les
-    // collisions (le joueur s'arrête sur un mur), et un timeout de 15s force
-    // le clear si jamais on est bloqué.
+    // Téléportation vers une cible (ex: "Aller au poste" sur une invitation).
+    // On snap directement le sprite à la position, on annule la vélocité, puis
+    // on clear la cible — le sendMove plus bas notifiera le serveur.
+    // Choix vs. auto-walk: l'absence de pathfinding faisait coincer le perso
+    // sur les murs. Téléporter est moins immersif mais 100% fiable.
     const target = useGameStore.getState().autoWalkTarget;
     if (target && this.player) {
-      const manualOverride = input.up || input.down || input.left || input.right;
-      const dx = target.x - this.player.sprite.x;
-      const dy = target.y - this.player.sprite.y;
-      const dist = Math.hypot(dx, dy);
-      const timeout = Date.now() - target.startedAt > 15_000;
-      if (manualOverride || dist < 24 || timeout) {
-        useGameStore.getState().setAutoWalkTarget(null);
-      } else {
-        const THRESH = 6;   // ignore les micro-déplacements pour éviter le jitter
-        input = {
-          up: dy < -THRESH,
-          down: dy > THRESH,
-          left: dx < -THRESH,
-          right: dx > THRESH,
-          dance: false,
-        };
-      }
+      this.player.sprite.setPosition(target.x, target.y);
+      const body = this.player.sprite.body as Phaser.Physics.Arcade.Body | null;
+      body?.setVelocity(0, 0);
+      useGameStore.getState().setAutoWalkTarget(null);
     }
 
     this.player.update(input);
