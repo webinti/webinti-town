@@ -77,6 +77,14 @@ class LiveKitManager {
       const emit = () => this.emit();
       room.on(RoomEvent.TrackSubscribed, emit);
       room.on(RoomEvent.TrackUnsubscribed, emit);
+      // TrackPublished/TrackUnpublished sont DIFFÉRENTS de Subscribed/Unsubscribed :
+      // un track peut être unpublished (l'émetteur arrête) sans qu'on reçoive
+      // immédiatement TrackUnsubscribed. Sans ces listeners, le snapshot ne
+      // se met à jour que lorsqu'un AUTRE event survient (ex: mute du mic),
+      // d'où le bug "écran noir qui persiste après Stop écran jusqu'à ce
+      // qu'on touche autre chose".
+      room.on(RoomEvent.TrackPublished, emit);
+      room.on(RoomEvent.TrackUnpublished, emit);
       room.on(RoomEvent.TrackMuted, emit);
       room.on(RoomEvent.TrackUnmuted, emit);
       room.on(RoomEvent.ParticipantConnected, emit);
