@@ -60,6 +60,9 @@ export class GameScene extends Phaser.Scene {
   private unsubStore?: () => void;
   private unsubEmote?: () => void;
   private unsubObject?: () => void;
+  private unsubTyping?: () => void;
+  private unsubChatForTyping?: () => void;
+  private typingTimers = new Map<string, NodeJS.Timeout>();
   private emoteStacks = new Map<string, Phaser.GameObjects.Text[]>();
   private objectVisuals = new Map<string, ObjectVisual>();
   private nearbyObjectId: string | null = null;
@@ -171,6 +174,14 @@ export class GameScene extends Phaser.Scene {
     this.unsubEmote = socketManager.onEmote((e) => this.handleEmote(e.playerId, e.emoteType));
     this.unsubObject = socketManager.onObjectUpdate((obj) => this.refreshObject(obj));
 
+    this.unsubTyping = socketManager.onTypingState((payload) => {
+      this.handleTypingState(payload.playerId);
+    });
+
+    this.unsubChatForTyping = socketManager.onChatMessage((msg) => {
+      this.clearTypingForPlayer(msg.playerId);
+    });
+
     this.eKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.E);
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this.input.keyboard?.clearCaptures();
@@ -226,6 +237,10 @@ export class GameScene extends Phaser.Scene {
       this.unsubStore?.();
       this.unsubEmote?.();
       this.unsubObject?.();
+      this.unsubTyping?.();
+      this.unsubChatForTyping?.();
+      for (const timer of this.typingTimers.values()) clearTimeout(timer);
+      this.typingTimers.clear();
     });
   }
 
@@ -412,6 +427,38 @@ export class GameScene extends Phaser.Scene {
       rp.destroy();
       this.remotePlayers.delete(id);
     }
+    // Si ce joueur avait une bulle active, annuler son timer.
+    const timer = this.typingTimers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      this.typingTimers.delete(id);
+    }
+  }
+
+  private handleTypingState(playerId: string): void {
+    const rp = this.remotePlayers.get(playerId);
+    if (!rp) return;
+    // Afficher la bulle immédiatement.
+    rp.setTyping(true);
+    // Réinitialiser le timer 2 s (annuler l'ancien si présent).
+    const existing = this.typingTimers.get(playerId);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      this.typingTimers.delete(playerId);
+      const r = this.remotePlayers.get(playerId);
+      if (r) r.setTyping(false);
+    }, 2000);
+    this.typingTimers.set(playerId, timer);
+  }
+
+  private clearTypingForPlayer(playerId: string): void {
+    const existing = this.typingTimers.get(playerId);
+    if (existing) {
+      clearTimeout(existing);
+      this.typingTimers.delete(playerId);
+    }
+    const rp = this.remotePlayers.get(playerId);
+    if (rp) rp.setTyping(false);
   }
 
   update(): void {
