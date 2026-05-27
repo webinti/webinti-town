@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
-import type { ChatMessage, ChatMessageType } from '../../types';
+import type { ChatAttachment, ChatMessage, ChatMessageType } from '../../types';
 
 const SHIRT_HEX = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
   '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#f3f4f6',
 ];
+
+/** Lit le clientKey stable persisté par SocketManager. Retourne '' si absent. */
+function getLocalClientKey(): string {
+  try {
+    return window.localStorage.getItem('webinti.clientKey') ?? '';
+  } catch {
+    return '';
+  }
+}
 
 function formatTime(ts: number): string {
   const d = new Date(ts);
@@ -27,6 +36,7 @@ export function ChatPanel() {
   const players = useGameStore((s) => s.players);
   const setOpen = useGameStore((s) => s.setChatPanelOpen);
   const setInputFocused = useGameStore((s) => s.setInputFocused);
+  const currentRoomSlug = useGameStore((s) => s.currentRoomSlug);
 
   const [tab, setTab] = useState<ChatMessageType>('global');
   const [text, setText] = useState('');
@@ -34,6 +44,13 @@ export function ChatPanel() {
   const listRef = useRef<HTMLDivElement>(null);
   const scrollPosRef = useRef<number>(0);
   const lastTypingEmitRef = useRef<number>(0);
+
+  // ── Attachment upload state machine ─────────────────────────────────────
+  type UploadStatus = 'idle' | 'uploading' | 'ready' | 'error';
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
+  const [pendingAttachment, setPendingAttachment] = useState<ChatAttachment | null>(null);
+  const [uploadError, setUploadError] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Keyboard: C toggles, Esc closes
   useEffect(() => {
@@ -79,12 +96,76 @@ export function ChatPanel() {
     }
   }, [chat, open]);
 
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset input pour permettre de re-sélectionner le même fichier
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (!file) return;
+
+    // Taille max 5 MB côté client (le serveur rejette aussi avec 413)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Fichier trop grand (max 5 MB)');
+      setUploadStatus('error');
+      return;
+    }
+
+    setUploadStatus('uploading');
+    setUploadError('');
+    setPendingAttachment(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const clientKey = getLocalClientKey();
+      const resp = await fetch(`/api/uploads/${currentRoomSlug}`, {
+        method: 'POST',
+        headers: {
+          'x-client-key': clientKey,
+        },
+        body: formData,
+      });
+      if (!resp.ok) {
+        const json = (await resp.json().catch(() => ({}))) as { error?: string };
+        const msg =
+          resp.status === 413
+            ? 'Fichier trop grand (max 5 MB)'
+            : resp.status === 429
+            ? 'Trop d\'uploads, attendez 1 minute'
+            : resp.status === 415
+            ? 'Type de fichier non autorisé (jpg/png/svg/pdf)'
+            : json.error ?? 'Erreur upload';
+        setUploadError(msg);
+        setUploadStatus('error');
+        return;
+      }
+      const data = (await resp.json()) as ChatAttachment;
+      setPendingAttachment(data);
+      setUploadStatus('ready');
+    } catch {
+      setUploadError('Erreur réseau lors de l\'upload');
+      setUploadStatus('error');
+    }
+  }, [currentRoomSlug]);
+
+  const removeAttachment = useCallback(() => {
+    setPendingAttachment(null);
+    setUploadStatus('idle');
+    setUploadError('');
+  }, []);
+
   const handleSend = useCallback(() => {
     const value = text.trim();
-    if (!value) return;
-    socketManager.sendChat(value.slice(0, 300), tab);
+    // Autoriser envoi si texte OU pièce jointe
+    if (!value && !pendingAttachment) return;
+    // Bloquer si upload en cours
+    if (uploadStatus === 'uploading') return;
+    socketManager.sendChat(value.slice(0, 300), tab, pendingAttachment ?? undefined);
     setText('');
-  }, [text, tab]);
+    setPendingAttachment(null);
+    setUploadStatus('idle');
+    setUploadError('');
+  }, [text, tab, pendingAttachment, uploadStatus]);
 
   if (!open) {
     return (
@@ -144,6 +225,40 @@ export function ChatPanel() {
       </div>
 
       <div className="border-t border-white/10 p-2">
+        {/* Zone preview pièce jointe */}
+        {uploadStatus === 'ready' && pendingAttachment && (
+          <div className="mb-2 flex items-center gap-2 rounded bg-slate-800/80 px-2 py-1 ring-1 ring-indigo-400/40">
+            {pendingAttachment.mimeType === 'application/pdf' ? (
+              <span className="text-base">{'📄'}</span>
+            ) : (
+              <img
+                src={pendingAttachment.url}
+                alt=""
+                className="h-10 w-10 rounded object-cover ring-1 ring-white/10"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            )}
+            <span className="flex-1 truncate text-xs text-slate-300">{pendingAttachment.filename}</span>
+            <button
+              onClick={removeAttachment}
+              className="rounded px-1.5 py-0.5 text-xs text-slate-400 hover:bg-slate-700 hover:text-white"
+              title="Retirer la pièce jointe"
+            >
+              {'✕'}
+            </button>
+          </div>
+        )}
+        {uploadStatus === 'error' && (
+          <div className="mb-2 rounded bg-red-900/60 px-2 py-1 text-xs text-red-300 ring-1 ring-red-500/40">
+            {uploadError}
+            <button onClick={removeAttachment} className="ml-2 underline hover:text-white">retirer</button>
+          </div>
+        )}
+        {uploadStatus === 'uploading' && (
+          <div className="mb-2 text-xs text-slate-400">
+            <span className="animate-pulse">{'⏳'} Upload en cours…</span>
+          </div>
+        )}
         <textarea
           ref={inputRef}
           value={text}
@@ -168,9 +283,36 @@ export function ChatPanel() {
           maxLength={300}
           className="w-full resize-none rounded bg-slate-800 px-2 py-1 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-indigo-400"
         />
-        <div className="mt-1 flex justify-between text-[10px] text-slate-500">
-          <span>Entrée pour envoyer · Maj+Entrée saut de ligne</span>
-          <span>{text.length}/300</span>
+        <div className="mt-1 flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {/* Bouton 📎 */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadStatus === 'uploading'}
+              title="Joindre un fichier (jpg/png/svg/pdf, max 5 MB)"
+              className="rounded px-1.5 py-0.5 text-base text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-40"
+            >
+              {'📎'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/svg+xml,application/pdf"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <span className="text-[10px] text-slate-500">Entrée · Maj+Entrée saut</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-500">{text.length}/300</span>
+            <button
+              onClick={handleSend}
+              disabled={uploadStatus === 'uploading' || (!text.trim() && !pendingAttachment)}
+              className="rounded bg-indigo-600 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-40"
+            >
+              Envoyer
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -203,6 +345,57 @@ function ChatRow({
         <span className="text-[10px] text-slate-400">{formatTime(msg.timestamp)}</span>
       </div>
       <div className="ml-4.5 break-words pl-0.5 text-[13px] text-slate-200">{msg.text}</div>
+      {msg.attachment && <AttachmentView attachment={msg.attachment} />}
     </div>
+  );
+}
+
+function AttachmentView({ attachment }: { attachment: ChatAttachment }) {
+  const [loadError, setLoadError] = useState(false);
+
+  if (loadError) {
+    return (
+      <div className="mt-1 rounded bg-slate-700/60 px-2 py-1 text-xs text-yellow-400">
+        {'⚠️'} Pièce jointe indisponible
+      </div>
+    );
+  }
+
+  if (attachment.mimeType === 'application/pdf') {
+    const sizeKb = Math.round(attachment.sizeBytes / 1024);
+    const sizeTxt = sizeKb >= 1024
+      ? `${(sizeKb / 1024).toFixed(1)} MB`
+      : `${sizeKb} KB`;
+    return (
+      <a
+        href={attachment.url}
+        download={attachment.filename}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1 flex items-center gap-2 rounded bg-slate-700/60 px-2 py-1 text-xs text-slate-200 ring-1 ring-white/10 hover:bg-slate-700"
+      >
+        <span className="text-base">{'📄'}</span>
+        <span className="flex-1 truncate">{attachment.filename}</span>
+        <span className="text-[10px] text-slate-400">{sizeTxt}</span>
+      </a>
+    );
+  }
+
+  // Images : jpg / png / svg
+  return (
+    <a
+      href={attachment.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-1 block"
+    >
+      <img
+        src={attachment.url}
+        alt={attachment.filename}
+        className="max-h-60 max-w-full rounded ring-1 ring-white/10 hover:opacity-90"
+        style={{ maxWidth: 240 }}
+        onError={() => setLoadError(true)}
+      />
+    </a>
   );
 }

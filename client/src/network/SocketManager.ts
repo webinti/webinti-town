@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import type {
+  ChatAttachment,
   ChatMessage,
   ChatMessageType,
   EmoteEvent,
@@ -255,8 +256,8 @@ class SocketManager {
     this.socket?.emit('player_move', payload);
   }
 
-  sendChat(text: string, type: ChatMessageType): void {
-    this.socket?.emit('chat_message', { text, type });
+  sendChat(text: string, type: ChatMessageType, attachment?: ChatAttachment): void {
+    this.socket?.emit('chat_message', { text, type, ...(attachment ? { attachment } : {}) });
   }
 
   sendEmote(emoteType: EmoteType): void {
