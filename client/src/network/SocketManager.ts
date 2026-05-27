@@ -9,6 +9,7 @@ import type {
   KanbanCard,
   PlayerMovePayload,
   PlayerState,
+  Presence,
   RoomState,
   WhiteboardStroke,
   WhiteboardText,
@@ -411,6 +412,14 @@ class SocketManager {
 
   kanbanDelete(cardId: string): void {
     this.socket?.emit('kanban:delete', { cardId });
+  }
+
+  sendPresenceSet(presence: Presence): void {
+    this.socket?.emit('presence_set', { presence });
+  }
+
+  sendActivity(): void {
+    this.socket?.emit('presence_activity');
   }
 
   onWhiteboardTextUpdate(fn: (p: WhiteboardTextUpdatePayload) => void): () => void {
