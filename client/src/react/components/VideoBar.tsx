@@ -9,6 +9,7 @@ import { useGameStore } from '../../stores/gameStore';
 import { isInConferenceZone } from '../../conferenceZone';
 import type { RemoteSnapshot } from '../../livekit/LiveKitManager';
 import { ScreenViewer } from './ScreenViewer';
+import type { Presence } from '../../types';
 
 interface VideoBarProps {
   localCamTrack: LocalVideoTrack | null;
@@ -62,6 +63,7 @@ export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }
   const remoteScreens = remotes.filter((r) => r.screenTrack);
   const hasAnything =
     localCamTrack || localScreenTrack || visibleRemotes.length > 0 || remoteScreens.length > 0;
+  const localPresence = useGameStore((s) => s.localPresence);
   if (!hasAnything) return null;
 
   return (
@@ -73,7 +75,7 @@ export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }
       />
       {(localCamTrack || visibleRemotes.length > 0) && (
         <div className="pointer-events-auto flex gap-2 rounded-xl bg-slate-900/70 p-2 ring-1 ring-white/10 backdrop-blur">
-          {localCamTrack && <LocalTile track={localCamTrack} name={localName} />}
+          {localCamTrack && <LocalTile track={localCamTrack} name={localName} localPresence={localPresence} />}
           {visibleRemotes.map((r) => (
             <RemoteTile key={r.identity} remote={r} />
           ))}
@@ -83,6 +85,17 @@ export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }
   );
 }
 
+
+function presenceDot(presence: Presence | undefined): { dot: string; title: string } {
+  switch (presence) {
+    case 'away':     return { dot: '🟡', title: 'Absent' };
+    case 'brb':      return { dot: '🟡', title: 'Je reviens' };
+    case 'dnd':      return { dot: '🔴', title: 'Ne pas déranger' };
+    case 'inactive': return { dot: '⚪', title: 'Inactif' };
+    case 'available':
+    default:         return { dot: '🟢', title: 'Disponible' };
+  }
+}
 
 function colorFor(id: string): string {
   const palette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#a855f7', '#ec4899'];
@@ -132,7 +145,11 @@ function MicMutedBadge() {
   );
 }
 
-function LocalTile({ track, name }: { track: LocalVideoTrack; name: string }) {
+function LocalTile({ track, name, localPresence }: {
+  track: LocalVideoTrack;
+  name: string;
+  localPresence: Presence | undefined;
+}) {
   const ref = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
     const el = ref.current;
@@ -145,8 +162,15 @@ function LocalTile({ track, name }: { track: LocalVideoTrack; name: string }) {
   return (
     <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">
       <video ref={ref} autoPlay muted playsInline className="h-full w-full object-cover" />
-      <div className="absolute bottom-0 left-0 right-0 truncate bg-black/60 px-2 py-0.5 text-xs text-white">
-        {name} (vous)
+      <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1 truncate bg-black/60 px-2 py-0.5 text-xs text-white">
+        <span
+          title={presenceDot(localPresence).title}
+          aria-label={presenceDot(localPresence).title}
+          className="shrink-0"
+        >
+          {presenceDot(localPresence).dot}
+        </span>
+        <span className="truncate">{name} (vous)</span>
       </div>
     </div>
   );
@@ -157,6 +181,8 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const localPlayerId = useGameStore((s) => s.localPlayerId);
   const players = useGameStore((s) => s.players);
+  const remotePlayer = useGameStore((s) => s.players.get(remote.identity));
+  const presence = remotePlayer?.presence;
 
   useEffect(() => {
     const el = videoRef.current;
@@ -208,8 +234,15 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
         <Initial name={remote.name} id={remote.identity} />
       )}
       <audio ref={audioRef} autoPlay className="hidden" />
-      <div className="absolute bottom-0 left-0 right-0 truncate bg-black/60 px-2 py-0.5 text-xs text-white">
-        {remote.name}
+      <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1 truncate bg-black/60 px-2 py-0.5 text-xs text-white">
+        <span
+          title={presenceDot(presence).title}
+          aria-label={presenceDot(presence).title}
+          className="shrink-0"
+        >
+          {presenceDot(presence).dot}
+        </span>
+        <span className="truncate">{remote.name}</span>
       </div>
       {remote.isMuted && <MicMutedBadge />}
     </div>
