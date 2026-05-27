@@ -108,6 +108,7 @@ export function HUD() {
           <div className="rounded-full bg-indigo-500/30 px-3 py-1 text-sm font-semibold ring-1 ring-indigo-400/50">
             {name || 'Anonyme'}
           </div>
+          <PresenceSelector />
           {isHost && (
             <div className="rounded-full bg-amber-500/30 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/50">
               Hôte
@@ -270,5 +271,48 @@ function ControlButton({
     >
       {label}
     </button>
+  );
+}
+
+const PRESENCE_OPTIONS: Array<{ value: 'available' | 'away' | 'brb' | 'dnd'; label: string; dot: string }> = [
+  { value: 'available', label: 'Disponible', dot: '🟢' },
+  { value: 'away',      label: 'Absent',     dot: '🟡' },
+  { value: 'brb',       label: 'Je reviens', dot: '🟡' },
+  { value: 'dnd',       label: 'Ne pas déranger', dot: '🔴' },
+];
+
+function PresenceSelector() {
+  const localPresence = useGameStore((s) => s.localPresence);
+  const setLocalPresence = useGameStore((s) => s.setLocalPresence);
+
+  if (localPresence === 'inactive') {
+    return (
+      <div
+        title="Inactif — bougez pour revenir en Disponible"
+        className="flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1 text-xs text-slate-400 ring-1 ring-white/10"
+      >
+        <span>⚪</span>
+        <span>Inactif</span>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={localPresence}
+      onChange={(e) => {
+        const val = e.target.value as 'available' | 'away' | 'brb' | 'dnd';
+        setLocalPresence(val);
+        socketManager.sendPresenceSet(val);
+      }}
+      className="rounded-full bg-slate-900/80 px-3 py-1 text-xs text-slate-100 ring-1 ring-white/10 backdrop-blur focus:outline-none focus:ring-indigo-400"
+      aria-label="Statut de présence"
+    >
+      {PRESENCE_OPTIONS.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.dot} {o.label}
+        </option>
+      ))}
+    </select>
   );
 }

@@ -197,6 +197,11 @@ class SocketManager {
 
     socket.on('player_update', (p: PlayerState) => {
       useGameStore.getState().upsertPlayer(p);
+      // Sync le statut local si c'est notre propre joueur (ex: auto-inactive du serveur)
+      const localId = useGameStore.getState().localPlayerId;
+      if (p.playerId === localId && p.presence) {
+        useGameStore.getState().setLocalPresence(p.presence);
+      }
       for (const fn of this.listeners) fn(p);
     });
 
