@@ -35,6 +35,13 @@ export type ChatMessageType = 'local' | 'global' | 'system';
 
 export type EmoteType = 'wave' | 'heart' | 'laugh' | 'thumbsup' | 'question' | 'exclaim';
 
+export interface ChatAttachment {
+  url: string;
+  filename: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/svg+xml' | 'application/pdf';
+  sizeBytes: number;
+}
+
 export interface ChatMessage {
   id: string;
   playerId: string;
@@ -42,6 +49,7 @@ export interface ChatMessage {
   text: string;
   type: ChatMessageType;
   timestamp: number;
+  attachment?: ChatAttachment;  // F9
 }
 
 export interface WhiteboardStroke {
