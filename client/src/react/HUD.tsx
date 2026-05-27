@@ -15,6 +15,7 @@ import { KanbanToasts } from './components/KanbanToasts';
 import { HelpPanel } from './components/HelpPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/sounds';
+import { useActivityHeartbeat } from './hooks/useActivityHeartbeat';
 
 export function HUD() {
   const name = useGameStore((s) => s.name);
@@ -44,6 +45,8 @@ export function HUD() {
     remotes,
     error,
   } = useLiveKit();
+
+  useActivityHeartbeat();
 
   const handleLeave = () => {
     socketManager.disconnect();
