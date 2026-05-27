@@ -25,7 +25,7 @@ export interface Workstation {
 export const WORKSTATIONS: readonly Workstation[] = [
   // ── Open space marron — rangée du haut (Y center = 444) ──
   { id: 'poste-1',  name: 'Poste 1',  minX:  563, minY: 396, maxX:  659, maxY: 492 },
-  { id: 'poste-2',  name: 'Poste 2',  minX:  716, minY: 396, maxX:  812, maxY: 492 },
+  { id: 'poste-2',  name: 'Poste 2',  minX:  686, minY: 396, maxX:  782, maxY: 492 },
   { id: 'poste-3',  name: 'Poste 3',  minX:  869, minY: 396, maxX:  965, maxY: 492 },
   { id: 'poste-4',  name: 'Poste 4',  minX: 1022, minY: 396, maxX: 1118, maxY: 492 },
   { id: 'poste-5',  name: 'Poste 5',  minX: 1175, minY: 396, maxX: 1271, maxY: 492 },
