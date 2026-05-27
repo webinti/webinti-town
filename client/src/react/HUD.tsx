@@ -214,6 +214,7 @@ export function HUD() {
             }}
             label={screenShareEnabled ? 'Stop écran' : 'Écran'}
           />
+          <ChatButton />
           <div className="mx-1 h-6 w-px bg-white/10" />
           <EmoteBar />
           <div className="mx-1 h-6 w-px bg-white/10" />
@@ -276,6 +277,34 @@ function ControlButton({
       }`}
     >
       {label}
+    </button>
+  );
+}
+
+function ChatButton() {
+  const open    = useGameStore((s) => s.chatPanelOpen);
+  const unread  = useGameStore((s) => s.unreadChat);
+  const toggle  = useGameStore((s) => s.toggleChatPanel);
+  return (
+    <button
+      onClick={toggle}
+      title={open ? 'Fermer le chat' : 'Ouvrir le chat'}
+      aria-label={unread > 0 ? `${unread} message(s) non lu(s)` : 'Chat'}
+      className={`relative flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${
+        open
+          ? 'bg-indigo-500 text-white'
+          : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+      }`}
+    >
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+        <path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2zm3 5h10v2H7V9zm0 4h7v2H7v-2z" />
+      </svg>
+      <span>Chat</span>
+      {unread > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-bold text-white ring-2 ring-slate-900">
+          {unread > 9 ? '9+' : unread}
+        </span>
+      )}
     </button>
   );
 }
