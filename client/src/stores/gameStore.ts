@@ -5,6 +5,7 @@ import type {
   InteractiveObject,
   KanbanCard,
   PlayerState,
+  Presence,
   WhiteboardStroke,
   WhiteboardText,
 } from '../types';
@@ -52,6 +53,8 @@ interface GameStore {
   setOpenKanban: (id: string | null) => void;
   kanbanCards: KanbanCard[];
   setKanbanCards: (cards: KanbanCard[]) => void;
+  localPresence: Presence;
+  setLocalPresence: (p: Presence) => void;
   currentRoomSlug: string;
   setCurrentRoomSlug: (slug: string) => void;
   appendWhiteboardStroke: (objectId: string, stroke: WhiteboardStroke) => void;
@@ -175,6 +178,8 @@ export const useGameStore = create<GameStore>((set) => ({
     })),
   kanbanCards: [],
   setKanbanCards: (cards) => set({ kanbanCards: cards }),
+  localPresence: 'available' as Presence,
+  setLocalPresence: (p) => set({ localPresence: p }),
   currentRoomSlug: 'demo',
   setCurrentRoomSlug: (slug) => set({ currentRoomSlug: slug }),
   appendWhiteboardStroke: (objectId, stroke) =>
@@ -277,6 +282,7 @@ export const useGameStore = create<GameStore>((set) => ({
       openLinkId: null,
       openKanbanId: null,
       kanbanCards: [],
+      localPresence: 'available' as Presence,
       helpOpen: false,
       adminPanelOpen: false,
       hostPlayerId: null,
