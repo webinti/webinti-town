@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { socketManager } from '../network/SocketManager';
 import { Minimap } from './Minimap';
@@ -107,14 +107,14 @@ export function HUD() {
 
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col">
-      <div className="pointer-events-auto flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-4 py-3 text-slate-100">
+      <div className="pointer-events-auto flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-5 py-4 text-slate-100">
         <div className="flex items-center gap-3">
-          <div className="rounded-full bg-indigo-500/30 px-3 py-1 text-sm font-semibold ring-1 ring-indigo-400/50">
+          <div className="rounded-full bg-indigo-500/30 px-3.5 py-1.5 text-sm font-semibold ring-1 ring-indigo-400/50">
             {name || 'Anonyme'}
           </div>
           <PresenceSelector />
           {isHost && (
-            <div className="rounded-full bg-amber-500/30 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/50">
+            <div className="rounded-full bg-amber-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/50">
               Hôte
             </div>
           )}
@@ -280,45 +280,118 @@ function ControlButton({
   );
 }
 
-const PRESENCE_OPTIONS: Array<{ value: 'available' | 'away' | 'brb' | 'dnd'; label: string; dot: string }> = [
-  { value: 'available', label: 'Disponible', dot: '🟢' },
-  { value: 'away',      label: 'Absent',     dot: '🟡' },
-  { value: 'brb',       label: 'Je reviens', dot: '🟡' },
-  { value: 'dnd',       label: 'Ne pas déranger', dot: '🔴' },
+type PresenceManual = 'available' | 'away' | 'brb' | 'dnd';
+
+interface PresenceOption {
+  value: PresenceManual;
+  label: string;
+  dotClass: string;   // bg color of the dot
+  hint?: string;      // tooltip / secondary line
+}
+
+const PRESENCE_OPTIONS: ReadonlyArray<PresenceOption> = [
+  { value: 'available', label: 'Disponible',      dotClass: 'bg-emerald-400 ring-emerald-300/40' },
+  { value: 'away',      label: 'Absent',           dotClass: 'bg-amber-400 ring-amber-300/40' },
+  { value: 'brb',       label: 'Je reviens',       dotClass: 'bg-amber-400 ring-amber-300/40', hint: 'De retour dans un moment' },
+  { value: 'dnd',       label: 'Ne pas déranger',  dotClass: 'bg-rose-500 ring-rose-300/40',  hint: 'Concentré, à éviter' },
 ];
 
 function PresenceSelector() {
   const localPresence = useGameStore((s) => s.localPresence);
   const setLocalPresence = useGameStore((s) => s.setLocalPresence);
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Close on click outside.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!wrapperRef.current) return;
+      if (!wrapperRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
 
   if (localPresence === 'inactive') {
     return (
       <div
         title="Inactif — bougez pour revenir en Disponible"
-        className="flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1 text-xs text-slate-400 ring-1 ring-white/10"
+        className="flex items-center gap-2 rounded-full bg-slate-900/80 px-3.5 py-1.5 text-sm text-slate-400 ring-1 ring-white/10 backdrop-blur"
       >
-        <span>⚪</span>
-        <span>Inactif</span>
+        <span className="inline-flex h-2.5 w-2.5 rounded-full bg-slate-500 ring-2 ring-slate-400/30" />
+        <span className="font-medium">Inactif</span>
       </div>
     );
   }
 
+  const current = PRESENCE_OPTIONS.find((o) => o.value === localPresence) ?? PRESENCE_OPTIONS[0]!;
+
+  const select = (val: PresenceManual) => {
+    setLocalPresence(val);
+    socketManager.sendPresenceSet(val);
+    setOpen(false);
+  };
+
   return (
-    <select
-      value={localPresence}
-      onChange={(e) => {
-        const val = e.target.value as 'available' | 'away' | 'brb' | 'dnd';
-        setLocalPresence(val);
-        socketManager.sendPresenceSet(val);
-      }}
-      className="rounded-full bg-slate-900/80 px-3 py-1 text-xs text-slate-100 ring-1 ring-white/10 backdrop-blur focus:outline-none focus:ring-indigo-400"
-      aria-label="Statut de présence"
-    >
-      {PRESENCE_OPTIONS.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.dot} {o.label}
-        </option>
-      ))}
-    </select>
+    <div ref={wrapperRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Statut de présence"
+        className={`flex items-center gap-2 rounded-full bg-slate-900/80 px-3.5 py-1.5 text-sm font-medium text-slate-100 ring-1 ring-white/10 backdrop-blur transition hover:bg-slate-800/90 hover:ring-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-400 ${open ? 'bg-slate-800/90 ring-indigo-400/60' : ''}`}
+      >
+        <span className={`inline-flex h-2.5 w-2.5 rounded-full ring-2 ${current.dotClass}`} />
+        <span>{current.label}</span>
+        <svg
+          viewBox="0 0 12 12"
+          aria-hidden="true"
+          className={`h-3 w-3 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          <path d="M2 4.5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Choisir un statut"
+          className="absolute left-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-xl bg-slate-900/95 p-1 text-sm text-slate-100 shadow-2xl ring-1 ring-white/10 backdrop-blur"
+        >
+          {PRESENCE_OPTIONS.map((o) => {
+            const isCurrent = o.value === localPresence;
+            return (
+              <button
+                key={o.value}
+                role="option"
+                aria-selected={isCurrent}
+                onClick={() => select(o.value)}
+                className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition ${isCurrent ? 'bg-indigo-500/20 ring-1 ring-indigo-400/40' : 'hover:bg-white/5'}`}
+              >
+                <span className={`mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ring-2 ${o.dotClass}`} />
+                <span className="flex flex-1 flex-col">
+                  <span className={`font-medium ${isCurrent ? 'text-white' : 'text-slate-100'}`}>{o.label}</span>
+                  {o.hint && <span className="text-xs text-slate-400">{o.hint}</span>}
+                </span>
+                {isCurrent && (
+                  <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0 text-indigo-300" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 8l4 4 6-8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

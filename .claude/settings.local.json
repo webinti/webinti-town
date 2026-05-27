@@ -41,7 +41,9 @@
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(systemctl is-active *)",
       "Bash(journalctl -u webinti-server -n 10 --no-pager)",
-      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://live.webinti.com/)"
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://live.webinti.com/)",
+      "Bash(python3)",
+      "Bash(journalctl -u webinti-server -n 8 --no-pager)"
     ]
   }
 }
