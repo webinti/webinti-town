@@ -20,6 +20,8 @@ export const DEFAULT_APPEARANCE: Appearance = {
   pants: 0,
 };
 
+export type Presence = 'available' | 'away' | 'brb' | 'dnd' | 'inactive';
+
 export interface PlayerState {
   playerId: string;
   socketId: string;
@@ -31,6 +33,8 @@ export interface PlayerState {
   isMoving: boolean;
   isGhost: boolean;
   joinedAt: number;
+  presence: Presence;
+  lastActivityAt: number;   // serveur seulement — jamais diffusé au client
 }
 
 export interface ChatMessage {
