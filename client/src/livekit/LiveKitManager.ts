@@ -128,6 +128,16 @@ class LiveKitManager {
   async setScreenShareEnabled(enabled: boolean): Promise<void> {
     if (!this.room) return;
     try {
+      // CRITICAL: detach the visibility relay BEFORE asking LiveKit to stop the
+      // share. Otherwise, the MediaStreamTrack's 'mute' event (fired during
+      // disposal) is caught by our relay and propagated as track.mute() →
+      // remotes receive isMuted=true on the screen publication just before
+      // (or instead of) the unpublish signal, leaving the remote viewer
+      // stuck on a paused/black state. Detaching first guarantees the
+      // 'mute' event during disposal is ignored.
+      if (!enabled) {
+        this.detachScreenSourceVisibilityRelay();
+      }
       await this.room.localParticipant.setScreenShareEnabled(enabled, { audio: true });
       if (enabled) {
         // Locate the freshly-published screen track and hook our visibility relay.
@@ -139,8 +149,6 @@ class LiveKitManager {
           }
         }
         if (track) this.attachScreenSourceVisibilityRelay(track);
-      } else {
-        this.detachScreenSourceVisibilityRelay();
       }
       this.emit();
     } catch (err) {

@@ -5,6 +5,11 @@ export interface Workstation {
   minY: number;
   maxX: number;
   maxY: number;
+  // Zone "fantôme" : pas de contour dessiné sur la map, pas de panel
+  // d'action quand on est à proximité. Sert à créer des salles partagées
+  // (ex: salle de conférence) où l'audio est isolé au groupe (tous ceux
+  // dans la zone s'entendent) mais sans UX de revendication individuelle.
+  hidden?: boolean;
 }
 
 /**
