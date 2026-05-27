@@ -8,6 +8,7 @@ import type {
   Presence,
   WhiteboardStroke,
   WhiteboardText,
+  WorkstationState,
 } from '../types';
 import { DEFAULT_APPEARANCE } from '../types';
 import { clampMapZoom } from '../mapZoom';
@@ -73,6 +74,15 @@ interface GameStore {
   setRecording: (on: boolean, hostName: string) => void;
   mapZoom: number;
   setMapZoom: (z: number) => void;
+  workstations: Map<string, WorkstationState>;
+  setWorkstationState: (ws: WorkstationState) => void;
+  setWorkstationsInitial: (list: WorkstationState[]) => void;
+  nearbyWorkstationId: string | null;
+  setNearbyWorkstationId: (id: string | null) => void;
+  pendingInvite: { fromPlayerName: string; workstationId: string; workstationName: string } | null;
+  setPendingInvite: (inv: { fromPlayerName: string; workstationId: string; workstationName: string } | null) => void;
+  speakingPlayerIds: Set<string>;
+  setSpeakingPlayer: (playerId: string, speaking: boolean) => void;
   reset: () => void;
 }
 
@@ -266,6 +276,26 @@ export const useGameStore = create<GameStore>((set) => ({
   setRecording: (on, hostName) => set({ isRecording: on, recordingHostName: hostName }),
   mapZoom: 1,
   setMapZoom: (z) => set({ mapZoom: clampMapZoom(z) }),
+  workstations: new Map<string, WorkstationState>(),
+  setWorkstationState: (ws) =>
+    set((s) => {
+      const next = new Map(s.workstations);
+      next.set(ws.id, ws);
+      return { workstations: next };
+    }),
+  setWorkstationsInitial: (list) =>
+    set({ workstations: new Map(list.map((ws) => [ws.id, ws])) }),
+  nearbyWorkstationId: null,
+  setNearbyWorkstationId: (id) => set({ nearbyWorkstationId: id }),
+  pendingInvite: null,
+  setPendingInvite: (inv) => set({ pendingInvite: inv }),
+  speakingPlayerIds: new Set<string>(),
+  setSpeakingPlayer: (playerId, speaking) =>
+    set((s) => {
+      const next = new Set(s.speakingPlayerIds);
+      if (speaking) next.add(playerId); else next.delete(playerId);
+      return { speakingPlayerIds: next };
+    }),
   reset: () =>
     set({
       connected: false,
@@ -289,5 +319,9 @@ export const useGameStore = create<GameStore>((set) => ({
       isRecording: false,
       recordingHostName: '',
       mapZoom: 1,
+      workstations: new Map(),
+      nearbyWorkstationId: null,
+      pendingInvite: null,
+      speakingPlayerIds: new Set(),
     }),
 }));

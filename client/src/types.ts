@@ -29,6 +29,7 @@ export interface PlayerState {
   isGhost?: boolean;
   joinedAt?: number;
   presence?: Presence;   // optionnel pour la rétrocompatibilité
+  workstationId?: string | null;    // calculé server-side
 }
 
 export type ChatMessageType = 'local' | 'global' | 'system';
@@ -127,4 +128,12 @@ export interface PlayerMovePayload {
   y: number;
   direction: Direction;
   isMoving: boolean;
+}
+
+export interface WorkstationState {
+  id: string;
+  claimedBy: string | null;
+  claimedByName: string | null;
+  invitedPlayerIds: string[];
+  claimedAt: number | null;
 }
