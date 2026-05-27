@@ -81,6 +81,11 @@ interface GameStore {
   setNearbyWorkstationId: (id: string | null) => void;
   pendingInvite: { fromPlayerName: string; workstationId: string; workstationName: string } | null;
   setPendingInvite: (inv: { fromPlayerName: string; workstationId: string; workstationName: string } | null) => void;
+  // Auto-walk: cible que le joueur local doit rejoindre automatiquement.
+  // GameScene lit cette valeur chaque frame et force les inputs directionnels
+  // vers (x, y). Clear quand le joueur arrive (rayon de tolérance) ou expire.
+  autoWalkTarget: { x: number; y: number; startedAt: number } | null;
+  setAutoWalkTarget: (t: { x: number; y: number; startedAt: number } | null) => void;
   speakingPlayerIds: Set<string>;
   setSpeakingPlayer: (playerId: string, speaking: boolean) => void;
   reset: () => void;
@@ -289,6 +294,8 @@ export const useGameStore = create<GameStore>((set) => ({
   setNearbyWorkstationId: (id) => set({ nearbyWorkstationId: id }),
   pendingInvite: null,
   setPendingInvite: (inv) => set({ pendingInvite: inv }),
+  autoWalkTarget: null,
+  setAutoWalkTarget: (t) => set({ autoWalkTarget: t }),
   speakingPlayerIds: new Set<string>(),
   setSpeakingPlayer: (playerId, speaking) =>
     set((s) => {
@@ -322,6 +329,7 @@ export const useGameStore = create<GameStore>((set) => ({
       workstations: new Map(),
       nearbyWorkstationId: null,
       pendingInvite: null,
+      autoWalkTarget: null,
       speakingPlayerIds: new Set(),
     }),
 }));

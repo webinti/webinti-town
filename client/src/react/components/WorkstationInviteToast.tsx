@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../../stores/gameStore';
+import { WORKSTATIONS } from '../../workstations';
 
 const TOAST_DURATION_MS = 30_000;
 
 export function WorkstationInviteToast() {
   const invite = useGameStore((s) => s.pendingInvite);
   const clear  = useGameStore((s) => s.setPendingInvite);
+  const setAutoWalk = useGameStore((s) => s.setAutoWalkTarget);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Démarrer / réinitialiser le timer auto-dismiss à 30 s à chaque nouvelle invitation.
@@ -31,7 +33,17 @@ export function WorkstationInviteToast() {
       </p>
       <div className="flex gap-2">
         <button
-          onClick={() => clear(null)}
+          onClick={() => {
+            const def = WORKSTATIONS.find((w) => w.id === invite.workstationId);
+            if (def) {
+              setAutoWalk({
+                x: (def.minX + def.maxX) / 2,
+                y: (def.minY + def.maxY) / 2,
+                startedAt: Date.now(),
+              });
+            }
+            clear(null);
+          }}
           className="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-semibold hover:bg-indigo-500 active:scale-95"
         >
           Aller au poste

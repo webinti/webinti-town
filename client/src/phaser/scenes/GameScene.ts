@@ -526,7 +526,7 @@ export class GameScene extends Phaser.Scene {
     const focused = useGameStore.getState().inputFocused;
     const c = this.cursors;
     const w = this.wasdKeys;
-    const input = focused
+    let input = focused
       ? { up: false, down: false, left: false, right: false, dance: false }
       : {
           up: !!(c?.up.isDown || w?.W.isDown),
@@ -535,6 +535,33 @@ export class GameScene extends Phaser.Scene {
           right: !!(c?.right.isDown || w?.D.isDown),
           dance: !!this.zKey?.isDown,
         };
+
+    // Auto-walk : si une cible est définie (ex: "Aller au poste"), on force
+    // les directions vers (target.x, target.y). Une saisie manuelle (n'importe
+    // quelle flèche) annule immédiatement l'auto-walk. La physique gère les
+    // collisions (le joueur s'arrête sur un mur), et un timeout de 15s force
+    // le clear si jamais on est bloqué.
+    const target = useGameStore.getState().autoWalkTarget;
+    if (target && this.player) {
+      const manualOverride = input.up || input.down || input.left || input.right;
+      const dx = target.x - this.player.sprite.x;
+      const dy = target.y - this.player.sprite.y;
+      const dist = Math.hypot(dx, dy);
+      const timeout = Date.now() - target.startedAt > 15_000;
+      if (manualOverride || dist < 24 || timeout) {
+        useGameStore.getState().setAutoWalkTarget(null);
+      } else {
+        const THRESH = 6;   // ignore les micro-déplacements pour éviter le jitter
+        input = {
+          up: dy < -THRESH,
+          down: dy > THRESH,
+          left: dx < -THRESH,
+          right: dx > THRESH,
+          dance: false,
+        };
+      }
+    }
+
     this.player.update(input);
 
     for (const rp of this.remotePlayers.values()) rp.update();
