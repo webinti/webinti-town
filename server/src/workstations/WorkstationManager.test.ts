@@ -201,3 +201,45 @@ describe('getAllStates', () => {
     expect(states.every((s) => s.claimedBy === null)).toBe(true);
   });
 });
+
+// --- setCustomName ---
+
+describe('setCustomName', () => {
+  beforeEach(() => {
+    m.claim('p1', ALICE.id, ALICE.name, IN_P1.x, IN_P1.y);
+  });
+
+  it('le claimer peut définir un nom personnalisé', () => {
+    expect(m.setCustomName(ALICE.id, 'p1', 'Mon Super Poste')).toBe(true);
+    expect(m.getState('p1')!.customName).toBe('Mon Super Poste');
+  });
+
+  it('un non-claimer ne peut pas renommer', () => {
+    expect(m.setCustomName(BOB.id, 'p1', 'Nom Bob')).toBe(false);
+    expect(m.getState('p1')!.customName).toBeNull();
+  });
+
+  it('un nom vide ou whitespace-only est rejeté', () => {
+    expect(m.setCustomName(ALICE.id, 'p1', '')).toBe(false);
+    expect(m.setCustomName(ALICE.id, 'p1', '   ')).toBe(false);
+    expect(m.getState('p1')!.customName).toBeNull();
+  });
+
+  it('null efface le nom personnalisé', () => {
+    m.setCustomName(ALICE.id, 'p1', 'Ancien nom');
+    expect(m.setCustomName(ALICE.id, 'p1', null)).toBe(true);
+    expect(m.getState('p1')!.customName).toBeNull();
+  });
+
+  it('un nom de plus de 40 chars est tronqué à 40', () => {
+    const long = 'a'.repeat(50);
+    expect(m.setCustomName(ALICE.id, 'p1', long)).toBe(true);
+    expect(m.getState('p1')!.customName).toBe('a'.repeat(40));
+  });
+
+  it('customName est remis à null lors du release', () => {
+    m.setCustomName(ALICE.id, 'p1', 'Nom test');
+    m.release('p1', ALICE.id);
+    expect(m.getState('p1')!.customName).toBeNull();
+  });
+});

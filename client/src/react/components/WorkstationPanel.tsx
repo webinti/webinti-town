@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
 import { WORKSTATIONS } from '../../workstations';
@@ -8,11 +9,15 @@ export function WorkstationPanel() {
   const workstations  = useGameStore((s) => s.workstations);
   const players       = useGameStore((s) => s.players);
 
+  const [editing, setEditing]   = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
   if (!nearbyId || !localPlayerId) return null;
 
   const ws    = workstations.get(nearbyId);
   const def   = WORKSTATIONS.find((w) => w.id === nearbyId);
-  const name  = def?.name ?? nearbyId;
+  const name  = ws?.customName ?? def?.name ?? nearbyId;
 
   const isFree      = !ws || ws.claimedBy === null;
   const isMine      = !!ws && ws.claimedBy === localPlayerId;
@@ -29,20 +34,98 @@ export function WorkstationPanel() {
   const handleInvite  = (targetId: string) => socketManager.workstationInvite(nearbyId, targetId);
   const handleUninvite = (targetId: string) => socketManager.workstationUninvite(nearbyId, targetId);
 
+  const startEditing = () => {
+    setEditValue(ws?.customName ?? def?.name ?? nearbyId);
+    setEditing(true);
+  };
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const commitEdit = () => {
+    const trimmed = editValue.trim();
+    // Send null to revert to default name if empty
+    socketManager.workstationRename(nearbyId, trimmed.length > 0 ? trimmed : null);
+    setEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+  };
+
   return (
-    <div className="pointer-events-auto fixed bottom-4 left-4 z-30 w-72 rounded-xl bg-slate-900/95 p-4 text-slate-100 ring-1 ring-white/10 shadow-2xl">
+    <div className="pointer-events-auto fixed left-1/2 top-20 z-30 w-80 -translate-x-1/2 rounded-xl bg-slate-900/95 p-4 text-slate-100 ring-1 ring-white/10 shadow-2xl">
       {/* En-tête */}
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{name}</h3>
-        {isFree && (
-          <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-400">Libre</span>
+        {isMine && editing ? (
+          <div className="flex flex-1 items-center gap-1 mr-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              maxLength={40}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={commitEdit}
+              className="flex-1 rounded bg-slate-700 px-2 py-0.5 text-sm font-semibold text-slate-100 outline-none ring-1 ring-indigo-400/60 focus:ring-indigo-400"
+            />
+            <button
+              onMouseDown={(e) => { e.preventDefault(); commitEdit(); }}
+              className="rounded bg-indigo-600 px-2 py-0.5 text-xs hover:bg-indigo-500"
+              title="Enregistrer"
+            >
+              ✓
+            </button>
+            <button
+              onMouseDown={(e) => { e.preventDefault(); cancelEdit(); }}
+              className="rounded bg-white/10 px-2 py-0.5 text-xs hover:bg-white/20"
+              title="Annuler"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 mr-2 min-w-0">
+            <h3 className="text-sm font-semibold truncate">{name}</h3>
+            {isMine && (
+              <button
+                onClick={startEditing}
+                className="shrink-0 rounded p-0.5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
+                title="Renommer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+              </button>
+            )}
+          </div>
         )}
-        {isMine && (
-          <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-xs text-blue-400">Revendiqué</span>
-        )}
-        {!isFree && !isMine && (
-          <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-400">Occupé</span>
-        )}
+        <div className="shrink-0">
+          {isFree && (
+            <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-400">Libre</span>
+          )}
+          {isMine && (
+            <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-xs text-blue-400">Revendiqué</span>
+          )}
+          {!isFree && !isMine && (
+            <span className="rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-400">Occupé</span>
+          )}
+        </div>
       </div>
 
       {/* Action principale */}

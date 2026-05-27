@@ -28,6 +28,7 @@ interface WorkstationStatePayload {
   claimedByName: string | null;
   invitedPlayerIds: string[];
   claimedAt: number | null;
+  customName: string | null;
 }
 
 interface WorkstationInvitePayload {
@@ -505,6 +506,10 @@ class SocketManager {
 
   workstationUninvite(workstationId: string, targetPlayerId: string): void {
     this.socket?.emit('workstation:uninvite', { workstationId, targetPlayerId });
+  }
+
+  workstationRename(workstationId: string, customName: string | null): void {
+    this.socket?.emit('workstation:rename', { workstationId, customName });
   }
 
   sendSpeakingState(speaking: boolean): void {

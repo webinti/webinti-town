@@ -15,6 +15,7 @@ export class WorkstationManager {
         claimedByName: null,
         invitedPlayerIds: [],
         claimedAt: null,
+        customName: null,
       });
     }
   }
@@ -59,6 +60,7 @@ export class WorkstationManager {
     ws.claimedByName = null;
     ws.invitedPlayerIds = [];
     ws.claimedAt = null;
+    ws.customName = null;
     return true;
   }
 
@@ -102,6 +104,26 @@ export class WorkstationManager {
     if (ws.claimedBy === null) return true;
     if (ws.claimedBy === playerId) return true;
     return ws.invitedPlayerIds.includes(playerId);
+  }
+
+  /**
+   * Définit le nom personnalisé d'un poste (max 40 chars).
+   * Seul le claimer peut modifier le nom.
+   * null → efface le nom personnalisé (revient au nom par défaut).
+   * Retourne true si réussi.
+   */
+  setCustomName(actorId: string, workstationId: string, customName: string | null): boolean {
+    const ws = this.states.get(workstationId);
+    if (!ws) return false;
+    if (ws.claimedBy !== actorId) return false;
+    if (customName === null) {
+      ws.customName = null;
+      return true;
+    }
+    const trimmed = customName.trim().slice(0, 40);
+    if (trimmed.length === 0) return false;
+    ws.customName = trimmed;
+    return true;
   }
 
   /**

@@ -100,6 +100,7 @@ export interface WorkstationState {
   claimedByName: string | null;     // snapshot pour l'affichage
   invitedPlayerIds: string[];       // les invités autorisés à entrer
   claimedAt: number | null;         // pour debug / audit
+  customName: string | null;        // nom personnalisé défini par le claimer (max 40 chars)
 }
 
 export type InteractiveObject =

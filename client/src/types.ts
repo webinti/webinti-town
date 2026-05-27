@@ -136,4 +136,5 @@ export interface WorkstationState {
   claimedByName: string | null;
   invitedPlayerIds: string[];
   claimedAt: number | null;
+  customName: string | null;
 }
