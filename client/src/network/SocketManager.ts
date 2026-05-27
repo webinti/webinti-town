@@ -14,6 +14,12 @@ import type {
   WhiteboardText,
 } from '../types';
 
+interface TypingStatePayload {
+  playerId: string;
+  typing: boolean;
+  t: number;
+}
+
 interface WhiteboardStrokePayload {
   objectId: string;
   stroke: WhiteboardStroke;
@@ -61,6 +67,7 @@ class SocketManager {
   private whiteboardTextDeleteListeners = new Set<(p: WhiteboardTextDeletePayload) => void>();
   private playerGhostListeners = new Set<(p: { playerId: string; isGhost: boolean }) => void>();
   private kickedListeners = new Set<(reason: string) => void>();
+  private typingStateListeners = new Set<(p: TypingStatePayload) => void>();
 
   connect(): Socket {
     if (this.socket && this.socket.connected) return this.socket;
@@ -192,6 +199,16 @@ class SocketManager {
       for (const fn of this.kickedListeners) fn(reason);
     });
 
+    socket.on('typing_state', (payload: TypingStatePayload) => {
+      if (
+        !payload ||
+        typeof payload.playerId !== 'string' ||
+        typeof payload.typing !== 'boolean' ||
+        typeof payload.t !== 'number'
+      ) return;
+      for (const fn of this.typingStateListeners) fn(payload);
+    });
+
     socket.on('whiteboard_text_update', (payload: WhiteboardTextUpdatePayload) => {
       if (!payload || typeof payload.objectId !== 'string' || typeof payload.textId !== 'string') return;
       if (typeof payload.x !== 'number' || typeof payload.y !== 'number') return;
@@ -235,6 +252,10 @@ class SocketManager {
     this.socket?.emit('emote', { emoteType });
   }
 
+  sendTypingStart(): void {
+    this.socket?.emit('typing_start');
+  }
+
   interactObject(objectId: string): void {
     this.socket?.emit('interact_object', { objectId });
   }
@@ -275,6 +296,13 @@ class SocketManager {
     this.playerGhostListeners.add(fn);
     return () => {
       this.playerGhostListeners.delete(fn);
+    };
+  }
+
+  onTypingState(fn: (p: TypingStatePayload) => void): () => void {
+    this.typingStateListeners.add(fn);
+    return () => {
+      this.typingStateListeners.delete(fn);
     };
   }
 
