@@ -19,14 +19,14 @@ export const WORKSTATIONS: readonly Workstation[] = [
   { id: 'poste-2',  name: 'Poste 2',  minX:  686, minY: 396, maxX:  782, maxY: 492 },
   { id: 'poste-3',  name: 'Poste 3',  minX:  869, minY: 396, maxX:  965, maxY: 492 },
   { id: 'poste-4',  name: 'Poste 4',  minX: 1022, minY: 396, maxX: 1118, maxY: 492 },
-  { id: 'poste-5',  name: 'Poste 5',  minX: 1175, minY: 396, maxX: 1271, maxY: 492 },
+  { id: 'poste-5',  name: 'Poste 5',  minX: 1210, minY: 396, maxX: 1306, maxY: 492 },
   { id: 'poste-6',  name: 'Poste 6',  minX: 1326, minY: 396, maxX: 1422, maxY: 492 },
   // ── Open space marron — rangée du bas (Y center = 572) ──
   { id: 'poste-7',  name: 'Poste 7',  minX:  562, minY: 524, maxX:  658, maxY: 620 },
   { id: 'poste-8',  name: 'Poste 8',  minX:  686, minY: 524, maxX:  782, maxY: 620 },
   { id: 'poste-9',  name: 'Poste 9',  minX:  869, minY: 524, maxX:  965, maxY: 620 },
   { id: 'poste-10', name: 'Poste 10', minX: 1022, minY: 524, maxX: 1118, maxY: 620 },
-  { id: 'poste-11', name: 'Poste 11', minX: 1175, minY: 524, maxX: 1271, maxY: 620 },
+  { id: 'poste-11', name: 'Poste 11', minX: 1210, minY: 524, maxX: 1306, maxY: 620 },
   { id: 'poste-12', name: 'Poste 12', minX: 1326, minY: 524, maxX: 1422, maxY: 620 },
   // ── Salle blanche en haut-droite (Open R&D, partagé 4 sièges) — TODO recalibrer ──
   { id: 'poste-13', name: 'Open R&D',  minX: 1665, minY: 524, maxX: 1793, maxY: 620 }, // Tim @ (1729, 572)
