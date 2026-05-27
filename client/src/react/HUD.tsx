@@ -16,6 +16,9 @@ import { HelpPanel } from './components/HelpPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/sounds';
 import { useActivityHeartbeat } from './hooks/useActivityHeartbeat';
+import { WorkstationPanel } from './components/WorkstationPanel';
+import { WorkstationInviteToast } from './components/WorkstationInviteToast';
+import { useSpeakerBubbles } from './hooks/useSpeakerBubbles';
 
 export function HUD() {
   const name = useGameStore((s) => s.name);
@@ -47,6 +50,7 @@ export function HUD() {
   } = useLiveKit();
 
   useActivityHeartbeat();
+  useSpeakerBubbles();
 
   const handleLeave = () => {
     socketManager.disconnect();
@@ -178,6 +182,8 @@ export function HUD() {
       <HelpPanel />
       <AdminPanel />
       <KanbanToasts />
+      <WorkstationPanel />
+      <WorkstationInviteToast />
 
       {kickedReason && (
         <div className="pointer-events-auto fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-md bg-red-600/95 px-4 py-2 text-sm font-semibold text-white shadow-lg ring-1 ring-red-300/40">
