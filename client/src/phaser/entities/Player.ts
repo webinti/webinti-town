@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { Appearance, Direction } from '../../types';
+import type { Appearance, Direction, Presence } from '../../types';
 import { advanceWalkTick, animatedFrame } from './avatarFrames';
 
 const SHIRT_FALLBACK_COLORS = [
@@ -197,6 +197,19 @@ export class Player {
     this.shirtLayer?.setAlpha(a);
     this.hairLayer?.setAlpha(a);
     this.label.setAlpha(a);
+  }
+
+  private presenceSuffix = '';
+
+  setPresence(presence: Presence | undefined): void {
+    switch (presence) {
+      case 'inactive': this.presenceSuffix = ' · 💤'; break;
+      case 'brb':      this.presenceSuffix = ' · ☕ BRB'; break;
+      case 'dnd':      this.presenceSuffix = ' · 🚫 DND'; break;
+      case 'away':     this.presenceSuffix = ' · 👋'; break;
+      default:         this.presenceSuffix = ''; break;
+    }
+    this.label.setText((this.label.text.split(' · ')[0]!) + this.presenceSuffix);
   }
 
   destroy(): void {

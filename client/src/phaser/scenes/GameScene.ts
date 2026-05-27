@@ -70,6 +70,7 @@ export class GameScene extends Phaser.Scene {
   private eKey?: Phaser.Input.Keyboard.Key;
   private zKey?: Phaser.Input.Keyboard.Key;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
+  private lastLocalPresence: string | undefined = undefined;
 
   constructor() {
     super('GameScene');
@@ -222,8 +223,12 @@ export class GameScene extends Phaser.Scene {
       for (const [id, p] of s.players) {
         if (id === lid) continue;
         const existing = this.remotePlayers.get(id);
-        if (existing) existing.setTarget(p);
-        else this.spawnRemote(p);
+        if (existing) {
+          existing.setTarget(p);
+          existing.setPresence(p.presence);
+        } else {
+          this.spawnRemote(p);
+        }
       }
       for (const id of this.remotePlayers.keys()) {
         if (!s.players.has(id)) this.handleRemoteRemove(id);
@@ -417,8 +422,12 @@ export class GameScene extends Phaser.Scene {
     const localId = useGameStore.getState().localPlayerId;
     if (p.playerId === localId) return;
     const existing = this.remotePlayers.get(p.playerId);
-    if (existing) existing.setTarget(p);
-    else this.spawnRemote(p);
+    if (existing) {
+      existing.setTarget(p);
+      existing.setPresence(p.presence);
+    } else {
+      this.spawnRemote(p);
+    }
   }
 
   private handleRemoteRemove(id: string): void {
@@ -493,6 +502,12 @@ export class GameScene extends Phaser.Scene {
 
     this.updateEmoteStacks();
     this.updateObjectProximity();
+
+    const { localPresence } = useGameStore.getState();
+    if (localPresence !== this.lastLocalPresence) {
+      this.lastLocalPresence = localPresence;
+      this.player?.setPresence(localPresence);
+    }
 
     const x = this.player.sprite.x;
     const y = this.player.sprite.y;

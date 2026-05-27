@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { Appearance, Direction, PlayerState } from '../../types';
+import type { Appearance, Direction, PlayerState, Presence } from '../../types';
 import { advanceWalkTick, animatedFrame } from './avatarFrames';
 
 const SHIRT_FALLBACK_COLORS = [
@@ -33,6 +33,7 @@ export class RemotePlayer {
   private walkTick = 0;
   private walkAccumMs = 0;
   private lastFrameUpdateMs: number;
+  private presenceSuffix = '';
 
   constructor(scene: Phaser.Scene, state: PlayerState, hasLayers: boolean) {
     this.scene = scene;
@@ -108,6 +109,18 @@ export class RemotePlayer {
     this.hairLayer?.setAlpha(a);
     this.label.setAlpha(a);
     this.typingBubble?.setAlpha(a);
+  }
+
+  setPresence(presence: Presence | undefined): void {
+    switch (presence) {
+      case 'inactive': this.presenceSuffix = ' · 💤'; break;
+      case 'brb':      this.presenceSuffix = ' · ☕ BRB'; break;
+      case 'dnd':      this.presenceSuffix = ' · 🚫 DND'; break;
+      case 'away':     this.presenceSuffix = ' · 👋'; break;
+      default:         this.presenceSuffix = ''; break;
+    }
+    // Le label est mis à jour immédiatement pour éviter un frame de retard.
+    this.label.setText((this.label.text.split(' · ')[0]!) + this.presenceSuffix);
   }
 
   setTyping(active: boolean): void {
