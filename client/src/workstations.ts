@@ -10,6 +10,7 @@ export interface Workstation {
   minY: number;
   maxX: number;
   maxY: number;
+  hidden?: boolean;   // zone audio partagée invisible (pas de contour, pas de panel)
 }
 
 // Calibrage v2 — basé sur 4 captures Shift+D. DOIT être identique à server/src/workstations.ts.
@@ -34,4 +35,6 @@ export const WORKSTATIONS: readonly Workstation[] = [
   { id: 'poste-14', name: 'Bureau rouge 1', minX: 1037, minY: 940, maxX: 1133, maxY: 1036 },
   { id: 'poste-15', name: 'Bureau rouge 2', minX: 1359, minY: 940, maxX: 1455, maxY: 1036 }, // Tim @ (1407, 988)
   { id: 'poste-16', name: 'Bureau rouge 3', minX: 1683, minY: 940, maxX: 1779, maxY: 1036 }, // Tim @ (1731, 988)
+  // ── Salle de conférence (zone audio partagée, invisible) ──
+  { id: 'salle-conf', name: 'Salle de conférence', minX: 44, minY: 723, maxX: 948, maxY: 1292, hidden: true },
 ];

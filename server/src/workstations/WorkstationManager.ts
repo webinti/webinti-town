@@ -25,6 +25,15 @@ export class WorkstationManager {
     return this.states.get(workstationId);
   }
 
+  /**
+   * Une zone "hidden" (ex: salle de conférence) ne supporte pas les
+   * mutations utilisateur (claim/release/invite/rename). Elle sert
+   * uniquement à grouper l'audio des occupants.
+   */
+  private isHidden(workstationId: string): boolean {
+    return this.workstations.find((w) => w.id === workstationId)?.hidden === true;
+  }
+
   /** Retourne une copie de tous les états (ordre stable = ordre de WORKSTATIONS). */
   getAllStates(): WorkstationState[] {
     return this.workstations.map((w) => ({ ...this.states.get(w.id)! }));
@@ -36,6 +45,7 @@ export class WorkstationManager {
    * Retourne true si réussi.
    */
   claim(workstationId: string, playerId: string, playerName: string, x: number, y: number): boolean {
+    if (this.isHidden(workstationId)) return false;
     const ws = this.states.get(workstationId);
     if (!ws) return false;
     if (ws.claimedBy !== null) return false;
@@ -53,6 +63,7 @@ export class WorkstationManager {
    * Retourne true si réussi. Efface aussi les invités.
    */
   release(workstationId: string, playerId: string): boolean {
+    if (this.isHidden(workstationId)) return false;
     const ws = this.states.get(workstationId);
     if (!ws) return false;
     if (ws.claimedBy !== playerId) return false;
@@ -70,6 +81,7 @@ export class WorkstationManager {
    * Retourne true si réussi.
    */
   invite(workstationId: string, actorId: string, targetId: string): boolean {
+    if (this.isHidden(workstationId)) return false;
     const ws = this.states.get(workstationId);
     if (!ws) return false;
     if (ws.claimedBy !== actorId) return false;
@@ -84,6 +96,7 @@ export class WorkstationManager {
    * Retourne true si réussi.
    */
   uninvite(workstationId: string, actorId: string, targetId: string): boolean {
+    if (this.isHidden(workstationId)) return false;
     const ws = this.states.get(workstationId);
     if (!ws) return false;
     if (ws.claimedBy !== actorId) return false;
@@ -99,6 +112,8 @@ export class WorkstationManager {
    * - Poste claimé → uniquement claimer ou invité
    */
   canEnter(workstationId: string, playerId: string): boolean {
+    // Zones invisibles (salle conf) : tout le monde peut toujours entrer.
+    if (this.isHidden(workstationId)) return true;
     const ws = this.states.get(workstationId);
     if (!ws) return true;   // zone inconnue → pas de restriction
     if (ws.claimedBy === null) return true;
@@ -113,6 +128,7 @@ export class WorkstationManager {
    * Retourne true si réussi.
    */
   setCustomName(actorId: string, workstationId: string, customName: string | null): boolean {
+    if (this.isHidden(workstationId)) return false;
     const ws = this.states.get(workstationId);
     if (!ws) return false;
     if (ws.claimedBy !== actorId) return false;

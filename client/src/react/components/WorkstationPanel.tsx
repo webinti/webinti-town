@@ -27,6 +27,9 @@ export function WorkstationPanel() {
 
   const ws    = workstations.get(nearbyId);
   const def   = WORKSTATIONS.find((w) => w.id === nearbyId);
+  // Zone "fantôme" (ex: salle de conférence) : pas de panel, l'audio
+  // fonctionne automatiquement pour tous ceux qui sont dans la zone.
+  if (def?.hidden) return null;
   const name  = ws?.customName ?? def?.name ?? nearbyId;
 
   const isFree      = !ws || ws.claimedBy === null;

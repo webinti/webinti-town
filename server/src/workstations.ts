@@ -49,6 +49,15 @@ export const WORKSTATIONS: readonly Workstation[] = [
   { id: 'poste-14', name: 'Bureau rouge 1', minX: 1037, minY: 940, maxX: 1133, maxY: 1036 }, // Tim @ (1085, 988)
   { id: 'poste-15', name: 'Bureau rouge 2', minX: 1359, minY: 940, maxX: 1455, maxY: 1036 }, // Tim @ (1407, 988)
   { id: 'poste-16', name: 'Bureau rouge 3', minX: 1683, minY: 940, maxX: 1779, maxY: 1036 }, // Tim @ (1731, 988)
+  // ── Salle de conférence (zone audio partagée, invisible) ──
+  // Coins fournis par l'utilisateur (Shift+D) :
+  //   haut-gauche (76, 723), haut-droite (948, 732),
+  //   bas-gauche (44, 1292), bas-droite (948, 1292).
+  // Bounding box pris à minX=44 et maxX=948 pour englober les 2 inclinaisons.
+  // hidden=true ⇒ pas de contour dessiné, pas de panel Revendiquer, pas de
+  // revendication possible. Tous ceux qui marchent dans la zone reçoivent le
+  // même workstationId='salle-conf' ⇒ audio à 100% mutuellement.
+  { id: 'salle-conf', name: 'Salle de conférence', minX: 44, minY: 723, maxX: 948, maxY: 1292, hidden: true },
 ];
 
 /**

@@ -27,6 +27,8 @@ export class WorkstationOverlay {
     this.gfx.clear();
 
     for (const def of WORKSTATIONS) {
+      // Zones invisibles (salle conf etc.) : pas de contour dessiné.
+      if (def.hidden) continue;
       const state = workstations.get(def.id);
 
       let color: number;
