@@ -183,6 +183,7 @@ export class Player {
     this.updateAnimatedFrames();
     this.syncLayers();
     this.label.setPosition(this.sprite.x, this.sprite.y - 28);
+    if (this.speakingBubble) this.speakingBubble.setPosition(this.sprite.x, this.sprite.y - 54);
 
     return this.moving !== wasMoving || this.direction !== prevDir || this.moving;
   }
@@ -197,9 +198,12 @@ export class Player {
     this.shirtLayer?.setAlpha(a);
     this.hairLayer?.setAlpha(a);
     this.label.setAlpha(a);
+    this.speakingBubble?.setAlpha(a);
   }
 
   private presenceSuffix = '';
+  private speakingBubble: Phaser.GameObjects.Text | null = null;
+  private speakingPulseTween: Phaser.Tweens.Tween | null = null;
 
   setPresence(presence: Presence | undefined): void {
     switch (presence) {
@@ -212,6 +216,50 @@ export class Player {
     this.label.setText((this.label.text.split(' · ')[0]!) + this.presenceSuffix);
   }
 
+  /**
+   * Active ou désactive la bulle 💬 persistante au-dessus du joueur.
+   * @param active       true = afficher, false = masquer
+   * @param speaking     true = joueur en train de parler (pulse)
+   */
+  setSpeaking(active: boolean, speaking = false): void {
+    if (active) {
+      if (!this.speakingBubble) {
+        this.speakingBubble = this.scene.add
+          .text(this.sprite.x, this.sprite.y - 54, '\u{1F4AC}', {
+            fontSize: '18px',
+            fontFamily: 'system-ui, sans-serif',
+          })
+          .setOrigin(0.5, 1)
+          .setDepth(12);
+        if (this.isGhost) this.speakingBubble.setAlpha(0.5);
+      }
+
+      // Pulse quand parle — tween scale 1.0 → 1.3 → 1.0 toutes les 600ms
+      if (speaking && !this.speakingPulseTween) {
+        this.speakingPulseTween = this.scene.tweens.add({
+          targets: this.speakingBubble,
+          scaleX: 1.3,
+          scaleY: 1.3,
+          duration: 300,
+          ease: 'Sine.easeInOut',
+          yoyo: true,
+          repeat: -1,
+        });
+        this.speakingBubble.setStyle({ color: '#818cf8' }); // indigo-400
+      } else if (!speaking && this.speakingPulseTween) {
+        this.speakingPulseTween.stop();
+        this.speakingPulseTween = null;
+        this.speakingBubble?.setScale(1).setStyle({ color: '#ffffff' });
+      }
+    } else {
+      if (!this.speakingBubble) return;
+      this.speakingPulseTween?.stop();
+      this.speakingPulseTween = null;
+      this.speakingBubble.destroy();
+      this.speakingBubble = null;
+    }
+  }
+
   destroy(): void {
     this.sprite.destroy();
     this.hairBackLayer?.destroy();
@@ -219,5 +267,7 @@ export class Player {
     this.shirtLayer?.destroy();
     this.hairLayer?.destroy();
     this.label.destroy();
+    this.speakingPulseTween?.stop();
+    this.speakingBubble?.destroy();
   }
 }
