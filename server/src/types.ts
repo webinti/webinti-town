@@ -35,6 +35,7 @@ export interface PlayerState {
   joinedAt: number;
   presence: Presence;
   lastActivityAt: number;   // serveur seulement — jamais diffusé au client
+  workstationId: string | null;     // calculé server-side depuis x/y ; null si hors zone
 }
 
 export interface ChatAttachment {
@@ -93,6 +94,14 @@ export interface KanbanBoard {
   cards: KanbanCard[];
 }
 
+export interface WorkstationState {
+  id: string;                       // matches Workstation.id
+  claimedBy: string | null;         // playerId du revendicateur, ou null
+  claimedByName: string | null;     // snapshot pour l'affichage
+  invitedPlayerIds: string[];       // les invités autorisés à entrer
+  claimedAt: number | null;         // pour debug / audit
+}
+
 export type InteractiveObject =
   | { id: string; type: 'screen'; x: number; y: number; data: { sharedByPlayerId?: string } }
   | { id: string; type: 'whiteboard'; x: number; y: number; data: { strokes: WhiteboardStroke[]; texts?: WhiteboardText[] } }
@@ -113,6 +122,8 @@ export interface RoomState {
   kanbanStore: import('./kanban/KanbanStore.js').KanbanStore;
   hostPlayerId: string | null;
   isRecording: boolean;
+  workstations: Map<string, WorkstationState>;  // key = workstation.id
+  workstationManager: import('./workstations/WorkstationManager.js').WorkstationManager;
 }
 
 export interface PublicRoomInfo {
