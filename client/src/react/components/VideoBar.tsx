@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type {
   LocalVideoTrack,
@@ -68,7 +68,14 @@ export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }
       />
       {(localCamTrack || visibleRemotes.length > 0) && (
         <div className="pointer-events-auto flex gap-2 rounded-xl bg-slate-900/70 p-2 ring-1 ring-white/10 backdrop-blur">
-          {localCamTrack && <LocalTile track={localCamTrack} name={localName} localPresence={localPresence} />}
+          {localCamTrack && (
+            <LocalTile
+              track={localCamTrack}
+              name={localName}
+              id={useGameStore.getState().localPlayerId ?? 'local'}
+              localPresence={localPresence}
+            />
+          )}
           {visibleRemotes.map((r) => (
             <RemoteTile key={r.identity} remote={r} />
           ))}
@@ -138,23 +145,55 @@ function MicMutedBadge() {
   );
 }
 
-function LocalTile({ track, name, localPresence }: {
+function LocalTile({ track, name, id, localPresence }: {
   track: LocalVideoTrack;
   name: string;
+  id: string;
   localPresence: Presence | undefined;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
+  // Le track LiveKit peut être référencé mais muted/disposé (ex : setCameraEnabled(false)
+  // qui mute au lieu d'unpublish). Dans ce cas, montrer l'Initial au lieu d'un cadre
+  // noir résiduel. On s'abonne aux events muted/unmuted du track pour mettre à jour.
+  const [isLive, setIsLive] = useState(() => {
+    const mst = track.mediaStreamTrack;
+    return !track.isMuted && (!mst || mst.readyState === 'live');
+  });
+  useEffect(() => {
+    const mst = track.mediaStreamTrack;
+    const recompute = () => {
+      const m = track.mediaStreamTrack;
+      setIsLive(!track.isMuted && (!m || m.readyState === 'live'));
+    };
+    recompute();
+    const onMuted = () => setIsLive(false);
+    const onUnmuted = () => recompute();
+    const onEnded = () => setIsLive(false);
+    track.on('muted', onMuted);
+    track.on('unmuted', onUnmuted);
+    mst?.addEventListener('ended', onEnded);
+    return () => {
+      track.off('muted', onMuted);
+      track.off('unmuted', onUnmuted);
+      mst?.removeEventListener('ended', onEnded);
+    };
+  }, [track]);
+
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !isLive) return;
     track.attach(el);
     return () => {
       track.detach(el);
     };
-  }, [track]);
+  }, [track, isLive]);
   return (
     <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">
-      <video ref={ref} autoPlay muted playsInline className="h-full w-full object-cover" />
+      {isLive ? (
+        <video ref={ref} autoPlay muted playsInline className="h-full w-full object-cover" />
+      ) : (
+        <Initial name={name} id={id} />
+      )}
       <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1 truncate bg-black/60 px-2 py-0.5 text-xs text-white">
         <span
           title={presenceDot(localPresence).title}

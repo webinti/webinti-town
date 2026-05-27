@@ -247,18 +247,34 @@ class LiveKitManager {
         remotes: [],
       };
     }
+    // Considère un track "vivant" : il a un mediaStreamTrack en état 'live'.
+    // Un track 'ended' = source disposée définitivement (Stop cam / Stop écran)
+    // → on l'ignore dans le snapshot pour que l'UI se nettoie (tile → Initial,
+    // ScreenViewer démonté). L'absence de mediaStreamTrack est aussi traitée
+    // comme vivant pour ne pas filtrer trop large.
+    const isLiveTrack = (t: { mediaStreamTrack?: MediaStreamTrack } | null | undefined): boolean => {
+      if (!t) return false;
+      const mst = t.mediaStreamTrack;
+      return !mst || mst.readyState === 'live';
+    };
+
     const local = room.localParticipant;
     let localCamTrack: LocalVideoTrack | null = null;
     let localMicTrack: LocalAudioTrack | null = null;
     let localScreenTrack: LocalVideoTrack | null = null;
     for (const pub of local.trackPublications.values()) {
-      if (pub.kind === Track.Kind.Video && pub.track) {
+      if (pub.kind === Track.Kind.Video && pub.track && isLiveTrack(pub.track)) {
         if (pub.source === Track.Source.ScreenShare) {
           localScreenTrack = pub.track as LocalVideoTrack;
         } else {
           localCamTrack = pub.track as LocalVideoTrack;
         }
-      } else if (pub.kind === Track.Kind.Audio && pub.track && pub.source !== Track.Source.ScreenShareAudio) {
+      } else if (
+        pub.kind === Track.Kind.Audio
+        && pub.track
+        && isLiveTrack(pub.track)
+        && pub.source !== Track.Source.ScreenShareAudio
+      ) {
         localMicTrack = pub.track as LocalAudioTrack;
       }
     }
@@ -271,9 +287,9 @@ class LiveKitManager {
       let screenMuted = false;
       for (const pub of participant.trackPublications.values()) {
         if (pub.kind === Track.Kind.Audio && pub.source !== Track.Source.ScreenShareAudio) {
-          if (pub.track) audioTrack = pub.track as RemoteAudioTrack;
-          if (!pub.isMuted && pub.track) isMuted = false;
-        } else if (pub.kind === Track.Kind.Video && pub.track) {
+          if (pub.track && isLiveTrack(pub.track)) audioTrack = pub.track as RemoteAudioTrack;
+          if (!pub.isMuted && pub.track && isLiveTrack(pub.track)) isMuted = false;
+        } else if (pub.kind === Track.Kind.Video && pub.track && isLiveTrack(pub.track)) {
           if (pub.source === Track.Source.ScreenShare) {
             screenTrack = pub.track as RemoteVideoTrack;
             screenMuted = pub.isMuted;
