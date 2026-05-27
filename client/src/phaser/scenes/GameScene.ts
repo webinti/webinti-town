@@ -6,6 +6,8 @@ import { socketManager } from '../../network/SocketManager';
 import { stepMapZoom } from '../../mapZoom';
 import { setFireVolume } from '../../sounds/sounds';
 import type { EmoteType, InteractiveObject, PlayerState } from '../../types';
+import { WorkstationOverlay } from '../WorkstationOverlay';
+import { WORKSTATIONS } from '../../workstations';
 
 // Fireplace anchor in pixel coords — tile (x, y) center is (x*32+16, y*32+16).
 // Tile (1, 30): against the west wall of the meeting room.
@@ -71,6 +73,13 @@ export class GameScene extends Phaser.Scene {
   private zKey?: Phaser.Input.Keyboard.Key;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
   private lastLocalPresence: string | undefined = undefined;
+  private workstationOverlay?: WorkstationOverlay;
+  private debugMode = false;
+  private debugText?: Phaser.GameObjects.Text;
+  private debugZoneGfx?: Phaser.GameObjects.Graphics;
+  private shiftKey?: Phaser.Input.Keyboard.Key;
+  private dKey?: Phaser.Input.Keyboard.Key;
+  private lastShiftDCombo = false;
 
   constructor() {
     super('GameScene');
@@ -186,6 +195,13 @@ export class GameScene extends Phaser.Scene {
     this.eKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.E);
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this.input.keyboard?.clearCaptures();
+
+    // WorkstationOverlay
+    this.workstationOverlay = new WorkstationOverlay(this);
+
+    // Debug Shift+D
+    this.shiftKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+    this.dKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     this.eKey?.on('down', () => {
       const store = useGameStore.getState();
       if (store.inputFocused) return;
@@ -246,6 +262,9 @@ export class GameScene extends Phaser.Scene {
       this.unsubChatForTyping?.();
       for (const timer of this.typingTimers.values()) clearTimeout(timer);
       this.typingTimers.clear();
+      this.workstationOverlay?.destroy();
+      this.debugText?.destroy();
+      this.debugZoneGfx?.destroy();
     });
   }
 
@@ -507,6 +526,104 @@ export class GameScene extends Phaser.Scene {
     if (localPresence !== this.lastLocalPresence) {
       this.lastLocalPresence = localPresence;
       this.player?.setPresence(localPresence);
+    }
+
+    // WorkstationOverlay — redessine les contours à chaque frame.
+    const storeState = useGameStore.getState();
+    const localId = storeState.localPlayerId;
+    this.workstationOverlay?.update(storeState.workstations, localId);
+
+    // Détection proximité poste de travail (pour WorkstationPanel).
+    if (this.player) {
+      const px = this.player.sprite.x;
+      const py = this.player.sprite.y;
+      const PROXIMITY_RADIUS = 48; // px
+      let nearestId: string | null = null;
+      let nearestDist = Infinity;
+      for (const def of WORKSTATIONS) {
+        // Centre du poste
+        const cx = (def.minX + def.maxX) / 2;
+        const cy = (def.minY + def.maxY) / 2;
+        const dx = px - cx;
+        const dy = py - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Ou être à l'intérieur : vérifier si px,py est dans la zone (+ buffer)
+        const inZone =
+          px >= def.minX - PROXIMITY_RADIUS &&
+          px <= def.maxX + PROXIMITY_RADIUS &&
+          py >= def.minY - PROXIMITY_RADIUS &&
+          py <= def.maxY + PROXIMITY_RADIUS;
+        if (inZone && dist < nearestDist) {
+          nearestDist = dist;
+          nearestId = def.id;
+        }
+      }
+      if (nearestId !== storeState.nearbyWorkstationId) {
+        storeState.setNearbyWorkstationId(nearestId);
+      }
+    }
+
+    // Debug Shift+D — toggle affichage coords + zones
+    const shiftDown = this.shiftKey?.isDown ?? false;
+    const dDown = !!this.dKey?.isDown;
+    const combo = shiftDown && dDown;
+    if (combo && !this.lastShiftDCombo) {
+      this.debugMode = !this.debugMode;
+      if (!this.debugMode) {
+        this.debugText?.setVisible(false);
+        this.debugZoneGfx?.clear();
+      }
+    }
+    this.lastShiftDCombo = combo;
+
+    if (this.debugMode && this.player) {
+      const px = Math.round(this.player.sprite.x);
+      const py = Math.round(this.player.sprite.y);
+      const tx = Math.floor(px / 32);
+      const ty = Math.floor(py / 32);
+      const workstationId = storeState.players.get(localId ?? '')?.workstationId ?? 'null';
+      const label = `pixel:(${px},${py})  tile:(${tx},${ty})  ws:${workstationId}`;
+
+      if (!this.debugText) {
+        this.debugText = this.add.text(8, 8, '', {
+          fontSize: '12px', fontFamily: 'monospace',
+          color: '#ffffff', backgroundColor: '#000000aa',
+          padding: { left: 4, right: 4, top: 2, bottom: 2 },
+        }).setScrollFactor(0).setDepth(50);
+      }
+      this.debugText.setText(label).setVisible(true);
+
+      // Redessiner les zones de debug (plus opaque que l'overlay normal)
+      if (!this.debugZoneGfx) {
+        this.debugZoneGfx = this.add.graphics().setDepth(49);
+      }
+      this.debugZoneGfx.clear();
+      for (const def of WORKSTATIONS) {
+        this.debugZoneGfx.lineStyle(1, 0xffd700, 0.9);
+        this.debugZoneGfx.strokeRect(def.minX, def.minY, def.maxX - def.minX, def.maxY - def.minY);
+        this.debugZoneGfx.fillStyle(0xffd700, 0.15);
+        this.debugZoneGfx.fillRect(def.minX, def.minY, def.maxX - def.minX, def.maxY - def.minY);
+        // Label id
+        this.debugZoneGfx.fillStyle(0x000000, 0);   // reset fill pour le texte séparé
+      }
+    }
+
+    // Mise à jour des bulles 💬 parlant
+    const speakingIds = storeState.speakingPlayerIds;
+    for (const [id, rp] of this.remotePlayers) {
+      const playerState = storeState.players.get(id);
+      const wsId = playerState?.workstationId ?? null;
+      const wsState = wsId ? storeState.workstations.get(wsId) : null;
+      const shouldShow = !!wsId && !!wsState && wsState.claimedBy !== null;
+      rp.setSpeaking(shouldShow, speakingIds.has(id));
+    }
+    // Bulle pour le joueur local
+    if (this.player && localId) {
+      const localState = storeState.players.get(localId);
+      const wsId = localState?.workstationId ?? null;
+      const wsState = wsId ? storeState.workstations.get(wsId) : null;
+      const shouldShow = !!wsId && !!wsState && wsState.claimedBy !== null;
+      this.player.setSpeaking(shouldShow, speakingIds.has(localId));
     }
 
     const x = this.player.sprite.x;
