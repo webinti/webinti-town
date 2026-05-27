@@ -3,54 +3,69 @@ import { liveKitManager } from '../../livekit/LiveKitManager';
 import { socketManager } from '../../network/SocketManager';
 import { useGameStore } from '../../stores/gameStore';
 
-const THROTTLE_MS = 500;
-
 /**
  * Monté une seule fois dans HUD.
  *
  * 1. Surveille les activeSpeakers LiveKit de la room locale.
- *    Quand le statut "je parle" change, émet speaking_state au serveur
- *    avec un throttle de 500ms.
+ *    Quand notre état "je parle / je ne parle plus" change, émet `speaking_state`
+ *    au serveur. Pas de throttle ici : on n'émet QUE sur transition d'état,
+ *    donc max 2 events par cycle parle/se-tait — pas besoin de limiter.
  *
- * 2. Subscribe à speaking_state entrant (remote players) et déclenche
- *    la mise à jour des bulles via le gameStore (GameScene lit le store).
+ * 2. Subscribe à `speaking_state` entrant (broadcasts de tous les joueurs,
+ *    nous-même inclus) et met à jour `speakingPlayerIds` dans le store.
  *
- * Note : la mise à jour des bulles Phaser est gérée par GameScene.update()
- * qui lit workstationId + workstations + speakingPlayerIds du store.
- * Ce hook alimente speakingPlayerIds.
+ * Pour être robuste au cas où la Room LiveKit n'est pas encore prête au
+ * mount du hook, on s'abonne au manager pour retenter l'attachement à chaque
+ * changement d'état de connexion.
  */
 export function useSpeakerBubbles(): void {
-  const lastSentRef = useRef<number>(0);
   const lastSpeakingRef = useRef<boolean>(false);
 
-  // 1. Surveillance LiveKit activeSpeakers pour le joueur LOCAL
+  // 1. Surveillance LiveKit activeSpeakers pour le joueur LOCAL.
   useEffect(() => {
-    const localId = useGameStore.getState().localPlayerId;
-    if (!localId) return;
+    let detach: (() => void) | null = null;
 
-    // Abonnement direct à RoomEvent.ActiveSpeakersChanged (plus fiable que le snapshot)
-    const room = liveKitManager.getRoom();
-    if (!room) return;
+    const tryAttach = (): boolean => {
+      if (detach) return true;
+      const room = liveKitManager.getRoom();
+      if (!room) return false;
+      const localId = useGameStore.getState().localPlayerId;
+      if (!localId) return false;
 
-    const onSpeakersChanged = () => {
-      const speakers = room.activeSpeakers ?? [];
-      const isLocalSpeaking = speakers.some((p) => p.identity === localId);
-      if (isLocalSpeaking === lastSpeakingRef.current) return; // pas de changement
-      lastSpeakingRef.current = isLocalSpeaking;
-      const now = Date.now();
-      if (now - lastSentRef.current < THROTTLE_MS) return;
-      lastSentRef.current = now;
-      socketManager.sendSpeakingState(isLocalSpeaking);
+      const onSpeakersChanged = () => {
+        const speakers = room.activeSpeakers ?? [];
+        const isLocalSpeaking = speakers.some((p) => p.identity === localId);
+        if (isLocalSpeaking === lastSpeakingRef.current) return;
+        lastSpeakingRef.current = isLocalSpeaking;
+        // Émettre sur CHAQUE transition d'état — pas de throttle au cas où
+        // l'utilisateur parle puis se tait dans la même fenêtre de 500ms,
+        // l'ancien throttle perdait l'event "stop" et la bulle restait visible.
+        socketManager.sendSpeakingState(isLocalSpeaking);
+      };
+
+      room.on('activeSpeakersChanged', onSpeakersChanged);
+      detach = () => room.off('activeSpeakersChanged', onSpeakersChanged);
+      return true;
     };
 
-    room.on('activeSpeakersChanged', onSpeakersChanged);
+    // Tentative immédiate (cas du re-mount après connexion).
+    if (!tryAttach()) {
+      // Sinon, retry à chaque changement d'état du manager.
+      const unsub = liveKitManager.subscribe(() => {
+        tryAttach();
+      });
+      return () => {
+        unsub();
+        detach?.();
+      };
+    }
 
     return () => {
-      room.off('activeSpeakersChanged', onSpeakersChanged);
+      detach?.();
     };
   }, []);
 
-  // 2. Mise à jour du store speakingPlayerIds à partir des events entrants
+  // 2. Mise à jour du store speakingPlayerIds à partir des events entrants.
   useEffect(() => {
     const unsub = socketManager.onSpeakingState(({ playerId, speaking }) => {
       useGameStore.getState().setSpeakingPlayer(playerId, speaking);

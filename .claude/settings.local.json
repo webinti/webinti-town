@@ -49,7 +49,11 @@
       "Bash(git fetch *)",
       "Bash(git pull *)",
       "Bash(git checkout *)",
-      "Bash(journalctl -u webinti-server -n 30 --no-pager)"
+      "Bash(journalctl -u webinti-server -n 30 --no-pager)",
+      "Bash(awk '/sessions.set\\\\\\(socket.id/,/^      }\\\\\\);/' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
+      "Bash(awk 'tolower\\($0\\) ~ /typing|workstation/' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
+      "Bash(awk '/typing_start/,/^    \\\\}\\\\\\);/' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
+      "Bash(awk '/typing_start/{print NR; exit}' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)"
     ]
   }
 }
