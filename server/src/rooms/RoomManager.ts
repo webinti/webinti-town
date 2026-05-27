@@ -8,6 +8,7 @@ import type {
   Appearance,
   ChatMessage,
   InteractiveObject,
+  Presence,
 } from '../types.js';
 import { DEFAULT_APPEARANCE } from '../types.js';
 import { config } from '../config.js';
@@ -22,6 +23,10 @@ function slugify(name: string): string {
 }
 
 const CHAT_HISTORY_CAP = 200;
+
+const VALID_PRESENCES: ReadonlySet<string> = new Set<Presence>([
+  'available', 'away', 'brb', 'dnd', 'inactive',
+]);
 
 function defaultInteractiveObjects(): InteractiveObject[] {
   return [
@@ -169,6 +174,8 @@ export class RoomManager {
       isMoving: false,
       isGhost: false,
       joinedAt: Date.now(),
+      presence: 'available',
+      lastActivityAt: Date.now(),
     };
     room.players.set(playerId, player);
     if (!room.hostPlayerId) room.hostPlayerId = playerId;
@@ -247,6 +254,60 @@ export class RoomManager {
     if (!player) return undefined;
     player.isGhost = !player.isGhost;
     return player;
+  }
+
+  /**
+   * Permet à un joueur de changer son statut manuellement.
+   * Seule valeur interdite via cette méthode : 'inactive' (c'est auto-only).
+   * Retourne true si le changement a eu lieu.
+   */
+  setPresence(slug: string, playerId: string, presence: Presence): boolean {
+    if (!VALID_PRESENCES.has(presence)) return false;
+    const room = this.rooms.get(slug);
+    if (!room) return false;
+    const player = room.players.get(playerId);
+    if (!player) return false;
+    player.presence = presence;
+    player.lastActivityAt = Date.now();
+    return true;
+  }
+
+  /**
+   * Signale une activité. Bumpe lastActivityAt.
+   * Si le joueur était 'inactive', le repasse à 'available' et retourne true.
+   * Sinon retourne false (pas de changement de statut).
+   */
+  markActivity(slug: string, playerId: string): boolean {
+    const room = this.rooms.get(slug);
+    if (!room) return false;
+    const player = room.players.get(playerId);
+    if (!player) return false;
+    player.lastActivityAt = Date.now();
+    if (player.presence === 'inactive') {
+      player.presence = 'available';
+      return true; // changement de statut → le caller doit broadcaster
+    }
+    return false;
+  }
+
+  /**
+   * Scanne tous les joueurs d'une room et bascule
+   * 'available' → 'inactive' si stale > thresholdMs.
+   * Retourne les playerIds qui ont changé.
+   */
+  sweepInactive(slug: string, thresholdMs: number): string[] {
+    const room = this.rooms.get(slug);
+    if (!room) return [];
+    const changed: string[] = [];
+    const now = Date.now();
+    for (const player of room.players.values()) {
+      if (player.presence !== 'available') continue;
+      if (now - player.lastActivityAt > thresholdMs) {
+        player.presence = 'inactive';
+        changed.push(player.playerId);
+      }
+    }
+    return changed;
   }
 }
 
