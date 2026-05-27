@@ -154,6 +154,22 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+    this.appliedZoom = store.mapZoom;
+    this.cameras.main.setZoom(this.appliedZoom);
+
+    this.input.on(
+      'wheel',
+      (
+        _pointer: Phaser.Input.Pointer,
+        _over: unknown,
+        _dx: number,
+        dy: number,
+      ) => {
+        const cur = useGameStore.getState().mapZoom;
+        const step = dy < 0 ? 0.1 : -0.1;
+        useGameStore.getState().setMapZoom(cur + step);
+      },
+    );
 
     this.input.on(
       'wheel',
@@ -231,6 +247,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.unsubStore = useGameStore.subscribe((s) => {
+      if (s.mapZoom !== this.appliedZoom) {
+        this.appliedZoom = s.mapZoom;
+        this.cameras.main.setZoom(this.appliedZoom);
+      }
       const lid = s.localPlayerId;
       const localState = lid ? s.players.get(lid) : undefined;
       if (this.player && localState) {

@@ -185,16 +185,45 @@ Si la cam/micro ne s'active pas : check la console navigateur. C'est probablemen
 
 Si LiveKit ne se connecte pas : `journalctl -u livekit-server -n 50`. Vérifie que `use_external_ip: true` fonctionne (sinon mets `node_ip: <IP_PUBLIQUE_VPS>` à la place dans `livekit.yaml`).
 
-## 4. Redéploiements suivants
+## 4. Redéploiements (la commande à retenir)
 
-Chaque fois que tu pull du code :
+**À chaque fois que du nouveau code est mergé sur `main`** (nouvelles features, fix, map éditée via Tiled), pour le mettre en ligne sur `live.webinti.com` :
 
 ```bash
-git pull
+cd ~/Documents/Claude/Gather
+git pull origin main                          # récupérer le dernier code
+export WEBINTI_HOST=webinti@live.webinti.com  # ton user@host SSH (mets-le dans ~/.zshrc pour pas le retaper)
 ./deploy/deploy.sh
 ```
 
-C'est tout — la map `.tmj` éditée localement via Tiled est aussi rsync via `client/dist/` (Vite la copie dans le build).
+Ce que `deploy.sh` fait :
+1. `npm ci` + build client (Vite prod → `client/dist/`)
+2. `npm ci` + build serveur (`tsc` → `server/dist/`)
+3. rsync `client/dist/` → `/var/www/webinti-town/client/`
+4. rsync `server/dist/` + `package.json` → `/var/www/webinti-town/server/`
+5. `npm ci --omit=dev` sur le VPS (deps prod only)
+6. `sudo systemctl restart webinti-server`
+
+La map `.tmj` éditée localement via Tiled part automatiquement dans le build (Vite copie `client/public/` → `dist/`).
+
+> ⚠️ **Important** : tant que tu n'as pas relancé `./deploy/deploy.sh`, la version en ligne reste figée sur le dernier déploiement — même si tu as pushé sur GitHub. Push ≠ déploiement.
+
+### Vérifier que le déploiement a pris
+
+```bash
+ssh $WEBINTI_HOST 'journalctl -u webinti-server -n 20 --no-pager'
+# doit afficher un redémarrage récent + "listening on http://localhost:3001"
+```
+
+Puis recharge `https://live.webinti.com` en navigation privée (Cmd+Shift+R) pour éviter le cache.
+
+### LiveKit n'a PAS besoin d'être redéployé
+
+Le binaire LiveKit tourne en service systemd indépendant. `deploy.sh` ne le touche pas. Tu ne le redémarres que si tu changes `livekit.yaml` ou que tu mets à jour le binaire :
+
+```bash
+ssh $WEBINTI_HOST 'sudo systemctl restart livekit-server'
+```
 
 ## 5. Caveats / production
 
