@@ -16,4 +16,13 @@ export const config = {
   livekitApiKey: process.env.LIVEKIT_API_KEY ?? 'devkey',
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? '',
   hostToken: process.env.HOST_TOKEN ?? '',
+  // F11 — PocketBase backend (migration progressive depuis JSON)
+  // Backend par store : 'json' (legacy) ou 'pocketbase'.
+  // On peut switcher indépendamment pour migrer poste par poste.
+  pocketbaseUrl: process.env.POCKETBASE_URL ?? 'http://127.0.0.1:8090',
+  pocketbaseAdminEmail: process.env.POCKETBASE_ADMIN_EMAIL ?? '',
+  pocketbaseAdminPassword: process.env.POCKETBASE_ADMIN_PASSWORD ?? '',
+  kanbanBackend: (process.env.KANBAN_BACKEND ?? 'json') as 'json' | 'pocketbase',
+  dmBackend: (process.env.DM_BACKEND ?? 'json') as 'json' | 'pocketbase',
+  workstationBackend: (process.env.WORKSTATION_BACKEND ?? 'json') as 'json' | 'pocketbase',
 };
