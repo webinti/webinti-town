@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { KanbanStore } from '../kanban/KanbanStore.js';
+import { KanbanStorePocketBase } from '../kanban/KanbanStorePocketBase.js';
 import { DmStore } from '../dm/DmStore.js';
 import type {
   PlayerState,
@@ -79,7 +80,9 @@ export class RoomManager {
       slug = `${slugify(cleanName)}-${suffix}`;
     }
     const adminToken = randomUUID();
-    const kanbanStore = new KanbanStore({ roomSlug: slug, persist: true });
+    const kanbanStore = config.kanbanBackend === 'pocketbase'
+      ? new KanbanStorePocketBase({ roomSlug: slug })
+      : new KanbanStore({ roomSlug: slug, persist: true });
     void kanbanStore.load();
     const dmStore = new DmStore({ roomSlug: slug, persist: true });
     void dmStore.load();
@@ -115,7 +118,9 @@ export class RoomManager {
     const existing = this.rooms.get(slug);
     if (existing) return existing;
     const adminToken = randomUUID();
-    const kanbanStore = new KanbanStore({ roomSlug: slug, persist: true });
+    const kanbanStore = config.kanbanBackend === 'pocketbase'
+      ? new KanbanStorePocketBase({ roomSlug: slug })
+      : new KanbanStore({ roomSlug: slug, persist: true });
     void kanbanStore.load();
     const dmStore = new DmStore({ roomSlug: slug, persist: true });
     void dmStore.load();

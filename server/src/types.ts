@@ -131,7 +131,9 @@ export interface RoomState {
   interactiveObjects: InteractiveObject[];
   // Cards are owned by an in-memory store + JSON file per room — not embedded
   // in the InteractiveObject's `data` field. See server/src/kanban/KanbanStore.
-  kanbanStore: import('./kanban/KanbanStore.js').KanbanStore;
+  kanbanStore:
+    | import('./kanban/KanbanStore.js').KanbanStore
+    | import('./kanban/KanbanStorePocketBase.js').KanbanStorePocketBase;
   hostPlayerId: string | null;
   isRecording: boolean;
   workstations: Map<string, WorkstationState>;  // key = workstation.id
