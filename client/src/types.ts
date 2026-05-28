@@ -30,6 +30,18 @@ export interface PlayerState {
   joinedAt?: number;
   presence?: Presence;   // optionnel pour la rétrocompatibilité
   workstationId?: string | null;    // calculé server-side
+  kartId?: string | null;           // id du kart conduit, null si piéton
+  boosting?: boolean;               // true pendant l'effet nitro
+}
+
+export interface KartState {
+  id: string;          // 'kart-1' … 'kart-5'
+  x: number;
+  y: number;
+  parkingX: number;
+  parkingY: number;
+  driverId: string | null;
+  lastMovedAt: number; // epoch ms
 }
 
 export type ChatMessageType = 'local' | 'global' | 'system';

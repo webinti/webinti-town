@@ -36,6 +36,18 @@ export interface PlayerState {
   presence: Presence;
   lastActivityAt: number;   // serveur seulement — jamais diffusé au client
   workstationId: string | null;     // calculé server-side depuis x/y ; null si hors zone
+  kartId: string | null;            // id du kart conduit, null si piéton
+  boosting: boolean;                // true pendant l'effet nitro
+}
+
+export interface KartState {
+  id: string;          // 'kart-1' … 'kart-5'
+  x: number;
+  y: number;
+  parkingX: number;
+  parkingY: number;
+  driverId: string | null;
+  lastMovedAt: number; // epoch ms
 }
 
 export interface ChatAttachment {
