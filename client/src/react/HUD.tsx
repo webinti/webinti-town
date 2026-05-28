@@ -12,6 +12,7 @@ import { NoteModal } from './components/NoteModal';
 import { LinkModal } from './components/LinkModal';
 import { KanbanModal } from './components/KanbanModal';
 import { KanbanToasts } from './components/KanbanToasts';
+import { DmToasts } from './components/DmToasts';
 import { HelpPanel } from './components/HelpPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/sounds';
@@ -182,6 +183,7 @@ export function HUD() {
       <HelpPanel />
       <AdminPanel />
       <KanbanToasts />
+      <DmToasts />
       <WorkstationPanel />
       <WorkstationInviteToast />
 
@@ -282,14 +284,21 @@ function ControlButton({
 }
 
 function ChatButton() {
-  const open    = useGameStore((s) => s.chatPanelOpen);
-  const unread  = useGameStore((s) => s.unreadChat);
-  const toggle  = useGameStore((s) => s.toggleChatPanel);
+  const open       = useGameStore((s) => s.chatPanelOpen);
+  const unread     = useGameStore((s) => s.unreadChat);
+  const unreadDmMap = useGameStore((s) => s.unreadDm);
+  const toggle     = useGameStore((s) => s.toggleChatPanel);
+  let unreadDm = 0;
+  for (const n of unreadDmMap.values()) unreadDm += n;
   return (
     <button
       onClick={toggle}
       title={open ? 'Fermer le chat' : 'Ouvrir le chat'}
-      aria-label={unread > 0 ? `${unread} message(s) non lu(s)` : 'Chat'}
+      aria-label={
+        unreadDm > 0
+          ? `${unreadDm} DM non lu(s), ${unread} message(s) non lu(s)`
+          : unread > 0 ? `${unread} message(s) non lu(s)` : 'Chat'
+      }
       className={`relative flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${
         open
           ? 'bg-indigo-500 text-white'
@@ -303,6 +312,11 @@ function ChatButton() {
       {unread > 0 && (
         <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-bold text-white ring-2 ring-slate-900">
           {unread > 9 ? '9+' : unread}
+        </span>
+      )}
+      {unreadDm > 0 && (
+        <span className="absolute -left-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-emerald-500 px-1 text-[11px] font-bold text-white ring-2 ring-slate-900">
+          {unreadDm > 9 ? '9+' : unreadDm}
         </span>
       )}
     </button>

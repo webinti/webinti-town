@@ -3,6 +3,7 @@ import type {
   ChatAttachment,
   ChatMessage,
   ChatMessageType,
+  DmMessage,
   EmoteEvent,
   EmoteType,
   InteractiveObject,
@@ -65,7 +66,7 @@ interface WhiteboardTextDeletePayload {
   textId: string;
 }
 import { useGameStore } from '../stores/gameStore';
-import { playJoin, playLeave, playChat, playApplause } from '../sounds/sounds';
+import { playJoin, playLeave, playChat, playApplause, playDmNotif } from '../sounds/sounds';
 
 const recentEmotes: Array<{ playerId: string; t: number }> = [];
 
@@ -269,6 +270,26 @@ class SocketManager {
       useGameStore.getState().setKanbanCards(payload.cards);
     });
 
+    // ─── F10 DM ───
+    socket.on('dm:state', (payload: { conversations: Record<string, DmMessage[]> }) => {
+      if (!payload || !payload.conversations) return;
+      useGameStore.getState().setDmState(payload.conversations);
+    });
+    socket.on('dm:message', (msg: DmMessage) => {
+      if (!msg || typeof msg.id !== 'string') return;
+      const state = useGameStore.getState();
+      const myId = state.localPlayerId;
+      state.appendDmMessage(msg);
+      // Notif son seulement si c'est un message REÇU (pas envoyé par moi)
+      // et que je ne suis pas en train de regarder cette conv
+      if (myId && msg.from !== myId) {
+        const isViewing = state.chatPanelOpen && state.activeDmTarget === msg.from;
+        if (!isViewing) {
+          void playDmNotif();
+        }
+      }
+    });
+
     socket.on('workstation:initial', (payload: { workstations: WorkstationStatePayload[] }) => {
       if (!payload || !Array.isArray(payload.workstations)) return;
       useGameStore.getState().setWorkstationsInitial(payload.workstations);
@@ -468,6 +489,18 @@ class SocketManager {
 
   kanbanDelete(cardId: string): void {
     this.socket?.emit('kanban:delete', { cardId });
+  }
+
+  // ─── F10 DM ───
+  sendDm(toPlayerId: string, text: string, attachment?: ChatAttachment): void {
+    this.socket?.emit('dm:send', {
+      toPlayerId,
+      text,
+      ...(attachment ? { attachment } : {}),
+    });
+  }
+  markDmRead(withPlayerId: string): void {
+    this.socket?.emit('dm:read', { withPlayerId });
   }
 
   sendPresenceSet(presence: Presence): void {

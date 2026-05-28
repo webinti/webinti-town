@@ -55,6 +55,17 @@ export interface ChatMessage {
   attachment?: ChatAttachment;  // F9 — pièce jointe optionnelle
 }
 
+// F10 — Direct Messages
+export interface DmMessage {
+  id: string;
+  from: string;          // playerId expéditeur
+  to: string;            // playerId destinataire
+  text: string;          // 0..1000 chars (peut être vide si attachment présent)
+  attachment: ChatAttachment | null;
+  ts: number;
+  readBy: string[];      // playerIds qui ont lu — au moins from à la création
+}
+
 export interface WhiteboardStroke {
   id: string;
   playerId: string;
@@ -125,6 +136,7 @@ export interface RoomState {
   isRecording: boolean;
   workstations: Map<string, WorkstationState>;  // key = workstation.id
   workstationManager: import('./workstations/WorkstationManager.js').WorkstationManager;
+  dmStore: import('./dm/DmStore.js').DmStore;
 }
 
 export interface PublicRoomInfo {

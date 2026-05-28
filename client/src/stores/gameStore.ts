@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type {
   Appearance,
   ChatMessage,
+  DmMessage,
   InteractiveObject,
   KanbanCard,
   PlayerState,
@@ -54,6 +55,16 @@ interface GameStore {
   setOpenKanban: (id: string | null) => void;
   kanbanCards: KanbanCard[];
   setKanbanCards: (cards: KanbanCard[]) => void;
+  // F10 — Direct Messages
+  // Clé = id de l'autre joueur (le contact). Triée par ts asc.
+  dmConversations: Map<string, DmMessage[]>;
+  unreadDm: Map<string, number>;
+  activeDmTarget: string | null;
+  setActiveDmTarget: (id: string | null) => void;
+  setDmState: (conversations: Record<string, DmMessage[]>) => void;
+  appendDmMessage: (msg: DmMessage) => void;
+  markDmRead: (otherPlayerId: string) => void;
+  totalUnreadDm: () => number;
   localPresence: Presence;
   setLocalPresence: (p: Presence) => void;
   currentRoomSlug: string;
@@ -91,7 +102,9 @@ interface GameStore {
   reset: () => void;
 }
 
-export const useGameStore = create<GameStore>((set) => ({
+const DM_PER_CONV_CAP = 200;
+
+export const useGameStore = create<GameStore>((set, get) => ({
   connected: false,
   joined: false,
   localPlayerId: null,
@@ -193,6 +206,69 @@ export const useGameStore = create<GameStore>((set) => ({
     })),
   kanbanCards: [],
   setKanbanCards: (cards) => set({ kanbanCards: cards }),
+  // ─── F10 DM ───
+  dmConversations: new Map<string, DmMessage[]>(),
+  unreadDm: new Map<string, number>(),
+  activeDmTarget: null,
+  setActiveDmTarget: (id) =>
+    set((s) => {
+      // Marquer la conv comme lue à l'ouverture
+      const next = new Map(s.unreadDm);
+      if (id) next.delete(id);
+      return { activeDmTarget: id, unreadDm: next };
+    }),
+  setDmState: (conversations) =>
+    set(() => {
+      const m = new Map<string, DmMessage[]>();
+      const unread = new Map<string, number>();
+      const myId = get().localPlayerId;
+      for (const [other, msgs] of Object.entries(conversations)) {
+        const sorted = [...msgs].sort((a, b) => a.ts - b.ts);
+        m.set(other, sorted);
+        if (myId) {
+          const n = sorted.reduce((acc, msg) => acc + (msg.from === other && !msg.readBy.includes(myId) ? 1 : 0), 0);
+          if (n > 0) unread.set(other, n);
+        }
+      }
+      return { dmConversations: m, unreadDm: unread };
+    }),
+  appendDmMessage: (msg) =>
+    set((s) => {
+      const myId = s.localPlayerId;
+      if (!myId) return {};
+      const otherId = msg.from === myId ? msg.to : msg.from;
+      const list = s.dmConversations.get(otherId) ?? [];
+      // Dédup par id (echo expéditeur + reçu serveur peuvent arriver une seule fois normalement)
+      if (list.some((m) => m.id === msg.id)) return {};
+      const nextList = list.concat(msg);
+      if (nextList.length > DM_PER_CONV_CAP) nextList.splice(0, nextList.length - DM_PER_CONV_CAP);
+      const convs = new Map(s.dmConversations);
+      convs.set(otherId, nextList);
+
+      // Incrémenter unread sauf si :
+      //   - c'est mon propre message (from === myId)
+      //   - OU le chat est ouvert ET sur l'onglet Privés ET ce contact est l'activeDmTarget
+      const isMine = msg.from === myId;
+      const isViewing = s.chatPanelOpen && s.activeDmTarget === otherId;
+      let unread = s.unreadDm;
+      if (!isMine && !isViewing) {
+        unread = new Map(s.unreadDm);
+        unread.set(otherId, (unread.get(otherId) ?? 0) + 1);
+      }
+      return { dmConversations: convs, unreadDm: unread };
+    }),
+  markDmRead: (otherPlayerId) =>
+    set((s) => {
+      if (!s.unreadDm.has(otherPlayerId)) return {};
+      const next = new Map(s.unreadDm);
+      next.delete(otherPlayerId);
+      return { unreadDm: next };
+    }),
+  totalUnreadDm: () => {
+    let total = 0;
+    for (const n of get().unreadDm.values()) total += n;
+    return total;
+  },
   localPresence: 'available' as Presence,
   setLocalPresence: (p) => set({ localPresence: p }),
   currentRoomSlug: 'demo',
@@ -319,6 +395,9 @@ export const useGameStore = create<GameStore>((set) => ({
       openLinkId: null,
       openKanbanId: null,
       kanbanCards: [],
+      dmConversations: new Map(),
+      unreadDm: new Map(),
+      activeDmTarget: null,
       localPresence: 'available' as Presence,
       helpOpen: false,
       adminPanelOpen: false,

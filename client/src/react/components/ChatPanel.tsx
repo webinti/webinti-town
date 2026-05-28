@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
-import type { ChatAttachment, ChatMessage, ChatMessageType } from '../../types';
+import type { ChatAttachment, ChatMessage, ChatMessageType, DmMessage } from '../../types';
 
 const SHIRT_HEX = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -28,6 +28,8 @@ function shirtColorFor(playerId: string, players: Map<string, { appearance: { sh
   return SHIRT_HEX[idx] ?? '#6366f1';
 }
 
+type ChatTab = ChatMessageType | 'dm';
+
 export function ChatPanel() {
   const open = useGameStore((s) => s.chatPanelOpen);
   const chat = useGameStore((s) => s.chat);
@@ -38,7 +40,13 @@ export function ChatPanel() {
   const setInputFocused = useGameStore((s) => s.setInputFocused);
   const currentRoomSlug = useGameStore((s) => s.currentRoomSlug);
 
-  const [tab, setTab] = useState<ChatMessageType>('global');
+  // F10 DM
+  const dmConversations = useGameStore((s) => s.dmConversations);
+  const unreadDm = useGameStore((s) => s.unreadDm);
+  const activeDmTarget = useGameStore((s) => s.activeDmTarget);
+  const setActiveDmTarget = useGameStore((s) => s.setActiveDmTarget);
+
+  const [tab, setTab] = useState<ChatTab>('global');
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -51,6 +59,21 @@ export function ChatPanel() {
   const [pendingAttachment, setPendingAttachment] = useState<ChatAttachment | null>(null);
   const [uploadError, setUploadError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Total unread DM (somme — recalculé sur changement)
+  const totalDmUnread = useMemo(() => {
+    let n = 0;
+    for (const v of unreadDm.values()) n += v;
+    return n;
+  }, [unreadDm]);
+
+  // Émettre dm:read serveur quand l'utilisateur ouvre une conv (debounced via deps)
+  useEffect(() => {
+    if (tab !== 'dm') return;
+    if (!activeDmTarget) return;
+    if (!open) return;
+    socketManager.markDmRead(activeDmTarget);
+  }, [tab, activeDmTarget, open, dmConversations]);
 
   // Keyboard: C toggles, Esc closes
   useEffect(() => {
@@ -94,15 +117,13 @@ export function ChatPanel() {
     if (nearBottom) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [chat, open]);
+  }, [chat, dmConversations, activeDmTarget, open]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    // Reset input pour permettre de re-sélectionner le même fichier
     if (fileInputRef.current) fileInputRef.current.value = '';
     if (!file) return;
 
-    // Taille max 5 MB côté client (le serveur rejette aussi avec 413)
     if (file.size > 5 * 1024 * 1024) {
       setUploadError('Fichier trop grand (max 5 MB)');
       setUploadStatus('error');
@@ -120,9 +141,7 @@ export function ChatPanel() {
       const clientKey = getLocalClientKey();
       const resp = await fetch(`/api/uploads/${currentRoomSlug}`, {
         method: 'POST',
-        headers: {
-          'x-client-key': clientKey,
-        },
+        headers: { 'x-client-key': clientKey },
         body: formData,
       });
       if (!resp.ok) {
@@ -156,18 +175,22 @@ export function ChatPanel() {
 
   const handleSend = useCallback(() => {
     const value = text.trim();
-    // Autoriser envoi si texte OU pièce jointe
     if (!value && !pendingAttachment) return;
-    // Bloquer si upload en cours
     if (uploadStatus === 'uploading') return;
-    socketManager.sendChat(value.slice(0, 300), tab, pendingAttachment ?? undefined);
+    if (tab === 'dm') {
+      if (!activeDmTarget) return;
+      socketManager.sendDm(activeDmTarget, value.slice(0, 1000), pendingAttachment ?? undefined);
+    } else {
+      socketManager.sendChat(value.slice(0, 300), tab as ChatMessageType, pendingAttachment ?? undefined);
+    }
     setText('');
     setPendingAttachment(null);
     setUploadStatus('idle');
     setUploadError('');
-  }, [text, tab, pendingAttachment, uploadStatus]);
+  }, [text, tab, pendingAttachment, uploadStatus, activeDmTarget]);
 
   if (!open) {
+    const total = unread + totalDmUnread;
     return (
       <button
         onClick={() => setOpen(true)}
@@ -175,17 +198,35 @@ export function ChatPanel() {
         title="Chat (C)"
       >
         <span className="text-xl">{'\u{1F4AC}'}</span>
-        {unread > 0 && (
+        {total > 0 && (
           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white ring-2 ring-slate-900">
-            {unread > 99 ? '99+' : unread}
+            {total > 99 ? '99+' : total}
           </span>
         )}
       </button>
     );
   }
 
+  // Player options for DM list (everyone except me)
+  const otherPlayers = Array.from(players.values()).filter((p) => p.playerId !== localId);
+  // Conversations existantes avec joueurs offline (= pas dans players)
+  const offlineWithHistory: string[] = [];
+  for (const otherId of dmConversations.keys()) {
+    if (!players.has(otherId)) offlineWithHistory.push(otherId);
+  }
+
+  const placeholder = tab === 'dm'
+    ? (activeDmTarget ? 'Message privé...' : 'Sélectionnez un contact')
+    : tab === 'global' ? 'Message global...' : 'Message proximité...';
+
+  const inputDisabled = tab === 'dm' && !activeDmTarget;
+  const maxLen = tab === 'dm' ? 1000 : 300;
+
+  // Determine current DM list to display
+  const dmMessages = tab === 'dm' && activeDmTarget ? (dmConversations.get(activeDmTarget) ?? []) : [];
+
   return (
-    <div className="pointer-events-auto fixed right-4 top-20 flex h-[60vh] w-80 flex-col rounded-lg bg-slate-900/95 text-slate-100 shadow-2xl ring-1 ring-white/10 backdrop-blur">
+    <div className="pointer-events-auto fixed right-4 top-20 flex h-[60vh] w-96 flex-col rounded-lg bg-slate-900/95 text-slate-100 shadow-2xl ring-1 ring-white/10 backdrop-blur">
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
         <div className="flex gap-1">
           <button
@@ -200,6 +241,17 @@ export function ChatPanel() {
           >
             Proximité
           </button>
+          <button
+            onClick={() => setTab('dm')}
+            className={`relative rounded px-2 py-1 text-xs font-semibold ${tab === 'dm' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+          >
+            Privés
+            {totalDmUnread > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-400 px-1 text-[10px] font-bold text-slate-900 ring-1 ring-slate-900">
+                {totalDmUnread > 9 ? '9+' : totalDmUnread}
+              </span>
+            )}
+          </button>
         </div>
         <button
           onClick={() => {
@@ -213,19 +265,99 @@ export function ChatPanel() {
         </button>
       </div>
 
-      <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-2 text-sm">
-        {chat.length === 0 && (
-          <div className="px-2 py-6 text-center text-xs text-slate-500">
-            Aucun message. Dites bonjour !
+      {tab === 'dm' ? (
+        <div className="flex flex-1 overflow-hidden">
+          {/* Colonne gauche : liste des contacts */}
+          <div className="w-32 shrink-0 overflow-y-auto border-r border-white/10 bg-slate-900/60">
+            {otherPlayers.length === 0 && offlineWithHistory.length === 0 && (
+              <div className="px-2 py-4 text-center text-[11px] text-slate-500">
+                Personne dans la room
+              </div>
+            )}
+            {otherPlayers.map((p) => {
+              const isActive = activeDmTarget === p.playerId;
+              const n = unreadDm.get(p.playerId) ?? 0;
+              const color = shirtColorFor(p.playerId, players);
+              return (
+                <button
+                  key={p.playerId}
+                  onClick={() => setActiveDmTarget(p.playerId)}
+                  className={`flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs hover:bg-slate-700/60 ${isActive ? 'bg-emerald-900/40' : ''}`}
+                >
+                  <span
+                    className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full ring-1 ring-white/20"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="flex-1 truncate">{p.name}</span>
+                  {n > 0 && (
+                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white">
+                      {n > 9 ? '9+' : n}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {offlineWithHistory.length > 0 && (
+              <div className="mt-1 border-t border-white/10 pt-1">
+                <div className="px-2 py-0.5 text-[10px] uppercase text-slate-500">Absents</div>
+                {offlineWithHistory.map((otherId) => {
+                  const isActive = activeDmTarget === otherId;
+                  const n = unreadDm.get(otherId) ?? 0;
+                  const list = dmConversations.get(otherId) ?? [];
+                  // Best-effort name : last message from this player
+                  const lastFromOther = [...list].reverse().find((m) => m.from === otherId);
+                  const name = lastFromOther ? otherId.slice(0, 6) : otherId.slice(0, 6);
+                  return (
+                    <button
+                      key={otherId}
+                      onClick={() => setActiveDmTarget(otherId)}
+                      className={`flex w-full items-center gap-1.5 px-2 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-700/60 ${isActive ? 'bg-emerald-900/40' : ''}`}
+                    >
+                      <span className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full bg-slate-600 ring-1 ring-white/10" />
+                      <span className="flex-1 truncate italic">{name}…</span>
+                      {n > 0 && (
+                        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-bold text-white">
+                          {n > 9 ? '9+' : n}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-        {chat.map((msg) => (
-          <ChatRow key={msg.id} msg={msg} localId={localId} players={players} />
-        ))}
-      </div>
+
+          {/* Colonne droite : fil DM */}
+          <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-2 text-sm">
+            {!activeDmTarget && (
+              <div className="px-2 py-6 text-center text-xs text-slate-500">
+                Sélectionnez un contact pour commencer
+              </div>
+            )}
+            {activeDmTarget && dmMessages.length === 0 && (
+              <div className="px-2 py-6 text-center text-xs text-slate-500">
+                Aucun message. Écrivez le premier !
+              </div>
+            )}
+            {activeDmTarget && dmMessages.map((m) => (
+              <DmRow key={m.id} msg={m} localId={localId} players={players} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-2 text-sm">
+          {chat.length === 0 && (
+            <div className="px-2 py-6 text-center text-xs text-slate-500">
+              Aucun message. Dites bonjour !
+            </div>
+          )}
+          {chat.map((msg) => (
+            <ChatRow key={msg.id} msg={msg} localId={localId} players={players} />
+          ))}
+        </div>
+      )}
 
       <div className="border-t border-white/10 p-2">
-        {/* Zone preview pièce jointe */}
         {uploadStatus === 'ready' && pendingAttachment && (
           <div className="mb-2 flex items-center gap-2 rounded bg-slate-800/80 px-2 py-1 ring-1 ring-indigo-400/40">
             {pendingAttachment.mimeType === 'application/pdf' ? (
@@ -263,11 +395,14 @@ export function ChatPanel() {
           ref={inputRef}
           value={text}
           onChange={(e) => {
-            setText(e.target.value.slice(0, 300));
-            const now = Date.now();
-            if (now - lastTypingEmitRef.current >= 500) {
-              lastTypingEmitRef.current = now;
-              socketManager.sendTypingStart();
+            setText(e.target.value.slice(0, maxLen));
+            // Pas de typing_start en DM (pas implémenté côté serveur pour les DM)
+            if (tab !== 'dm') {
+              const now = Date.now();
+              if (now - lastTypingEmitRef.current >= 500) {
+                lastTypingEmitRef.current = now;
+                socketManager.sendTypingStart();
+              }
             }
           }}
           onFocus={() => setInputFocused(true)}
@@ -278,17 +413,17 @@ export function ChatPanel() {
               handleSend();
             }
           }}
-          placeholder={tab === 'global' ? 'Message global...' : 'Message proximité...'}
+          disabled={inputDisabled}
+          placeholder={placeholder}
           rows={2}
-          maxLength={300}
-          className="w-full resize-none rounded bg-slate-800 px-2 py-1 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-indigo-400"
+          maxLength={maxLen}
+          className="w-full resize-none rounded bg-slate-800 px-2 py-1 text-sm text-white outline-none ring-1 ring-white/10 focus:ring-indigo-400 disabled:opacity-50"
         />
         <div className="mt-1 flex items-center justify-between">
           <div className="flex items-center gap-1">
-            {/* Bouton 📎 */}
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadStatus === 'uploading'}
+              disabled={uploadStatus === 'uploading' || inputDisabled}
               title="Joindre un fichier (jpg/png/svg/pdf, max 5 MB)"
               className="rounded px-1.5 py-0.5 text-base text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-40"
             >
@@ -304,10 +439,10 @@ export function ChatPanel() {
             <span className="text-[10px] text-slate-500">Entrée · Maj+Entrée saut</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-500">{text.length}/300</span>
+            <span className="text-[10px] text-slate-500">{text.length}/{maxLen}</span>
             <button
               onClick={handleSend}
-              disabled={uploadStatus === 'uploading' || (!text.trim() && !pendingAttachment)}
+              disabled={uploadStatus === 'uploading' || inputDisabled || (!text.trim() && !pendingAttachment)}
               className="rounded bg-indigo-600 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-40"
             >
               Envoyer
@@ -350,6 +485,38 @@ function ChatRow({
   );
 }
 
+function DmRow({
+  msg,
+  localId,
+  players,
+}: {
+  msg: DmMessage;
+  localId: string | null;
+  players: Map<string, { appearance: { shirt: number }; name: string }>;
+}) {
+  const isMine = msg.from === localId;
+  const fromPlayer = players.get(msg.from);
+  const name = fromPlayer?.name ?? (isMine ? 'Moi' : msg.from.slice(0, 6));
+  const color = shirtColorFor(msg.from, players);
+  const bg = isMine ? 'bg-emerald-500/10' : 'bg-slate-800/40';
+  return (
+    <div className={`mb-1.5 animate-fadein rounded border-l-2 border-l-emerald-400 px-2 py-1 ${bg}`}>
+      <div className="flex items-center gap-1.5">
+        <span
+          className="inline-block h-3 w-3 flex-shrink-0 rounded-full ring-1 ring-white/20"
+          style={{ backgroundColor: color }}
+        />
+        <span className="text-xs font-bold text-slate-100">{name}</span>
+        <span className="text-[10px] text-slate-400">{formatTime(msg.ts)}</span>
+      </div>
+      {msg.text && (
+        <div className="ml-4.5 break-words pl-0.5 text-[13px] text-slate-200">{msg.text}</div>
+      )}
+      {msg.attachment && <AttachmentView attachment={msg.attachment} />}
+    </div>
+  );
+}
+
 function AttachmentView({ attachment }: { attachment: ChatAttachment }) {
   const [loadError, setLoadError] = useState(false);
 
@@ -381,7 +548,6 @@ function AttachmentView({ attachment }: { attachment: ChatAttachment }) {
     );
   }
 
-  // Images : jpg / png / svg
   return (
     <a
       href={attachment.url}

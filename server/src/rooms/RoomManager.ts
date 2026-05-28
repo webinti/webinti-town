@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { KanbanStore } from '../kanban/KanbanStore.js';
+import { DmStore } from '../dm/DmStore.js';
 import type {
   PlayerState,
   RoomState,
@@ -79,8 +80,9 @@ export class RoomManager {
     }
     const adminToken = randomUUID();
     const kanbanStore = new KanbanStore({ roomSlug: slug, persist: true });
-    // fire-and-forget; getCards returns empty until load resolves
     void kanbanStore.load();
+    const dmStore = new DmStore({ roomSlug: slug, persist: true });
+    void dmStore.load();
     const workstationManager = new WorkstationManager(WORKSTATIONS);
     const workstations = new Map(
       workstationManager.getAllStates().map((s) => [s.id, s]),
@@ -98,6 +100,7 @@ export class RoomManager {
       isRecording: false,
       workstations,
       workstationManager,
+      dmStore,
     });
     return { slug, adminToken };
   }
@@ -107,8 +110,9 @@ export class RoomManager {
     if (existing) return existing;
     const adminToken = randomUUID();
     const kanbanStore = new KanbanStore({ roomSlug: slug, persist: true });
-    // fire-and-forget; getCards returns empty until load resolves
     void kanbanStore.load();
+    const dmStore = new DmStore({ roomSlug: slug, persist: true });
+    void dmStore.load();
     const workstationManager = new WorkstationManager(WORKSTATIONS);
     const workstations = new Map(
       workstationManager.getAllStates().map((s) => [s.id, s]),
@@ -126,6 +130,7 @@ export class RoomManager {
       isRecording: false,
       workstations,
       workstationManager,
+      dmStore,
     };
     this.rooms.set(slug, room);
     return room;

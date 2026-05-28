@@ -166,6 +166,12 @@ export function playChat(): void {
   setTimeout(() => blip(1600, 0.05, 'sine', 0.05), 60);
 }
 
+// F10 — son distinct pour les DM : double-ding plus grave, type "messagerie"
+export function playDmNotif(): void {
+  blip(880, 0.1, 'triangle', 0.14);
+  setTimeout(() => blip(660, 0.15, 'triangle', 0.12), 110);
+}
+
 export function playInteract(): void {
   blip(880, 0.06, 'square', 0.05);
 }

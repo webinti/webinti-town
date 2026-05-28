@@ -53,6 +53,17 @@ export interface ChatMessage {
   attachment?: ChatAttachment;  // F9
 }
 
+// F10 — Direct Messages
+export interface DmMessage {
+  id: string;
+  from: string;
+  to: string;
+  text: string;
+  attachment: ChatAttachment | null;
+  ts: number;
+  readBy: string[];
+}
+
 export interface WhiteboardStroke {
   id: string;
   playerId: string;
