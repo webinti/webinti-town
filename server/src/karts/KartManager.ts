@@ -1,4 +1,5 @@
 import type { KartDef } from '../karts.js';
+import { MOUNT_DISTANCE } from '../karts.js';
 
 export interface KartState {
   id: string;
@@ -38,5 +39,24 @@ export class KartManager {
 
   getAllStates(): KartState[] {
     return this.defs.map((d) => ({ ...this.states.get(d.id)! }));
+  }
+
+  mount(kartId: string, playerId: string, playerX: number, playerY: number): boolean {
+    const k = this.states.get(kartId);
+    if (!k) return false;
+    if (k.driverId !== null) return false;
+    const dx = playerX - k.x;
+    const dy = playerY - k.y;
+    if (Math.hypot(dx, dy) > MOUNT_DISTANCE) return false;
+    k.driverId = playerId;
+    k.lastMovedAt = this.now();
+    return true;
+  }
+
+  getKartByDriver(playerId: string): KartState | undefined {
+    for (const k of this.states.values()) {
+      if (k.driverId === playerId) return k;
+    }
+    return undefined;
   }
 }
