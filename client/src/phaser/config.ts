@@ -11,7 +11,9 @@ export function createPhaserConfig(parent: HTMLElement): Phaser.Types.Core.GameC
     pixelArt: true,
     backgroundColor: '#1e293b',
     scale: {
-      mode: Phaser.Scale.FIT,
+      // RESIZE: le canvas suit la taille du parent (inset-0 → viewport entier),
+      // pas de letterbox. Le camera viewport de la scène s'ajuste automatiquement.
+      mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     physics: {
