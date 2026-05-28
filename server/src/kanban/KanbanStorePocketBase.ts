@@ -37,17 +37,12 @@ export class KanbanStorePocketBase {
     return this.cards.map((c) => ({ ...c }));
   }
 
-  create(authorId: string, authorName: string, rawTitle: string, rawDescription: string): boolean {
+  async create(authorId: string, authorName: string, rawTitle: string, rawDescription: string): Promise<boolean> {
     const title = (rawTitle ?? '').trim();
     if (title.length < 1 || title.length > TITLE_MAX) return false;
     const description = (rawDescription ?? '').slice(0, DESCRIPTION_MAX);
     const now = Date.now();
-    // Insère un placeholder en mémoire avec id temporaire, puis mets à jour
-    // dès que PB renvoie l'id réel. Le client reçoit l'id final via le prochain
-    // emit('kanban:state') de toute façon (le handler emit après chaque mutation).
-    const tempId = `tmp-${now}-${Math.random().toString(36).slice(2, 8)}`;
-    const card: KanbanCard = {
-      id: tempId,
+    const draft: Omit<KanbanCard, 'id'> = {
       title, description, authorId, authorName,
       column: 'todo',
       createdAt: now,
@@ -56,19 +51,20 @@ export class KanbanStorePocketBase {
       completedBy: null,
       completedByName: null,
     };
-    this.cards.unshift(card);
-    this.trackPending((async () => {
-      try {
-        const pb = await getPocketBase();
-        const rec = await pb.collection('kanban_cards').create(this.cardToRecord(card));
-        // Patch in-memory: remplace l'id temp par l'id PB
-        const inMemory = this.cards.find((c) => c.id === tempId);
-        if (inMemory) inMemory.id = rec.id;
-      } catch (err) {
-        console.warn('[kanban-pb] create failed', tempId, err);
-      }
-    })());
-    return true;
+    // Await PB create so the in-memory card has the real PB id from the
+    // very first kanban:state emit. Évite la race entre create + move.
+    try {
+      const pb = await getPocketBase();
+      const rec = await pb.collection('kanban_cards').create({
+        roomSlug: this.roomSlug,
+        ...draft,
+      });
+      this.cards.unshift({ id: rec.id, ...draft });
+      return true;
+    } catch (err) {
+      console.warn('[kanban-pb] create failed', err);
+      return false;
+    }
   }
 
   update(actorId: string, cardId: string, patch: { title?: string; description?: string }): boolean {
