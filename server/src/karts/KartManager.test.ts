@@ -79,3 +79,22 @@ describe('dismount', () => {
     expect(m.dismount('alice')).toBe(false);
   });
 });
+
+describe('move', () => {
+  it('move met à jour x, y, lastMovedAt si conducteur', () => {
+    let t = 1000;
+    const m2 = new KartManager(KARTS, () => t);
+    m2.mount('k1', 'alice', 100, 100);
+    t = 1500;
+    const ok = m2.move('alice', 200, 250);
+    expect(ok).toBe(true);
+    const s = m2.getState('k1')!;
+    expect(s.x).toBe(200);
+    expect(s.y).toBe(250);
+    expect(s.lastMovedAt).toBe(1500);
+  });
+
+  it('move échoue si joueur sans kart', () => {
+    expect(m.move('alice', 200, 200)).toBe(false);
+  });
+});

@@ -60,6 +60,15 @@ export class KartManager {
     return undefined;
   }
 
+  move(playerId: string, x: number, y: number): boolean {
+    const k = this.getKartByDriver(playerId);
+    if (!k) return false;
+    k.x = x;
+    k.y = y;
+    k.lastMovedAt = this.now();
+    return true;
+  }
+
   dismount(playerId: string): boolean {
     const k = this.getKartByDriver(playerId);
     if (!k) return false;
