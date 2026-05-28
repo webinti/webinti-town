@@ -8,6 +8,7 @@ export function WorkstationPanel() {
   const nearbyId      = useGameStore((s) => s.nearbyWorkstationId);
   const workstations  = useGameStore((s) => s.workstations);
   const players       = useGameStore((s) => s.players);
+  const hostPlayerId  = useGameStore((s) => s.hostPlayerId);
 
   const [editing, setEditing]   = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -42,8 +43,14 @@ export function WorkstationPanel() {
     (p) => p.playerId !== localPlayerId && !invitedIds.includes(p.playerId),
   );
 
+  const isHost  = !!hostPlayerId && hostPlayerId === localPlayerId;
   const handleClaim   = () => socketManager.workstationClaim(nearbyId);
   const handleRelease = () => socketManager.workstationRelease(nearbyId);
+  const handleForceRelease = () => {
+    if (confirm(`Libérer le poste de ${claimerName} ?`)) {
+      socketManager.workstationForceRelease(nearbyId);
+    }
+  };
   const handleInvite  = (targetId: string) => socketManager.workstationInvite(nearbyId, targetId);
   const handleUninvite = (targetId: string) => socketManager.workstationUninvite(nearbyId, targetId);
 
@@ -151,9 +158,20 @@ export function WorkstationPanel() {
         </button>
       )}
       {!isFree && !isMine && (
-        <p className="mb-3 text-xs text-slate-400">
-          Revendiqué par <span className="font-semibold text-slate-200">{claimerName}</span>
-        </p>
+        <div className="mb-3">
+          <p className="text-xs text-slate-400">
+            Revendiqué par <span className="font-semibold text-slate-200">{claimerName}</span>
+          </p>
+          {isHost && (
+            <button
+              onClick={handleForceRelease}
+              className="mt-2 w-full rounded-lg bg-amber-600 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 active:scale-95"
+              title="En tant qu'hôte, libérer ce poste"
+            >
+              Libérer (hôte)
+            </button>
+          )}
+        </div>
       )}
 
       {/* Section invités — visible uniquement si je suis le claimer */}

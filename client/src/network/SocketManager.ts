@@ -533,6 +533,10 @@ class SocketManager {
     this.socket?.emit('workstation:release', { workstationId });
   }
 
+  workstationForceRelease(workstationId: string): void {
+    this.socket?.emit('workstation:force-release', { workstationId });
+  }
+
   workstationInvite(workstationId: string, targetPlayerId: string): void {
     this.socket?.emit('workstation:invite', { workstationId, targetPlayerId });
   }
