@@ -137,8 +137,12 @@ export interface RoomState {
   hostPlayerId: string | null;
   isRecording: boolean;
   workstations: Map<string, WorkstationState>;  // key = workstation.id
-  workstationManager: import('./workstations/WorkstationManager.js').WorkstationManager;
-  dmStore: import('./dm/DmStore.js').DmStore;
+  workstationManager:
+    | import('./workstations/WorkstationManager.js').WorkstationManager
+    | import('./workstations/WorkstationManagerPocketBase.js').WorkstationManagerPocketBase;
+  dmStore:
+    | import('./dm/DmStore.js').DmStore
+    | import('./dm/DmStorePocketBase.js').DmStorePocketBase;
 }
 
 export interface PublicRoomInfo {

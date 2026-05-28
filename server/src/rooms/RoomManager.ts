@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { KanbanStore } from '../kanban/KanbanStore.js';
 import { KanbanStorePocketBase } from '../kanban/KanbanStorePocketBase.js';
 import { DmStore } from '../dm/DmStore.js';
+import { DmStorePocketBase } from '../dm/DmStorePocketBase.js';
 import type {
   PlayerState,
   RoomState,
@@ -15,6 +16,7 @@ import type {
 import { DEFAULT_APPEARANCE } from '../types.js';
 import { config } from '../config.js';
 import { WorkstationManager } from '../workstations/WorkstationManager.js';
+import { WorkstationManagerPocketBase } from '../workstations/WorkstationManagerPocketBase.js';
 import { WORKSTATIONS, workstationIdForPointIn } from '../workstations.js';
 
 function slugify(name: string): string {
@@ -84,9 +86,13 @@ export class RoomManager {
       ? new KanbanStorePocketBase({ roomSlug: slug })
       : new KanbanStore({ roomSlug: slug, persist: true });
     void kanbanStore.load();
-    const dmStore = new DmStore({ roomSlug: slug, persist: true });
+    const dmStore = config.dmBackend === 'pocketbase'
+      ? new DmStorePocketBase({ roomSlug: slug })
+      : new DmStore({ roomSlug: slug, persist: true });
     void dmStore.load();
-    const workstationManager = new WorkstationManager(WORKSTATIONS, { roomSlug: slug, persist: true });
+    const workstationManager = config.workstationBackend === 'pocketbase'
+      ? new WorkstationManagerPocketBase(WORKSTATIONS, { roomSlug: slug })
+      : new WorkstationManager(WORKSTATIONS, { roomSlug: slug, persist: true });
     const workstations = new Map(
       workstationManager.getAllStates().map((s) => [s.id, s]),
     );
@@ -122,9 +128,13 @@ export class RoomManager {
       ? new KanbanStorePocketBase({ roomSlug: slug })
       : new KanbanStore({ roomSlug: slug, persist: true });
     void kanbanStore.load();
-    const dmStore = new DmStore({ roomSlug: slug, persist: true });
+    const dmStore = config.dmBackend === 'pocketbase'
+      ? new DmStorePocketBase({ roomSlug: slug })
+      : new DmStore({ roomSlug: slug, persist: true });
     void dmStore.load();
-    const workstationManager = new WorkstationManager(WORKSTATIONS, { roomSlug: slug, persist: true });
+    const workstationManager = config.workstationBackend === 'pocketbase'
+      ? new WorkstationManagerPocketBase(WORKSTATIONS, { roomSlug: slug })
+      : new WorkstationManager(WORKSTATIONS, { roomSlug: slug, persist: true });
     const workstations = new Map(
       workstationManager.getAllStates().map((s) => [s.id, s]),
     );
