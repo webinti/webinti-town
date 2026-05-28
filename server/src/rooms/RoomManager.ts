@@ -83,10 +83,16 @@ export class RoomManager {
     void kanbanStore.load();
     const dmStore = new DmStore({ roomSlug: slug, persist: true });
     void dmStore.load();
-    const workstationManager = new WorkstationManager(WORKSTATIONS);
+    const workstationManager = new WorkstationManager(WORKSTATIONS, { roomSlug: slug, persist: true });
     const workstations = new Map(
       workstationManager.getAllStates().map((s) => [s.id, s]),
     );
+    // Lance le load et resync la Map miroir une fois résolu.
+    void workstationManager.load().then(() => {
+      for (const s of workstationManager.getAllStates()) {
+        workstations.set(s.id, s);
+      }
+    });
     this.rooms.set(slug, {
       slug,
       name: cleanName,
@@ -113,10 +119,16 @@ export class RoomManager {
     void kanbanStore.load();
     const dmStore = new DmStore({ roomSlug: slug, persist: true });
     void dmStore.load();
-    const workstationManager = new WorkstationManager(WORKSTATIONS);
+    const workstationManager = new WorkstationManager(WORKSTATIONS, { roomSlug: slug, persist: true });
     const workstations = new Map(
       workstationManager.getAllStates().map((s) => [s.id, s]),
     );
+    // Lance le load et resync la Map miroir une fois résolu.
+    void workstationManager.load().then(() => {
+      for (const s of workstationManager.getAllStates()) {
+        workstations.set(s.id, s);
+      }
+    });
     const room: RoomState = {
       slug,
       name,
