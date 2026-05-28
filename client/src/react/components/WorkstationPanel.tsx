@@ -74,7 +74,7 @@ export function WorkstationPanel() {
   };
 
   return (
-    <div className="pointer-events-auto fixed right-4 top-32 z-30 w-64 rounded-xl bg-slate-900/95 p-3 text-slate-100 ring-1 ring-white/10 shadow-2xl">
+    <div className="pointer-events-auto fixed bottom-4 left-1/2 z-30 w-64 -translate-x-1/2 rounded-xl bg-slate-900/95 p-3 text-slate-100 ring-1 ring-white/10 shadow-2xl">
       {/* En-tête */}
       <div className="mb-3 flex items-center justify-between">
         {isMine && editing ? (
