@@ -57,3 +57,25 @@ describe('mount', () => {
     expect(m.getKartByDriver('bob')).toBeUndefined();
   });
 });
+
+describe('dismount', () => {
+  it('dismount OK par le conducteur', () => {
+    m.mount('k1', 'alice', 100, 100);
+    const ok = m.dismount('alice');
+    expect(ok).toBe(true);
+    expect(m.getState('k1')!.driverId).toBeNull();
+  });
+
+  it('dismount réinitialise lastMovedAt à now()', () => {
+    let t = 1000;
+    const m2 = new KartManager(KARTS, () => t);
+    m2.mount('k1', 'alice', 100, 100);
+    t = 5000;
+    m2.dismount('alice');
+    expect(m2.getState('k1')!.lastMovedAt).toBe(5000);
+  });
+
+  it('dismount échoue si pas de kart pour ce joueur', () => {
+    expect(m.dismount('alice')).toBe(false);
+  });
+});

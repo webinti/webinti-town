@@ -59,4 +59,12 @@ export class KartManager {
     }
     return undefined;
   }
+
+  dismount(playerId: string): boolean {
+    const k = this.getKartByDriver(playerId);
+    if (!k) return false;
+    k.driverId = null;
+    k.lastMovedAt = this.now();
+    return true;
+  }
 }
