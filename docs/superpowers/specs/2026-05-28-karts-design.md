@@ -16,7 +16,7 @@ Cinq karts sont stationnés en permanence à un **parking d'entrée** situé en 
 | kart-4   | (164, 356)       |
 | kart-5   | (204, 356)       |
 
-Un joueur s'approche d'un kart (distance ≤ 32 px), un prompt visuel apparaît, il presse `E` → il monte. Sa vitesse de déplacement passe de **160 px/s à 320 px/s**. Maintenir `Shift` → **boost à 480 px/s pendant 2 s**, suivi d'un **cooldown de 3 s** avant qu'un nouveau boost soit possible. Re-presser `E` → il descend ; le kart reste exactement là où il l'a laissé.
+Un joueur s'approche d'un kart (distance ≤ 32 px), un prompt visuel apparaît, il presse `E` → il monte. Sa vitesse de déplacement passe de **160 px/s à 320 px/s**. Maintenir `Shift` → **boost à 480 px/s pendant 2 s**, suivi d'un **cooldown de 15 s** avant qu'un nouveau boost soit possible. Re-presser `E` → il descend ; le kart reste exactement là où il l'a laissé.
 
 Si un kart n'a pas de conducteur et n'a pas bougé pendant **5 minutes**, il rentre automatiquement à sa position de parking d'origine (slot fixe par `id`).
 
@@ -83,7 +83,7 @@ Pas de dégâts, pas d'animation supplémentaire.
 - Sprite kart : **Phaser Graphics procédural**, 28×20 px vue de dessus. Corps jaune `0xfacc15`, contour noir `0x000000`, 2 petits cercles noirs aux 4 coins pour les roues, un petit triangle noir à l'avant pour indiquer la direction.
 - Quand un joueur monte (`player.kartId === <id>` côté store), son sprite Player/RemotePlayer est rendu avec un offset Y `-4 px` et `depth: 10` (au-dessus du kart).
 - Input proximité : GameScene calcule chaque frame `nearestKartId` (kart libre à ≤ 32 px du player). Affiche un prompt "E pour monter" similaire à celui des workstations. Sur `E` → emit `kart:mount`.
-- Input boost : touche `Shift`. Tant que `Shift` est appuyée et qu'on a du "fuel" (jauge), `Player.speed` côté client passe à 480 et un `kart:boost_start` est émis vers le serveur (qui relâche le cap pour 2 s). Jauge de boost = 100 % au plein, vide en 2 s, recharge en 3 s.
+- Input boost : touche `Shift`. Tant que `Shift` est appuyée et qu'on a du "fuel" (jauge), `Player.speed` côté client passe à 480 et un `kart:boost_start` est émis vers le serveur (qui relâche le cap pour 2 s). Jauge de boost = 100 % au plein, vide en 2 s, recharge en 15 s.
 - Trail de boost : 3 cercles oranges `0xf97316` qui s'estompent (alpha 0.6 → 0) derrière le kart sur 200 ms. Visible par tous (rendu local sur le `RemotePlayer`/`Player` quand `boost === true`).
 
 ### 2.7 Vitesse côté client
@@ -103,7 +103,7 @@ Le `kartId` et le `boosting` viennent du store (synchronisés via `kart:state` e
 
 - **Affichage jauge :** rectangle horizontal 24×3 px sous le sprite du kart, visible **uniquement par le conducteur** (overlay local). Vert `0x22c55e` quand pleine, vide pendant cooldown, repasse au vert quand rechargée.
 - **Trail :** 3 cercles orange qui suivent la trajectoire récente du kart pendant la phase de boost. Visible par tous les joueurs de la room.
-- **Anti-spam :** un nouveau boost ne peut démarrer que si la jauge est à 100 %. Donc cycle minimal : 2 s boost + 3 s cooldown = 5 s entre 2 boosts consécutifs.
+- **Anti-spam :** un nouveau boost ne peut démarrer que si la jauge est à 100 %. Le cooldown est de **15 s** après la fin du boost, soit un cycle minimal de **2 s boost + 15 s cooldown = 17 s entre 2 boosts consécutifs**. La recharge de la jauge est linéaire sur ces 15 s (0 % → 100 %).
 - **Émissions :** `kart:boost_start` au départ du boost, `kart:boost_end` à la fin (épuisement ou relâche). Pas de synchro fine de la jauge serveur-client — chacun calcule la sienne.
 
 ## 4. Edge cases
@@ -122,7 +122,7 @@ Ces choses ne sont **pas** dans le scope F11 :
 
 - Pas de système de "klaxon" / son de kart.
 - Pas de skins de kart différents par joueur.
-- Pas de course / chronomètre.
+- Pas de course / chronomètre. → **Extension future F12 (circuit à côté de la map)** : piste dédiée hors zone bureaux, ligne de départ/arrivée, comptage de tours, classement live. Sera brainstormé séparément après livraison de F11. Architecturalement, F11 doit laisser la porte ouverte (positions et boost dispo dans toute zone "kart-friendly", pas seulement le bureau).
 - Pas de durabilité / panne / dégâts.
 - Pas d'interdiction de kart par zone (le push des joueurs est l'unique mécanique d'interaction).
 - Pas de UI pour voir qui pilote quel kart à distance — c'est lisible visuellement (sprite joueur sur sprite kart).
