@@ -30,8 +30,8 @@ export interface PlayerState {
   joinedAt?: number;
   presence?: Presence;   // optionnel pour la rétrocompatibilité
   workstationId?: string | null;    // calculé server-side
-  kartId?: string | null;           // id du kart conduit, null si piéton
-  boosting?: boolean;               // true pendant l'effet nitro
+  kartId: string | null;           // id du kart conduit, null si piéton
+  boosting: boolean;               // true pendant l'effet nitro
 }
 
 export interface KartState {
