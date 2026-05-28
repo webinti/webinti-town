@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { KartManager } from './KartManager.js';
 import type { KartDef } from '../karts.js';
-import { MOUNT_DISTANCE } from '../karts.js';
+import { MOUNT_DISTANCE, KART_IDLE_RETURN_MS } from '../karts.js';
 
 const KARTS: KartDef[] = [
   { id: 'k1', parkingX: 100, parkingY: 100 },
@@ -96,5 +96,50 @@ describe('move', () => {
 
   it('move échoue si joueur sans kart', () => {
     expect(m.move('alice', 200, 200)).toBe(false);
+  });
+});
+
+describe('sweepIdle', () => {
+  it('repositionne au parking un kart libre + immobile depuis > 5min', () => {
+    let t = 1000;
+    const m2 = new KartManager(KARTS, () => t);
+    m2.mount('k1', 'alice', 100, 100);
+    m2.move('alice', 500, 500);
+    m2.dismount('alice');
+    // dismount → lastMovedAt = t; kart à (500, 500), parking à (100, 100)
+    t += KART_IDLE_RETURN_MS + 1;
+    const returned = m2.sweepIdle();
+    expect(returned).toEqual(['k1']);
+    const s = m2.getState('k1')!;
+    expect(s.x).toBe(100);
+    expect(s.y).toBe(100);
+  });
+
+  it('ignore les karts avec un conducteur', () => {
+    let t = 1000;
+    const m2 = new KartManager(KARTS, () => t);
+    m2.mount('k1', 'alice', 100, 100);
+    m2.move('alice', 500, 500);
+    t += KART_IDLE_RETURN_MS + 1;
+    const returned = m2.sweepIdle();
+    expect(returned).toEqual([]);
+    expect(m2.getState('k1')!.x).toBe(500);
+  });
+
+  it('ignore les karts déjà au parking', () => {
+    let t = 1000;
+    const m2 = new KartManager(KARTS, () => t);
+    t += KART_IDLE_RETURN_MS + 1;
+    expect(m2.sweepIdle()).toEqual([]);
+  });
+
+  it("ignore les karts dont l'idle < seuil", () => {
+    let t = 1000;
+    const m2 = new KartManager(KARTS, () => t);
+    m2.mount('k1', 'alice', 100, 100);
+    m2.move('alice', 500, 500);
+    m2.dismount('alice');
+    t += KART_IDLE_RETURN_MS - 1;
+    expect(m2.sweepIdle()).toEqual([]);
   });
 });

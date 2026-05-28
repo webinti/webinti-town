@@ -1,5 +1,5 @@
 import type { KartDef } from '../karts.js';
-import { MOUNT_DISTANCE } from '../karts.js';
+import { MOUNT_DISTANCE, KART_IDLE_RETURN_MS } from '../karts.js';
 
 export interface KartState {
   id: string;
@@ -75,5 +75,24 @@ export class KartManager {
     k.driverId = null;
     k.lastMovedAt = this.now();
     return true;
+  }
+
+  /**
+   * Repositionne au parking les karts libres + immobiles depuis > KART_IDLE_RETURN_MS.
+   * Retourne la liste des ids déplacés (pour broadcast côté handler).
+   */
+  sweepIdle(): string[] {
+    const now = this.now();
+    const moved: string[] = [];
+    for (const k of this.states.values()) {
+      if (k.driverId !== null) continue;
+      if (k.x === k.parkingX && k.y === k.parkingY) continue;
+      if (now - k.lastMovedAt <= KART_IDLE_RETURN_MS) continue;
+      k.x = k.parkingX;
+      k.y = k.parkingY;
+      k.lastMovedAt = now;
+      moved.push(k.id);
+    }
+    return moved;
   }
 }
