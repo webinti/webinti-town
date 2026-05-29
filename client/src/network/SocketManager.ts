@@ -231,6 +231,12 @@ class SocketManager {
       if (p.playerId === localId && p.presence) {
         useGameStore.getState().setLocalPresence(p.presence);
       }
+      // F11 — keep localKartId / localBoosting in sync when the server confirms it.
+      const store = useGameStore.getState();
+      if (p.playerId === store.localPlayerId) {
+        if (store.localKartId !== p.kartId) store.setLocalKartId(p.kartId ?? null);
+        if (store.localBoosting !== p.boosting) store.setLocalBoosting(p.boosting ?? false);
+      }
       for (const fn of this.listeners) fn(p);
     });
 

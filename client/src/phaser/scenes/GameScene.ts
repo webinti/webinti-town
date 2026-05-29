@@ -72,6 +72,8 @@ export class GameScene extends Phaser.Scene {
   private nearbyObjectId: string | null = null;
   private appliedZoom = 1;
   private eKey?: Phaser.Input.Keyboard.Key;
+  private lastEDown = false;
+  private kartPrompt?: Phaser.GameObjects.Text;
   private zKey?: Phaser.Input.Keyboard.Key;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
   private lastLocalPresence: string | undefined = undefined;
@@ -215,6 +217,11 @@ export class GameScene extends Phaser.Scene {
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this.input.keyboard?.clearCaptures();
 
+    this.kartPrompt = this.add.text(0, 0, '', {
+      fontSize: '12px', fontFamily: 'system-ui, sans-serif',
+      color: '#ffffff', backgroundColor: '#0f172a', padding: { left: 6, right: 6, top: 2, bottom: 2 },
+    }).setOrigin(0.5, 1).setDepth(20).setVisible(false);
+
     // WorkstationOverlay
     this.workstationOverlay = new WorkstationOverlay(this);
     this.kartOverlay = new KartOverlay(this);
@@ -288,6 +295,7 @@ export class GameScene extends Phaser.Scene {
       this.typingTimers.clear();
       this.workstationOverlay?.destroy();
       this.kartOverlay?.destroy();
+      this.kartPrompt?.destroy();
       this.debugText?.destroy();
       this.debugZoneGfx?.destroy();
     });
@@ -593,6 +601,46 @@ export class GameScene extends Phaser.Scene {
     if (this.player) {
       this.player.kartId = storeState.localKartId;
       this.player.boosting = storeState.localBoosting;
+    }
+
+    // F11 — E pour monter/descendre (edge-trigger).
+    // Priorité: les objets interactifs (nearbyObjectId) ont la priorité sur les karts.
+    // Si le joueur est près d'un objet interactif, E reste dédié à cet objet.
+    // Si aucun objet interactif n'est proche, E gère le montage/déscente du kart.
+    if (!focused) {
+      const eDown = this.eKey?.isDown ?? false;
+      if (eDown && !this.lastEDown && this.nearbyObjectId === null) {
+        const s = useGameStore.getState();
+        if (s.localKartId !== null) {
+          socketManager.sendKartDismount();
+        } else if (s.nearbyKartId !== null) {
+          socketManager.sendKartMount(s.nearbyKartId);
+        }
+      }
+      this.lastEDown = eDown;
+    } else {
+      this.lastEDown = false;
+    }
+
+    // F11 — Prompt on-screen "E pour monter / E pour descendre"
+    if (this.kartPrompt) {
+      const s = useGameStore.getState();
+      if (s.localKartId !== null) {
+        this.kartPrompt.setText('E pour descendre')
+          .setPosition(this.player!.sprite.x, this.player!.sprite.y - 42)
+          .setVisible(true);
+      } else if (s.nearbyKartId !== null) {
+        const k = s.karts.get(s.nearbyKartId);
+        if (k) {
+          this.kartPrompt.setText('E pour monter')
+            .setPosition(k.x, k.y - 18)
+            .setVisible(true);
+        } else {
+          this.kartPrompt.setVisible(false);
+        }
+      } else {
+        this.kartPrompt.setVisible(false);
+      }
     }
 
     // Détection proximité poste de travail (pour WorkstationPanel).
