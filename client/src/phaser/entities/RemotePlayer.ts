@@ -31,6 +31,8 @@ export class RemotePlayer {
   direction: Direction = 'down';
   isMoving = false;
   isGhost = false;
+  kartId: string | null = null;
+  boosting = false;
 
   private walkTick = 0;
   private walkAccumMs = 0;
@@ -98,7 +100,27 @@ export class RemotePlayer {
     this.direction = state.direction;
     this.isMoving = state.isMoving;
     this.setGhost(state.isGhost === true);
+    this.setKart(state.kartId);
+    this.setBoosting(state.boosting);
   }
+
+  setKart(kartId: string | null): void {
+    if (this.kartId === kartId) return;
+    this.kartId = kartId;
+    const yOffset = kartId !== null ? -4 : 0;
+    this.pantsLayer?.setY(this.sprite.y + yOffset);
+    this.shirtLayer?.setY(this.sprite.y + yOffset);
+    this.hairLayer?.setY(this.sprite.y + yOffset);
+    this.hairBackLayer?.setY(this.sprite.y + yOffset);
+    const depth = kartId !== null ? 10 : 9;
+    this.sprite.setDepth(depth);
+    this.pantsLayer?.setDepth(depth);
+    this.shirtLayer?.setDepth(depth);
+    this.hairLayer?.setDepth(depth);
+    this.hairBackLayer?.setDepth(depth);
+  }
+
+  setBoosting(b: boolean): void { this.boosting = b; }
 
   setGhost(isGhost: boolean): void {
     if (this.isGhost === isGhost) return;
@@ -233,10 +255,11 @@ export class RemotePlayer {
     this.sprite.y = Phaser.Math.Linear(this.sprite.y, this.targetY, lerp);
     const x = this.sprite.x;
     const y = this.sprite.y;
-    if (this.hairBackLayer) this.hairBackLayer.setPosition(x, y);
-    if (this.pantsLayer) this.pantsLayer.setPosition(x, y);
-    if (this.shirtLayer) this.shirtLayer.setPosition(x, y);
-    if (this.hairLayer) this.hairLayer.setPosition(x, y);
+    const yOffset = this.kartId !== null ? -4 : 0;
+    if (this.hairBackLayer) this.hairBackLayer.setPosition(x, y + yOffset);
+    if (this.pantsLayer) this.pantsLayer.setPosition(x, y + yOffset);
+    if (this.shirtLayer) this.shirtLayer.setPosition(x, y + yOffset);
+    if (this.hairLayer) this.hairLayer.setPosition(x, y + yOffset);
     this.label.setPosition(x, y - 28);
     if (this.typingBubble) this.typingBubble.setPosition(x, y - 42);
     if (this.speakingBubble) this.speakingBubble.setPosition(x, y - 54);
