@@ -9,7 +9,7 @@ import type { EmoteType, InteractiveObject, PlayerState } from '../../types';
 import { WorkstationOverlay } from '../WorkstationOverlay';
 import { WORKSTATIONS } from '../../workstations';
 import { KartOverlay } from '../KartOverlay';
-import { MOUNT_DISTANCE } from '../../karts';
+import { MOUNT_DISTANCE, BOOST_DURATION_MS, BOOST_COOLDOWN_MS } from '../../karts';
 
 // Fireplace anchor in pixel coords — tile (x, y) center is (x*32+16, y*32+16).
 // Tile (1, 30): against the west wall of the meeting room.
@@ -85,6 +85,12 @@ export class GameScene extends Phaser.Scene {
   private shiftKey?: Phaser.Input.Keyboard.Key;
   private dKey?: Phaser.Input.Keyboard.Key;
   private lastShiftDCombo = false;
+  // F11 — boost state machine (local-only, broadcast via boost_start/_end)
+  private boostStartedAt = 0;
+  private boostEndedAt = -Infinity;
+  private boostGfx?: Phaser.GameObjects.Graphics;
+  private boostTrail?: Phaser.GameObjects.Graphics;
+  private trailPoints: Array<{ x: number; y: number; t: number }> = [];
 
   constructor() {
     super('GameScene');
@@ -226,6 +232,9 @@ export class GameScene extends Phaser.Scene {
     this.workstationOverlay = new WorkstationOverlay(this);
     this.kartOverlay = new KartOverlay(this);
 
+    this.boostGfx = this.add.graphics().setDepth(11);
+    this.boostTrail = this.add.graphics().setDepth(7);
+
     // Debug Shift+D
     this.shiftKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     this.dKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D);
@@ -296,6 +305,8 @@ export class GameScene extends Phaser.Scene {
       this.workstationOverlay?.destroy();
       this.kartOverlay?.destroy();
       this.kartPrompt?.destroy();
+      this.boostGfx?.destroy();
+      this.boostTrail?.destroy();
       this.debugText?.destroy();
       this.debugZoneGfx?.destroy();
     });
@@ -620,6 +631,65 @@ export class GameScene extends Phaser.Scene {
       this.lastEDown = eDown;
     } else {
       this.lastEDown = false;
+    }
+
+    // F11 — boost lifecycle (Shift while on kart). State machine, broadcasts boost_start/_end.
+    {
+      const now = this.time.now;
+      const s = useGameStore.getState();
+      const onKart = s.localKartId !== null;
+      const shiftDown = !!this.shiftKey?.isDown;
+      const boosting = s.localBoosting;
+
+      if (onKart && shiftDown && !boosting) {
+        const sinceEnd = now - this.boostEndedAt;
+        if (sinceEnd >= BOOST_COOLDOWN_MS) {
+          this.boostStartedAt = now;
+          s.setLocalBoosting(true);
+          socketManager.sendKartBoostStart();
+        }
+      }
+      if (boosting && (!onKart || now - this.boostStartedAt >= BOOST_DURATION_MS || !shiftDown)) {
+        this.boostEndedAt = now;
+        s.setLocalBoosting(false);
+        socketManager.sendKartBoostEnd();
+      }
+
+      // Jauge sous le conducteur (visible uniquement par lui).
+      if (this.boostGfx) {
+        this.boostGfx.clear();
+        if (onKart && this.player) {
+          let ratio = 1;
+          if (boosting) {
+            ratio = Math.max(0, 1 - (now - this.boostStartedAt) / BOOST_DURATION_MS);
+          } else {
+            ratio = Math.min(1, (now - this.boostEndedAt) / BOOST_COOLDOWN_MS);
+            if (this.boostEndedAt === -Infinity) ratio = 1;
+          }
+          const gx = this.player.sprite.x - 12;
+          const gy = this.player.sprite.y + 14;
+          this.boostGfx.fillStyle(0x111111, 0.6).fillRect(gx, gy, 24, 3);
+          this.boostGfx.fillStyle(0x22c55e, 1).fillRect(gx, gy, Math.round(24 * ratio), 3);
+        }
+      }
+
+      // Trail orange — visible par tous (local + distants) qui boostent.
+      if (this.boostTrail) {
+        this.boostTrail.clear();
+        const sources: Array<{ x: number; y: number }> = [];
+        if (boosting && this.player) sources.push({ x: this.player.sprite.x, y: this.player.sprite.y });
+        for (const rp of this.remotePlayers.values()) {
+          if (rp.kartId !== null && rp.boosting) sources.push({ x: rp.sprite.x, y: rp.sprite.y });
+        }
+        for (const src of sources) this.trailPoints.push({ x: src.x, y: src.y, t: now });
+        this.trailPoints = this.trailPoints.filter((p) => now - p.t < 200);
+        for (const p of this.trailPoints) {
+          const age = (now - p.t) / 200;
+          const alpha = 0.6 * (1 - age);
+          const radius = 5 - age * 3;
+          this.boostTrail.fillStyle(0xf97316, alpha).fillCircle(p.x, p.y, radius);
+        }
+      }
     }
 
     // F11 — Prompt on-screen "E pour monter / E pour descendre"
