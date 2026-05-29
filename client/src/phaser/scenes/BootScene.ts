@@ -13,6 +13,10 @@ export class BootScene extends Phaser.Scene {
     this.load.image('tileset_basic', '/assets/tilesets/basic.png');
     this.load.tilemapTiledJSON('map_default', '/maps/default.tmj');
 
+    // F11 — kart sprite (top-down, default facing up). Optional: KartOverlay
+    // falls back to a procedural sprite if this asset is missing.
+    this.load.image('kart', '/assets/karts/kart.png');
+
     // Animated layers: rows = category * 4 directions, cols = 3 frames
     //   body  -> 96 x 576  (3 cols, 12 rows = 3 skins * 4 dirs)
     //   pants -> 96 x 1152 (3 cols, 24 rows = 6 colors * 4 dirs)

@@ -62,7 +62,8 @@
       "Bash(awk '/export function startTickLoops|setInterval/{print NR\": \"$0}' server/src/socket/handlers.ts)",
       "Bash(git -c commit.gpgsign=false commit -am 'feat\\(F11\\): reject workstation:claim while driving a kart *)",
       "Bash(git -c commit.gpgsign=false commit -m 'feat\\(F11\\): computeKartSpeed pure helper \\(TDD\\) *)",
-      "Bash(git -c commit.gpgsign=false commit -am 'feat\\(F11\\): KartOverlay procedural sprite \\(Phaser Graphics\\) *)"
+      "Bash(git -c commit.gpgsign=false commit -am 'feat\\(F11\\): KartOverlay procedural sprite \\(Phaser Graphics\\) *)",
+      "Bash(sudo -n /bin/systemctl status webinti-server)"
     ]
   }
 }

@@ -591,8 +591,8 @@ export class GameScene extends Phaser.Scene {
     const localId = storeState.localPlayerId;
     this.workstationOverlay?.update(storeState.workstations, localId);
 
-    // F11 — render kart sprites
-    this.kartOverlay?.update(storeState.karts);
+    // F11 — render kart sprites (pass players for driver-based position + rotation)
+    this.kartOverlay?.update(storeState.karts, storeState.players);
 
     // F11 — proximité kart (pour prompt "E pour monter")
     if (this.player) {
