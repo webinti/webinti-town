@@ -8,6 +8,8 @@ import { setFireVolume } from '../../sounds/sounds';
 import type { EmoteType, InteractiveObject, PlayerState } from '../../types';
 import { WorkstationOverlay } from '../WorkstationOverlay';
 import { WORKSTATIONS } from '../../workstations';
+import { KartOverlay } from '../KartOverlay';
+import { MOUNT_DISTANCE } from '../../karts';
 
 // Fireplace anchor in pixel coords — tile (x, y) center is (x*32+16, y*32+16).
 // Tile (1, 30): against the west wall of the meeting room.
@@ -74,6 +76,7 @@ export class GameScene extends Phaser.Scene {
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
   private lastLocalPresence: string | undefined = undefined;
   private workstationOverlay?: WorkstationOverlay;
+  private kartOverlay?: KartOverlay;
   private debugMode = false;
   private debugText?: Phaser.GameObjects.Text;
   private debugZoneGfx?: Phaser.GameObjects.Graphics;
@@ -214,6 +217,7 @@ export class GameScene extends Phaser.Scene {
 
     // WorkstationOverlay
     this.workstationOverlay = new WorkstationOverlay(this);
+    this.kartOverlay = new KartOverlay(this);
 
     // Debug Shift+D
     this.shiftKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
@@ -283,6 +287,7 @@ export class GameScene extends Phaser.Scene {
       for (const timer of this.typingTimers.values()) clearTimeout(timer);
       this.typingTimers.clear();
       this.workstationOverlay?.destroy();
+      this.kartOverlay?.destroy();
       this.debugText?.destroy();
       this.debugZoneGfx?.destroy();
     });
@@ -566,6 +571,29 @@ export class GameScene extends Phaser.Scene {
     const storeState = useGameStore.getState();
     const localId = storeState.localPlayerId;
     this.workstationOverlay?.update(storeState.workstations, localId);
+
+    // F11 — render kart sprites
+    this.kartOverlay?.update(storeState.karts);
+
+    // F11 — proximité kart (pour prompt "E pour monter")
+    if (this.player) {
+      const px = this.player.sprite.x;
+      const py = this.player.sprite.y;
+      let nearest: string | null = null;
+      let nearestD = Infinity;
+      for (const k of storeState.karts.values()) {
+        if (k.driverId !== null) continue;
+        const d = Math.hypot(px - k.x, py - k.y);
+        if (d <= MOUNT_DISTANCE && d < nearestD) { nearestD = d; nearest = k.id; }
+      }
+      if (nearest !== storeState.nearbyKartId) storeState.setNearbyKartId(nearest);
+    }
+
+    // F11 — push local kart state into Player so it computes speed + applies visual.
+    if (this.player) {
+      this.player.kartId = storeState.localKartId;
+      this.player.boosting = storeState.localBoosting;
+    }
 
     // Détection proximité poste de travail (pour WorkstationPanel).
     if (this.player) {
