@@ -107,14 +107,15 @@ export class RemotePlayer {
   setKart(kartId: string | null): void {
     if (this.kartId === kartId) return;
     this.kartId = kartId;
-    // F11 — pas d'offset Y (le body est lié au physics, le décalage détacherait
-    // les vêtements). Juste un depth bump pour passer au-dessus du kart sprite.
-    const depth = kartId !== null ? 10 : 9;
-    this.sprite.setDepth(depth);
-    this.pantsLayer?.setDepth(depth);
-    this.shirtLayer?.setDepth(depth);
-    this.hairLayer?.setDepth(depth);
-    this.hairBackLayer?.setDepth(depth);
+    // F11 — bump +1 sur chaque couche en préservant les offsets fractionnaires
+    // (hairBack 8.9 / body 9.0 / pants 9.1 / shirt 9.2 / hair 9.3) qui
+    // contrôlent l'ordre de rendu entre couches.
+    const bump = kartId !== null ? 1 : 0;
+    this.hairBackLayer?.setDepth(8.9 + bump);
+    this.sprite.setDepth(9.0 + bump);
+    this.pantsLayer?.setDepth(9.1 + bump);
+    this.shirtLayer?.setDepth(9.2 + bump);
+    this.hairLayer?.setDepth(9.3 + bump);
   }
 
   setBoosting(b: boolean): void { this.boosting = b; }

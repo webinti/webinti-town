@@ -189,17 +189,16 @@ export class Player {
     this.label.setPosition(this.sprite.x, this.sprite.y - 28);
     if (this.speakingBubble) this.speakingBubble.setPosition(this.sprite.x, this.sprite.y - 54);
 
-    // F11 — quand on est sur un kart, le sprite joueur passe au-dessus du kart.
-    // Pas d'offset Y : décaler uniquement les couches vêtements détacherait les
-    // habits du corps (le body sprite est lié au physics et ne peut pas bouger).
-    // Le kart étant plus large que le joueur, le rendu donne l'impression d'être assis dedans.
-    const onKart = this.kartId !== null;
-    const targetDepth = onKart ? 10 : 9;
-    this.sprite.setDepth(targetDepth);
-    this.pantsLayer?.setDepth(targetDepth);
-    this.shirtLayer?.setDepth(targetDepth);
-    this.hairLayer?.setDepth(targetDepth);
-    this.hairBackLayer?.setDepth(targetDepth);
+    // F11 — quand on est sur un kart, on bumpe TOUTES les couches de +1 pour
+    // passer au-dessus du sprite kart (depth 8) tout en préservant les offsets
+    // fractionnaires entre couches (8.9 hairBack / 9.0 body / 9.1 pants / 9.2
+    // shirt / 9.3 hair) qui contrôlent l'ordre de rendu.
+    const bump = this.kartId !== null ? 1 : 0;
+    this.hairBackLayer?.setDepth(8.9 + bump);
+    this.sprite.setDepth(9.0 + bump);
+    this.pantsLayer?.setDepth(9.1 + bump);
+    this.shirtLayer?.setDepth(9.2 + bump);
+    this.hairLayer?.setDepth(9.3 + bump);
 
     return this.moving !== wasMoving || this.direction !== prevDir || this.moving;
   }
