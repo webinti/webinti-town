@@ -20,6 +20,8 @@ import { WorkstationManagerPocketBase } from '../workstations/WorkstationManager
 import { WORKSTATIONS, workstationIdForPointIn } from '../workstations.js';
 import { KartManager } from '../karts/KartManager.js';
 import { KARTS } from '../karts.js';
+import { aabbOverlap, computeKnockback } from '../karts/collisionPush.js';
+import { KART_HALF_W, KART_HALF_H, PLAYER_HALF } from '../karts.js';
 
 function slugify(name: string): string {
   const base = name
@@ -329,6 +331,9 @@ export class RoomManager {
       return player;   // x, y inchangés → le serveur répond avec l'ancienne position
     }
 
+    const prevX = player.x;
+    const prevY = player.y;
+
     player.x = x;
     player.y = y;
     player.direction = direction;
@@ -341,6 +346,43 @@ export class RoomManager {
       const k = room.kartManager.getState(player.kartId);
       if (k) room.karts.set(player.kartId, k);
     }
+
+    // F11 — collision push : si le joueur en kart chevauche un autre joueur, le pousser.
+    if (player.kartId) {
+      const kartBox = { x, y, halfW: KART_HALF_W, halfH: KART_HALF_H };
+      let cancelled = false;
+      const pendingPushes: Array<{ p: PlayerState; tx: number; ty: number }> = [];
+      for (const other of room.players.values()) {
+        if (other.playerId === playerId) continue;
+        const playerBox = { x: other.x, y: other.y, halfW: PLAYER_HALF, halfH: PLAYER_HALF };
+        if (!aabbOverlap(kartBox, playerBox)) continue;
+        const { dx, dy } = computeKnockback(direction);
+        const tx = other.x + dx;
+        const ty = other.y + dy;
+        if (room.workstationManager.isInsideAnyLockedWorkstation(other.playerId, tx, ty)) {
+          cancelled = true;
+          break;
+        }
+        pendingPushes.push({ p: other, tx, ty });
+      }
+      if (cancelled) {
+        // Rembobiner : le kart et le joueur reviennent à leur position précédente.
+        player.x = prevX;
+        player.y = prevY;
+        const k = room.kartManager.getKartByDriver(playerId);
+        if (k) {
+          room.kartManager.move(playerId, prevX, prevY);
+          room.karts.set(k.id, room.kartManager.getState(k.id)!);
+        }
+        return player;
+      }
+      for (const { p, tx, ty } of pendingPushes) {
+        p.x = tx;
+        p.y = ty;
+        p.workstationId = workstationIdForPointIn(WORKSTATIONS, tx, ty) ?? null;
+      }
+    }
+
     return player;
   }
 
