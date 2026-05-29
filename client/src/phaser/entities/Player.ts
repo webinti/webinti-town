@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { Appearance, Direction, Presence } from '../../types';
 import { advanceWalkTick, animatedFrame } from './avatarFrames';
+import { computeKartSpeed } from '../kartSpeed';
 
 const SHIRT_FALLBACK_COLORS = [
   0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x14b8a6,
@@ -24,6 +25,8 @@ export class Player {
   direction: Direction = 'down';
   moving = false;
   speed = 160;
+  kartId: string | null = null;
+  boosting = false;
   hasLayers: boolean;
   appearance: Appearance;
   isGhost = false;
@@ -135,6 +138,7 @@ export class Player {
     right: boolean;
     dance?: boolean;
   }): boolean {
+    this.speed = computeKartSpeed({ onKart: this.kartId !== null, boosting: this.boosting });
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     let vx = 0;
     let vy = 0;
@@ -184,6 +188,20 @@ export class Player {
     this.syncLayers();
     this.label.setPosition(this.sprite.x, this.sprite.y - 28);
     if (this.speakingBubble) this.speakingBubble.setPosition(this.sprite.x, this.sprite.y - 54);
+
+    // F11 — visual offset when sitting on a kart (-4 px) + depth bumped above kart sprite.
+    const onKart = this.kartId !== null;
+    const yOffset = onKart ? -4 : 0;
+    this.pantsLayer?.setY(this.sprite.y + yOffset);
+    this.shirtLayer?.setY(this.sprite.y + yOffset);
+    this.hairLayer?.setY(this.sprite.y + yOffset);
+    this.hairBackLayer?.setY(this.sprite.y + yOffset);
+    const targetDepth = onKart ? 10 : 9;
+    this.sprite.setDepth(targetDepth);
+    this.pantsLayer?.setDepth(targetDepth);
+    this.shirtLayer?.setDepth(targetDepth);
+    this.hairLayer?.setDepth(targetDepth);
+    this.hairBackLayer?.setDepth(targetDepth);
 
     return this.moving !== wasMoving || this.direction !== prevDir || this.moving;
   }
