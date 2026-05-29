@@ -9,8 +9,11 @@ const FALLBACK_W = 28;
 const FALLBACK_H = 20;
 
 // Image sprite : taille de rendu en pixels monde.
-const SPRITE_DISPLAY_W = 36;
-const SPRITE_DISPLAY_H = 36;
+// 56×56 → bien visible autour du joueur (sprite ~32×48), les roues et l'aileron
+// dépassent largement du corps. On ne touche pas à l'AABB de collision côté
+// serveur (28×20) — c'est purement visuel.
+const SPRITE_DISPLAY_W = 56;
+const SPRITE_DISPLAY_H = 56;
 
 const DEPTH_KART = 8;
 
