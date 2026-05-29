@@ -18,6 +18,8 @@ import { config } from '../config.js';
 import { WorkstationManager } from '../workstations/WorkstationManager.js';
 import { WorkstationManagerPocketBase } from '../workstations/WorkstationManagerPocketBase.js';
 import { WORKSTATIONS, workstationIdForPointIn } from '../workstations.js';
+import { KartManager } from '../karts/KartManager.js';
+import { KARTS } from '../karts.js';
 
 function slugify(name: string): string {
   const base = name
@@ -102,6 +104,10 @@ export class RoomManager {
         workstations.set(s.id, s);
       }
     });
+    const kartManager = new KartManager(KARTS);
+    const karts = new Map(
+      kartManager.getAllStates().map((k) => [k.id, k]),
+    );
     this.rooms.set(slug, {
       slug,
       name: cleanName,
@@ -115,6 +121,8 @@ export class RoomManager {
       isRecording: false,
       workstations,
       workstationManager,
+      karts,
+      kartManager,
       dmStore,
     });
     return { slug, adminToken };
@@ -144,6 +152,10 @@ export class RoomManager {
         workstations.set(s.id, s);
       }
     });
+    const kartManager = new KartManager(KARTS);
+    const karts = new Map(
+      kartManager.getAllStates().map((k) => [k.id, k]),
+    );
     const room: RoomState = {
       slug,
       name,
@@ -157,6 +169,8 @@ export class RoomManager {
       isRecording: false,
       workstations,
       workstationManager,
+      karts,
+      kartManager,
       dmStore,
     };
     this.rooms.set(slug, room);
@@ -223,6 +237,8 @@ export class RoomManager {
       presence: 'available',
       lastActivityAt: Date.now(),
       workstationId: null,
+      kartId: null,
+      boosting: false,
     };
     room.players.set(playerId, player);
     if (!room.hostPlayerId) room.hostPlayerId = playerId;
@@ -234,6 +250,14 @@ export class RoomManager {
     if (!room) return undefined;
     const player = room.players.get(playerId);
     if (!player) return undefined;
+    if (player.kartId) {
+      room.kartManager.move(playerId, player.x, player.y);
+      room.kartManager.dismount(playerId);
+      const k = room.kartManager.getState(player.kartId);
+      if (k) room.karts.set(player.kartId, k);
+      player.kartId = null;
+      player.boosting = false;
+    }
     room.players.delete(playerId);
     if (room.hostPlayerId === playerId) {
       const next = room.players.values().next();
@@ -247,6 +271,14 @@ export class RoomManager {
     for (const room of this.rooms.values()) {
       for (const player of room.players.values()) {
         if (player.socketId === socketId) {
+          if (player.kartId) {
+            room.kartManager.move(player.playerId, player.x, player.y);
+            room.kartManager.dismount(player.playerId);
+            const k = room.kartManager.getState(player.kartId);
+            if (k) room.karts.set(player.kartId, k);
+            player.kartId = null;
+            player.boosting = false;
+          }
           room.players.delete(player.playerId);
           if (room.hostPlayerId === player.playerId) {
             const next = room.players.values().next();
@@ -303,6 +335,12 @@ export class RoomManager {
     player.isMoving = isMoving;
     // Recalculer workstationId à partir des nouvelles coords.
     player.workstationId = workstationIdForPointIn(WORKSTATIONS, x, y) ?? null;
+    // F11 — si le joueur est sur un kart, garder sa position synchrone côté manager.
+    if (player.kartId) {
+      room.kartManager.move(playerId, x, y);
+      const k = room.kartManager.getState(player.kartId);
+      if (k) room.karts.set(player.kartId, k);
+    }
     return player;
   }
 
