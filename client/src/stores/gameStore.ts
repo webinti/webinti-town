@@ -5,6 +5,7 @@ import type {
   DmMessage,
   InteractiveObject,
   KanbanCard,
+  KartState,
   PlayerState,
   Presence,
   WhiteboardStroke,
@@ -90,6 +91,15 @@ interface GameStore {
   setWorkstationsInitial: (list: WorkstationState[]) => void;
   nearbyWorkstationId: string | null;
   setNearbyWorkstationId: (id: string | null) => void;
+  karts: Map<string, KartState>;
+  setKartState: (k: KartState) => void;
+  setKartsInitial: (list: KartState[]) => void;
+  localKartId: string | null;
+  setLocalKartId: (id: string | null) => void;
+  nearbyKartId: string | null;
+  setNearbyKartId: (id: string | null) => void;
+  localBoosting: boolean;
+  setLocalBoosting: (b: boolean) => void;
   pendingInvite: { fromPlayerName: string; workstationId: string; workstationName: string } | null;
   setPendingInvite: (inv: { fromPlayerName: string; workstationId: string; workstationName: string } | null) => void;
   // Auto-walk: cible que le joueur local doit rejoindre automatiquement.
@@ -368,6 +378,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ workstations: new Map(list.map((ws) => [ws.id, ws])) }),
   nearbyWorkstationId: null,
   setNearbyWorkstationId: (id) => set({ nearbyWorkstationId: id }),
+  karts: new Map<string, KartState>(),
+  setKartState: (k) =>
+    set((s) => {
+      const next = new Map(s.karts);
+      next.set(k.id, k);
+      return { karts: next };
+    }),
+  setKartsInitial: (list) => set({ karts: new Map(list.map((k) => [k.id, k])) }),
+  localKartId: null,
+  setLocalKartId: (id) => set({ localKartId: id }),
+  nearbyKartId: null,
+  setNearbyKartId: (id) => set({ nearbyKartId: id }),
+  localBoosting: false,
+  setLocalBoosting: (b) => set({ localBoosting: b }),
   pendingInvite: null,
   setPendingInvite: (inv) => set({ pendingInvite: inv }),
   autoWalkTarget: null,
@@ -407,6 +431,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       mapZoom: 1,
       workstations: new Map(),
       nearbyWorkstationId: null,
+      karts: new Map(),
+      localKartId: null,
+      nearbyKartId: null,
+      localBoosting: false,
       pendingInvite: null,
       autoWalkTarget: null,
       speakingPlayerIds: new Set(),
