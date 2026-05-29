@@ -32,6 +32,9 @@ interface WorkstationStatePayload {
   customName: string | null;
 }
 
+type KartStatePayload = import('../types').KartState;
+type KartInitialPayload = { karts: KartStatePayload[] };
+
 interface WorkstationInvitePayload {
   fromPlayerId: string;
   fromPlayerName: string;
@@ -311,6 +314,15 @@ class SocketManager {
       for (const l of this.workstationInviteListeners) l(payload);
     });
 
+    socket.on('kart:initial', (payload: KartInitialPayload) => {
+      this.kartInitialCallbacks.forEach((cb) => cb(payload));
+    });
+    socket.on('kart:state', (payload: KartStatePayload) => {
+      this.kartStateCallbacks.forEach((cb) => cb(payload));
+    });
+    this.onKartInitial((p) => useGameStore.getState().setKartsInitial(p.karts));
+    this.onKartState((p) => useGameStore.getState().setKartState(p));
+
     socket.on('speaking_state', (payload: SpeakingStatePayload) => {
       if (!payload || typeof payload.playerId !== 'string') return;
       for (const l of this.speakingStateListeners) l(payload);
@@ -553,6 +565,11 @@ class SocketManager {
     this.socket?.emit('speaking_state', { speaking });
   }
 
+  sendKartMount(kartId: string): void { this.socket?.emit('kart:mount', { kartId }); }
+  sendKartDismount(): void { this.socket?.emit('kart:dismount'); }
+  sendKartBoostStart(): void { this.socket?.emit('kart:boost_start'); }
+  sendKartBoostEnd(): void { this.socket?.emit('kart:boost_end'); }
+
   onWorkstationState(cb: (ws: WorkstationStatePayload) => void): () => void {
     this.workstationStateListeners.add(cb);
     return () => this.workstationStateListeners.delete(cb);
@@ -566,6 +583,18 @@ class SocketManager {
   onSpeakingState(cb: (p: SpeakingStatePayload) => void): () => void {
     this.speakingStateListeners.add(cb);
     return () => this.speakingStateListeners.delete(cb);
+  }
+
+  private kartInitialCallbacks = new Set<(p: KartInitialPayload) => void>();
+  private kartStateCallbacks = new Set<(p: KartStatePayload) => void>();
+
+  onKartInitial(cb: (p: KartInitialPayload) => void): () => void {
+    this.kartInitialCallbacks.add(cb);
+    return () => this.kartInitialCallbacks.delete(cb);
+  }
+  onKartState(cb: (p: KartStatePayload) => void): () => void {
+    this.kartStateCallbacks.add(cb);
+    return () => this.kartStateCallbacks.delete(cb);
   }
 
   disconnect(): void {
