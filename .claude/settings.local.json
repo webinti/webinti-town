@@ -60,7 +60,8 @@
       "Bash(git -c commit.gpgsign=false commit -m 'feat\\(F11\\): Kart definitions + shared constants \\(5 karts at parking\\) *)",
       "Bash(git -c commit.gpgsign=false commit -m ' *)",
       "Bash(awk '/export function startTickLoops|setInterval/{print NR\": \"$0}' server/src/socket/handlers.ts)",
-      "Bash(git -c commit.gpgsign=false commit -am 'feat\\(F11\\): reject workstation:claim while driving a kart *)"
+      "Bash(git -c commit.gpgsign=false commit -am 'feat\\(F11\\): reject workstation:claim while driving a kart *)",
+      "Bash(git -c commit.gpgsign=false commit -m 'feat\\(F11\\): computeKartSpeed pure helper \\(TDD\\) *)"
     ]
   }
 }

@@ -1,0 +1,20 @@
+[Unit]
+Description=Webinti Town - Node game server
+After=network.target
+
+[Service]
+Type=simple
+User=openclaw
+WorkingDirectory=/home/openclaw/projects/webinti-town/server
+EnvironmentFile=/home/openclaw/projects/webinti-town/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
