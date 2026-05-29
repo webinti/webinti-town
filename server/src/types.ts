@@ -152,6 +152,8 @@ export interface RoomState {
   workstationManager:
     | import('./workstations/WorkstationManager.js').WorkstationManager
     | import('./workstations/WorkstationManagerPocketBase.js').WorkstationManagerPocketBase;
+  karts: Map<string, KartState>;
+  kartManager: import('./karts/KartManager.js').KartManager;
   dmStore:
     | import('./dm/DmStore.js').DmStore
     | import('./dm/DmStorePocketBase.js').DmStorePocketBase;

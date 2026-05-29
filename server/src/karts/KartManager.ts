@@ -1,15 +1,6 @@
 import type { KartDef } from '../karts.js';
 import { MOUNT_DISTANCE, KART_IDLE_RETURN_MS } from '../karts.js';
-
-export interface KartState {
-  id: string;
-  x: number;
-  y: number;
-  parkingX: number;
-  parkingY: number;
-  driverId: string | null;
-  lastMovedAt: number;
-}
+import type { KartState } from '../types.js';
 
 export class KartManager {
   private readonly defs: readonly KartDef[];

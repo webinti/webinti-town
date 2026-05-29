@@ -55,7 +55,12 @@
       "Bash(awk '/typing_start/,/^    \\\\}\\\\\\);/' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
       "Bash(awk '/typing_start/{print NR; exit}' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
       "Bash(awk 'NR>=170 && NR<=235' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
-      "Bash(awk 'tolower\\($0\\) ~ /kanban/{print NR\": \"$0}' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)"
+      "Bash(awk 'tolower\\($0\\) ~ /kanban/{print NR\": \"$0}' /home/openclaw/projects/webinti-town/server/src/socket/handlers.ts)",
+      "Bash(git -c commit.gpgsign=false commit -m 'fix\\(F11\\): make kartId/boosting required on client PlayerState *)",
+      "Bash(git -c commit.gpgsign=false commit -m 'feat\\(F11\\): Kart definitions + shared constants \\(5 karts at parking\\) *)",
+      "Bash(git -c commit.gpgsign=false commit -m ' *)",
+      "Bash(awk '/export function startTickLoops|setInterval/{print NR\": \"$0}' server/src/socket/handlers.ts)",
+      "Bash(git -c commit.gpgsign=false commit -am 'feat\\(F11\\): reject workstation:claim while driving a kart *)"
     ]
   }
 }
