@@ -107,11 +107,8 @@ export class RemotePlayer {
   setKart(kartId: string | null): void {
     if (this.kartId === kartId) return;
     this.kartId = kartId;
-    const yOffset = kartId !== null ? -4 : 0;
-    this.pantsLayer?.setY(this.sprite.y + yOffset);
-    this.shirtLayer?.setY(this.sprite.y + yOffset);
-    this.hairLayer?.setY(this.sprite.y + yOffset);
-    this.hairBackLayer?.setY(this.sprite.y + yOffset);
+    // F11 — pas d'offset Y (le body est lié au physics, le décalage détacherait
+    // les vêtements). Juste un depth bump pour passer au-dessus du kart sprite.
     const depth = kartId !== null ? 10 : 9;
     this.sprite.setDepth(depth);
     this.pantsLayer?.setDepth(depth);
@@ -255,11 +252,11 @@ export class RemotePlayer {
     this.sprite.y = Phaser.Math.Linear(this.sprite.y, this.targetY, lerp);
     const x = this.sprite.x;
     const y = this.sprite.y;
-    const yOffset = this.kartId !== null ? -4 : 0;
-    if (this.hairBackLayer) this.hairBackLayer.setPosition(x, y + yOffset);
-    if (this.pantsLayer) this.pantsLayer.setPosition(x, y + yOffset);
-    if (this.shirtLayer) this.shirtLayer.setPosition(x, y + yOffset);
-    if (this.hairLayer) this.hairLayer.setPosition(x, y + yOffset);
+    // F11 — pas d'offset Y, vêtements alignés sur le body.
+    if (this.hairBackLayer) this.hairBackLayer.setPosition(x, y);
+    if (this.pantsLayer) this.pantsLayer.setPosition(x, y);
+    if (this.shirtLayer) this.shirtLayer.setPosition(x, y);
+    if (this.hairLayer) this.hairLayer.setPosition(x, y);
     this.label.setPosition(x, y - 28);
     if (this.typingBubble) this.typingBubble.setPosition(x, y - 42);
     if (this.speakingBubble) this.speakingBubble.setPosition(x, y - 54);

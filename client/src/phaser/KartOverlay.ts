@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { Direction, KartState, PlayerState } from '../types';
+import type { Direction, KartState } from '../types';
 
 // Fallback procedural style (used si l'asset 'kart' n'est pas chargé).
 const FALLBACK_COLOR_BODY = 0xfacc15;
@@ -8,16 +8,14 @@ const FALLBACK_COLOR_WHEEL = 0x111111;
 const FALLBACK_W = 28;
 const FALLBACK_H = 20;
 
-// Image sprite: target render size in world pixels.
-// Le sprite PNG est ~512×512 px; on l'affiche à 36×36 pour rester proche
-// de l'AABB de collision (28×20) tout en restant lisible.
+// Image sprite : taille de rendu en pixels monde.
 const SPRITE_DISPLAY_W = 36;
 const SPRITE_DISPLAY_H = 36;
 
 const DEPTH_KART = 8;
 
-// Sprite top-down face "up" par défaut. Phaser.angle est en degrés,
-// 0 = right (convention Phaser). Donc up = -90.
+// Sprite top-down face "up" par défaut.
+// Phaser.angle: 0 = right (sens horloger). Donc up = -90.
 const DIRECTION_TO_ANGLE: Record<Direction, number> = {
   up:    -90,
   right:   0,
@@ -25,56 +23,60 @@ const DIRECTION_TO_ANGLE: Record<Direction, number> = {
   left:  180,
 };
 
+/**
+ * Renvoie la position et la direction visuelles du conducteur d'un kart.
+ * GameScene fournit cette fonction depuis ses entités Phaser (Player +
+ * RemotePlayer) plutôt que depuis le store, qui est laggué de quelques
+ * dizaines de ms (rebroadcast serveur). Sans ça, le sprite kart traîne
+ * derrière le joueur local.
+ */
+export type DriverStateResolver = (playerId: string) => {
+  x: number;
+  y: number;
+  direction: Direction;
+  isMoving: boolean;
+} | null;
+
 export class KartOverlay {
   private readonly scene: Phaser.Scene;
   private readonly hasSprite: boolean;
   private readonly gfx?: Phaser.GameObjects.Graphics;
   private readonly sprites = new Map<string, Phaser.GameObjects.Image>();
-  // Mémoriser la dernière direction connue de chaque kart pour ne pas
-  // "claquer" sur la rotation par défaut quand le conducteur s'arrête.
+  // Mémoriser la dernière direction de mouvement de chaque kart pour ne pas
+  // tourner sur place quand le conducteur s'arrête.
   private readonly lastDirection = new Map<string, Direction>();
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     this.hasSprite = scene.textures.exists('kart');
     if (!this.hasSprite) {
-      // Fallback: on dessine le sprite procédural à chaque frame.
       this.gfx = scene.add.graphics().setDepth(DEPTH_KART);
     }
   }
 
-  /**
-   * @param karts   Map<kartId, KartState> du store
-   * @param players Map<playerId, PlayerState> du store (pour récupérer
-   *                la direction du conducteur et tourner le sprite)
-   */
-  update(karts: Map<string, KartState>, players: Map<string, PlayerState>): void {
+  update(karts: Map<string, KartState>, getDriverState: DriverStateResolver): void {
     if (!this.hasSprite) {
       this.renderFallback(karts);
-      this.pruneSprites(karts);  // no-op when no sprite, mais coût quasi nul
       return;
     }
 
     for (const k of karts.values()) {
-      // Position : si quelqu'un conduit, c'est la position du joueur qui est
-      // autoritative côté visuel (le serveur synchronise via move(), mais le
-      // tick client est plus fluide quand on lit directement le PlayerState).
       let x = k.x;
       let y = k.y;
-      let dir: Direction | undefined = this.lastDirection.get(k.id);
+      let dir: Direction = this.lastDirection.get(k.id) ?? 'up';
+
       if (k.driverId) {
-        const driver = players.get(k.driverId);
-        if (driver) {
-          x = driver.x;
-          y = driver.y;
-          // On ne change l'angle QUE quand le joueur bouge, sinon le kart
-          // pivote au moindre changement de facing pendant un arrêt.
-          if (driver.isMoving) {
-            dir = driver.direction;
-            this.lastDirection.set(k.id, driver.direction);
+        const ds = getDriverState(k.driverId);
+        if (ds) {
+          x = ds.x;
+          y = ds.y;
+          if (ds.isMoving) {
+            dir = ds.direction;
+            this.lastDirection.set(k.id, ds.direction);
           }
         }
       }
+
       let img = this.sprites.get(k.id);
       if (!img) {
         img = this.scene.add.image(x, y, 'kart').setDepth(DEPTH_KART);
@@ -82,14 +84,10 @@ export class KartOverlay {
         this.sprites.set(k.id, img);
       }
       img.setPosition(Math.round(x), Math.round(y));
-      img.setAngle(DIRECTION_TO_ANGLE[dir ?? 'up']);
+      img.setAngle(DIRECTION_TO_ANGLE[dir]);
     }
 
-    this.pruneSprites(karts);
-  }
-
-  /** Supprime les sprites dont l'id n'apparaît plus dans le store. */
-  private pruneSprites(karts: Map<string, KartState>): void {
+    // Supprimer les sprites de karts qui n'existent plus dans le store.
     for (const [id, img] of this.sprites) {
       if (!karts.has(id)) {
         img.destroy();
@@ -99,7 +97,6 @@ export class KartOverlay {
     }
   }
 
-  /** Ancien rendu procédural — uniquement si la PNG n'a pas chargé. */
   private renderFallback(karts: Map<string, KartState>): void {
     if (!this.gfx) return;
     this.gfx.clear();

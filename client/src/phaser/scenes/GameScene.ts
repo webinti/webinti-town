@@ -591,8 +591,28 @@ export class GameScene extends Phaser.Scene {
     const localId = storeState.localPlayerId;
     this.workstationOverlay?.update(storeState.workstations, localId);
 
-    // F11 — render kart sprites (pass players for driver-based position + rotation)
-    this.kartOverlay?.update(storeState.karts, storeState.players);
+    // F11 — render kart sprites. Resolver lit la position depuis les entités
+    // Phaser (frame-accurate) et non le store, qui est laggué par le tick serveur.
+    this.kartOverlay?.update(storeState.karts, (pid) => {
+      if (this.player && pid === storeState.localPlayerId) {
+        return {
+          x: this.player.sprite.x,
+          y: this.player.sprite.y,
+          direction: this.player.direction,
+          isMoving: this.player.moving,
+        };
+      }
+      const rp = this.remotePlayers.get(pid);
+      if (rp) {
+        return {
+          x: rp.sprite.x,
+          y: rp.sprite.y,
+          direction: rp.direction,
+          isMoving: rp.moving,
+        };
+      }
+      return null;
+    });
 
     // F11 — proximité kart (pour prompt "E pour monter")
     if (this.player) {

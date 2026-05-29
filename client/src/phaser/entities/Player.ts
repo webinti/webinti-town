@@ -189,13 +189,11 @@ export class Player {
     this.label.setPosition(this.sprite.x, this.sprite.y - 28);
     if (this.speakingBubble) this.speakingBubble.setPosition(this.sprite.x, this.sprite.y - 54);
 
-    // F11 — visual offset when sitting on a kart (-4 px) + depth bumped above kart sprite.
+    // F11 — quand on est sur un kart, le sprite joueur passe au-dessus du kart.
+    // Pas d'offset Y : décaler uniquement les couches vêtements détacherait les
+    // habits du corps (le body sprite est lié au physics et ne peut pas bouger).
+    // Le kart étant plus large que le joueur, le rendu donne l'impression d'être assis dedans.
     const onKart = this.kartId !== null;
-    const yOffset = onKart ? -4 : 0;
-    this.pantsLayer?.setY(this.sprite.y + yOffset);
-    this.shirtLayer?.setY(this.sprite.y + yOffset);
-    this.hairLayer?.setY(this.sprite.y + yOffset);
-    this.hairBackLayer?.setY(this.sprite.y + yOffset);
     const targetDepth = onKart ? 10 : 9;
     this.sprite.setDepth(targetDepth);
     this.pantsLayer?.setDepth(targetDepth);
