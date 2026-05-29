@@ -608,7 +608,7 @@ export class GameScene extends Phaser.Scene {
           x: rp.sprite.x,
           y: rp.sprite.y,
           direction: rp.direction,
-          isMoving: rp.moving,
+          isMoving: rp.isMoving,
         };
       }
       return null;
