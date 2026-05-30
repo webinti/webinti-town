@@ -22,6 +22,95 @@
 
 ---
 
+## Task 0: Staging `/v2` (assets base-aware + build v2)
+
+But : permettre de tester sur `live.webinti.com/v2` sans toucher l'app live (servie depuis `client/dist` à la racine). On rend les chemins d'assets relatifs au `BASE_URL`, puis on build la v2 dans le sous-dossier `client/dist/v2/` (servi automatiquement à `/v2` par nginx, sans modif infra). `dist/v2` ne touche jamais les fichiers racine de `dist`.
+
+**Files:**
+- Modify: `client/src/phaser/scenes/BootScene.ts`
+- Modify: `client/src/react/JoinScreen.tsx`
+- Modify: `client/package.json`
+
+- [ ] **Step 1: Rendre les chemins de BootScene base-aware**
+
+Dans `BootScene.ts`, juste après la ligne `const V = ...`, ajouter :
+
+```ts
+const BASE = import.meta.env.BASE_URL; // '/' en prod racine, '/v2/' pour la v2
+```
+
+Puis remplacer les 8 chemins absolus par des chemins préfixés `${BASE}` (BASE finit par `/`) :
+
+```ts
+    this.load.image('tileset_basic', `${BASE}assets/tilesets/basic.png${V}`);
+    this.load.tilemapTiledJSON('map_default', `${BASE}maps/default.tmj${V}`);
+
+    this.load.image('kart', `${BASE}assets/karts/kart.png${V}`);
+
+    this.load.spritesheet('layer_body', `${BASE}assets/avatars/body.png${V}`, {
+      frameWidth: 32,
+      frameHeight: 48,
+    });
+    this.load.spritesheet('layer_hair', `${BASE}assets/avatars/hair.png${V}`, {
+      frameWidth: 32,
+      frameHeight: 48,
+    });
+    this.load.spritesheet('layer_hair_back', `${BASE}assets/avatars/hair_back.png${V}`, {
+      frameWidth: 32,
+      frameHeight: 48,
+    });
+    this.load.spritesheet('layer_shirt', `${BASE}assets/avatars/shirt.png${V}`, {
+      frameWidth: 32,
+      frameHeight: 48,
+    });
+    this.load.spritesheet('layer_pants', `${BASE}assets/avatars/pants.png${V}`, {
+      frameWidth: 32,
+      frameHeight: 48,
+    });
+```
+
+- [ ] **Step 2: Rendre les chemins de JoinScreen base-aware**
+
+Dans `JoinScreen.tsx`, remplacer les 5 `backgroundImage` (lignes ~131-163) par des template literals préfixés par `import.meta.env.BASE_URL` :
+
+```tsx
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/hair_back.png')`,
+```
+```tsx
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/body.png')`,
+```
+```tsx
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/pants.png')`,
+```
+```tsx
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/shirt.png')`,
+```
+```tsx
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/hair.png')`,
+```
+
+- [ ] **Step 3: Ajouter le script build:v2**
+
+Dans `client/package.json`, ajouter dans `"scripts"` :
+
+```json
+    "build:v2": "tsc -b && vite build --base=/v2/ --outDir dist/v2 --emptyOutDir",
+```
+
+- [ ] **Step 4: Vérifier que le build racine n'est pas cassé (live intact)**
+
+Run: `cd client && npm run build`
+Expected: `✓ built` sans erreur (les chemins `${BASE}...` donnent `/assets/...` en build racine).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add client/src/phaser/scenes/BootScene.ts client/src/react/JoinScreen.tsx client/package.json
+git commit -m "feat(staging): chemins assets base-aware + script build:v2"
+```
+
+---
+
 ## Task 1: Fonction pure de fusion en rectangles
 
 **Files:**
@@ -498,12 +587,18 @@ git commit -m "feat(collisions): GameScene utilise la couche collision dédiée 
 Run: `cd client && npm test`
 Expected: tous les tests passent (dont `collisionRects.test.mjs`).
 
-- [ ] **Step 2: Build**
+- [ ] **Step 2: Build de la v2 (staging, n'affecte PAS le live)**
 
-Run: `cd client && npm run build`
-Expected: `✓ built` sans erreur TypeScript.
+Run: `cd client && npm run build:v2`
+Expected: `✓ built` sans erreur ; les fichiers vont dans `client/dist/v2/`. Le `dist/` racine (live) reste inchangé.
 
-- [ ] **Step 3: Vérification manuelle en jeu** (hard refresh `Ctrl+Shift+R`)
+Vérifier que la v2 a sa propre map avec collisions :
+```bash
+cd client && node -e "const m=require('./dist/v2/maps/default.tmj'); console.log('collision layer:', !!m.layers.find(l=>l.name==='collision'));"
+```
+Expected: `collision layer: true`.
+
+- [ ] **Step 3: Vérification manuelle en jeu sur `https://live.webinti.com/v2`** (hard refresh `Ctrl+Shift+R`)
 
 Cocher chaque point :
 - [ ] Foncer dans chaque mur → bloqué, pas de traversée.
@@ -523,9 +618,13 @@ git add client/public/maps/default.tmj
 git commit -m "fix(collisions): ajustement des rectangles après vérification en jeu"
 ```
 
-- [ ] **Step 5 (optionnel) : Déploiement prod**
+- [ ] **Step 5 (optionnel) : Promotion en prod**
 
-Le build est déjà fait (nginx sert `client/dist`). Pas de redémarrage backend nécessaire. Confirmer avec l'utilisateur avant tout déploiement.
+Une fois validé sur `/v2`, promouvoir vers le live avec un build racine :
+
+Run: `cd client && npm run build`
+
+Cela régénère `client/dist` (racine) que nginx sert sur `/`. Pas de redémarrage backend nécessaire. **Confirmer avec l'utilisateur avant de promouvoir.**
 
 ---
 
