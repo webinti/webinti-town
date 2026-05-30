@@ -10,6 +10,7 @@ import { WorkstationOverlay } from '../WorkstationOverlay';
 import { WORKSTATIONS } from '../../workstations';
 import { KartOverlay } from '../KartOverlay';
 import { MOUNT_DISTANCE, BOOST_DURATION_MS, BOOST_COOLDOWN_MS } from '../../karts';
+import { CollisionLayer, type CollisionRect } from '../collision/CollisionLayer';
 
 // Fireplace anchor in pixel coords — tile (x, y) center is (x*32+16, y*32+16).
 // Tile (1, 30): against the west wall of the meeting room.
@@ -48,6 +49,7 @@ export class GameScene extends Phaser.Scene {
   private wallsLayer?: Phaser.Tilemaps.TilemapLayer;
   private furnitureLayer?: Phaser.Tilemaps.TilemapLayer;
   private wallsGroup?: Phaser.Physics.Arcade.StaticGroup;
+  private collisionLayer?: CollisionLayer;
   // Physics group holding the remote players' (immovable) bodies, so a single
   // collider against the local player handles all of them. Ghost mode is
   // honored via the processCallback registered in create().
@@ -135,14 +137,13 @@ export class GameScene extends Phaser.Scene {
       this.hasLayers,
     );
 
-    if (this.wallsLayer) {
-      this.physics.add.collider(this.player.sprite, this.wallsLayer);
-    }
-    if (this.furnitureLayer) {
-      this.physics.add.collider(this.player.sprite, this.furnitureLayer);
-    }
-    if (this.wallsGroup) {
-      this.physics.add.collider(this.player.sprite, this.wallsGroup);
+    if (this.collisionLayer) {
+      this.physics.add.collider(this.player.sprite, this.collisionLayer.group);
+    } else {
+      // Legacy / map fallback procédurale.
+      if (this.wallsLayer) this.physics.add.collider(this.player.sprite, this.wallsLayer);
+      if (this.furnitureLayer) this.physics.add.collider(this.player.sprite, this.furnitureLayer);
+      if (this.wallsGroup) this.physics.add.collider(this.player.sprite, this.wallsGroup);
     }
 
     // Player-vs-player collisions. RemotePlayer bodies are added to this
@@ -165,6 +166,13 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+
+    // Mode debug collision : C superpose les rectangles solides en rouge.
+    this.input.keyboard?.on('keydown-C', () => {
+      if (useGameStore.getState().inputFocused) return;
+      this.collisionLayer?.toggleDebug();
+    });
+
     this.appliedZoom = store.mapZoom;
     this.cameras.main.setZoom(this.appliedZoom);
 
@@ -403,12 +411,24 @@ export class GameScene extends Phaser.Scene {
       if (!layer) continue;
       const name = layerData.name.toLowerCase();
       if (/wall|collide|collision/.test(name)) {
-        layer.setCollisionByProperty({ collides: true });
         this.wallsLayer = layer;
       } else if (/furniture/.test(name)) {
-        layer.setCollisionByProperty({ collides: true });
         this.furnitureLayer = layer;
       }
+    }
+    const collObj = map.getObjectLayer('collision');
+    if (collObj) {
+      const rects: CollisionRect[] = collObj.objects.map((o) => ({
+        x: Number(o.x ?? 0),
+        y: Number(o.y ?? 0),
+        width: Number(o.width ?? 0),
+        height: Number(o.height ?? 0),
+      }));
+      this.collisionLayer = new CollisionLayer(this, rects);
+    } else {
+      // Legacy : pas de couche dédiée -> collision par propriété de tuile.
+      this.wallsLayer?.setCollisionByProperty({ collides: true });
+      this.furnitureLayer?.setCollisionByProperty({ collides: true });
     }
     const objLayer = map.getObjectLayer('objects');
     if (objLayer) {
