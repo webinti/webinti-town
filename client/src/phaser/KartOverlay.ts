@@ -17,13 +17,14 @@ const SPRITE_DISPLAY_H = 56;
 
 const DEPTH_KART = 8;
 
-// Sprite top-down face "up" par défaut.
-// Phaser.angle: 0 = right (sens horloger). Donc up = -90.
+// Sprite top-down dessiné pointant vers le haut par défaut.
+// setAngle rotate la texture depuis son orientation native (up). Sens horaire.
+// Donc up = 0, right = 90, down = 180, left = -90.
 const DIRECTION_TO_ANGLE: Record<Direction, number> = {
-  up:    -90,
-  right:   0,
-  down:   90,
-  left:  180,
+  up:      0,
+  right:  90,
+  down:  180,
+  left:  -90,
 };
 
 /**
