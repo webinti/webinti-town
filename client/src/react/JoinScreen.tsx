@@ -128,7 +128,7 @@ function AvatarPreview({ appearance, scale }: AvatarPreviewProps) {
       <div
         style={{
           ...layerStyle,
-          backgroundImage: "url('/assets/avatars/hair_back.png')",
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/hair_back.png')`,
           backgroundSize: `${HAIR_COLS * w}px ${HAIR_COLORS.length * h}px`,
           backgroundPosition: `-${hairCol * w}px -${hairRow * h}px`,
         }}
@@ -136,7 +136,7 @@ function AvatarPreview({ appearance, scale }: AvatarPreviewProps) {
       <div
         style={{
           ...layerStyle,
-          backgroundImage: "url('/assets/avatars/body.png')",
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/body.png')`,
           backgroundSize: `${3 * w}px ${SKIN_COLORS.length * 4 * h}px`,
           backgroundPosition: `0px -${appearance.skin * 4 * h}px`,
         }}
@@ -144,7 +144,7 @@ function AvatarPreview({ appearance, scale }: AvatarPreviewProps) {
       <div
         style={{
           ...layerStyle,
-          backgroundImage: "url('/assets/avatars/pants.png')",
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/pants.png')`,
           backgroundSize: `${3 * w}px ${PANTS_COLORS.length * 4 * h}px`,
           backgroundPosition: `0px -${appearance.pants * 4 * h}px`,
         }}
@@ -152,7 +152,7 @@ function AvatarPreview({ appearance, scale }: AvatarPreviewProps) {
       <div
         style={{
           ...layerStyle,
-          backgroundImage: "url('/assets/avatars/shirt.png')",
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/shirt.png')`,
           backgroundSize: `${3 * w}px ${SHIRT_COLORS.length * 4 * h}px`,
           backgroundPosition: `0px -${appearance.shirt * 4 * h}px`,
         }}
@@ -160,7 +160,7 @@ function AvatarPreview({ appearance, scale }: AvatarPreviewProps) {
       <div
         style={{
           ...layerStyle,
-          backgroundImage: "url('/assets/avatars/hair.png')",
+          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/hair.png')`,
           backgroundSize: `${HAIR_COLS * w}px ${HAIR_COLORS.length * h}px`,
           backgroundPosition: `-${hairCol * w}px -${hairRow * h}px`,
         }}

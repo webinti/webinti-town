@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:v2": "tsc -b && vite build --base=/v2/ --outDir dist/v2 --emptyOutDir",
     "preview": "vite preview",
     "test": "vitest run"
   },
