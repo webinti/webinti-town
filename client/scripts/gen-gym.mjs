@@ -94,6 +94,14 @@ for (let x = COR.x0; x <= COR.x1; x++) {
 }
 // prolonge le sol du couloir jusque dans l'embrasure de la gym (col 64)
 for (let y = COR.y0; y <= COR.y1; y++) set(corridor, GYM.oc, y, FLOOR_GID);
+// + sol dans l'ouverture du mur office (col 59) pour traverser proprement
+for (let y = COR.y0; y <= COR.y1; y++) set(corridor, 59, y, FLOOR_GID);
+
+// --- perce le MUR VISUEL office (couche 'walls') au niveau du passage ---
+const wallsLayer = map.layers.find((l) => l.name === 'walls' && l.type === 'tilelayer');
+if (wallsLayer) {
+  for (let y = COR.y0; y <= COR.y1; y++) wallsLayer.data[y * NEW_W + 59] = 0;
+}
 
 // --- perce l'embrasure : retire les tuiles de mur ouest de la gym aux lignes couloir ---
 for (let y = COR.y0; y <= COR.y1; y++) {

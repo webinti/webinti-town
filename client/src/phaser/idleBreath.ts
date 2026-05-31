@@ -2,7 +2,7 @@
 // appliquer aux couches de l'avatar quand le perso est immobile.
 const DELAY_MS = 400; // temps d'immobilité avant de commencer à respirer
 const PERIOD_MS = 1400; // durée d'un cycle inspiration/expiration
-const AMPLITUDE = 0.03; // +3% en pic
+const AMPLITUDE = 0.07; // +7% en pic (visible)
 
 export function breathScaleY(idleMs: number): number {
   if (idleMs < DELAY_MS) return 1;
