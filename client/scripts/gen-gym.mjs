@@ -82,10 +82,23 @@ for (let dy = 0; dy < GYM.rows; dy++) {
   }
 }
 
-// --- 5. couloir (sol) ---
+// --- 5. couloir : sol + murs visuels (haut/bas) ---
+const WALL_GID = roomBuilder.firstgid + 8; // tuile mur plein room_builder (col8,row0)
 const corridor = emptyLayer('gym_corridor');
 for (let y = COR.y0; y <= COR.y1; y++) {
   for (let x = COR.x0; x <= COR.x1; x++) set(corridor, x, y, FLOOR_GID);
+}
+for (let x = COR.x0; x <= COR.x1; x++) {
+  set(corridor, x, COR.y0 - 1, WALL_GID); // mur haut
+  set(corridor, x, COR.y1 + 1, WALL_GID); // mur bas
+}
+// prolonge le sol du couloir jusque dans l'embrasure de la gym (col 64)
+for (let y = COR.y0; y <= COR.y1; y++) set(corridor, GYM.oc, y, FLOOR_GID);
+
+// --- perce l'embrasure : retire les tuiles de mur ouest de la gym aux lignes couloir ---
+for (let y = COR.y0; y <= COR.y1; y++) {
+  set(floorLayer, GYM.oc, y, 0); // enlève la tuile de design (mur) -> laisse voir le sol couloir
+  set(equipLayer, GYM.oc, y, 0);
 }
 
 // insertion : sol couloir + gym_floor après 'ground' ; gym_equip tout en haut
