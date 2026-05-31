@@ -402,10 +402,14 @@ export class GameScene extends Phaser.Scene {
   // Halos bleus "écran allumé" sur les pods LimeZu (procédural, aucun asset).
   // Positions = tuile écran de chaque pod : pod A (30,16), pod B (35,16).
   private createScreenGlows(): void {
-    const SCREENS = [
-      { wsId: 'poste-limezu-1', x: 30 * TILE + 16, y: 16 * TILE + 16 },
-      { wsId: 'poste-limezu-2', x: 35 * TILE + 16, y: 16 * TILE + 16 },
+    // Écran scintillant sur les 12 pods de l'open space (centres de pod = postes).
+    const POD_CENTERS: ReadonlyArray<readonly [number, number]> = [
+      [19, 13], [22, 13], [28, 13], [33, 13], [39, 13], [42, 13],
+      [19, 17], [22, 17], [28, 17], [33, 17], [39, 17], [42, 17],
     ];
+    const SCREENS = POD_CENTERS.map(([cx, cy], i) => ({
+      wsId: `poste-${i + 1}`, x: cx * TILE + 16, y: (cy - 1) * TILE + 16,
+    }));
     for (const s of SCREENS) {
       const glow = this.add.graphics({ x: s.x, y: s.y });
       glow.fillStyle(0x4aa3ff, 0.5).fillRect(-12, -10, 24, 16);

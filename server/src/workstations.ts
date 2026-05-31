@@ -49,9 +49,7 @@ export const WORKSTATIONS: readonly Workstation[] = [
   { id: 'poste-14', name: 'Bureau rouge 1', minX: 1037, minY: 940, maxX: 1133, maxY: 1036 }, // Tim @ (1085, 988)
   { id: 'poste-15', name: 'Bureau rouge 2', minX: 1359, minY: 940, maxX: 1455, maxY: 1036 }, // Tim @ (1407, 988)
   { id: 'poste-16', name: 'Bureau rouge 3', minX: 1683, minY: 940, maxX: 1779, maxY: 1036 }, // Tim @ (1731, 988)
-  // ── Pods LimeZu (POC tuiles premium, open space) — DOIT être identique au client ──
-  { id: 'poste-limezu-1', name: 'Bureau LimeZu 1', minX: 928, minY: 512, maxX: 1024, maxY: 608 },
-  { id: 'poste-limezu-2', name: 'Bureau LimeZu 2', minX: 1088, minY: 512, maxX: 1184, maxY: 608 },
+
   // ── Salle de conférence (zone audio partagée, invisible) ──
   // Coins fournis par l'utilisateur (Shift+D) :
   //   haut-gauche (76, 723), haut-droite (948, 732),
