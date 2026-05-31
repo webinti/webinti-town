@@ -15,3 +15,6 @@ server/data/*.json
 # Upload files — stored on disk, not committed
 server/data/uploads/*
 !server/data/uploads/.gitkeep
+
+# Zips sources LimeZu (volumineux) — seuls les PNG extraits sont versionnés
+client/public/assets/*.zip
