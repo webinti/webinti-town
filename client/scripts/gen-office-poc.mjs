@@ -66,8 +66,8 @@ function makeTileLayer(name, placements) {
 
 // --- contenu des 2 pods ---
 const PODS = [
-  { oc: 29, or: 14, office: 'office_shadow' },
-  { oc: 34, or: 14, office: 'office_shadowless' },
+  { oc: 29, or: 16, office: 'office_shadow' },
+  { oc: 34, or: 16, office: 'office_shadowless' },
 ];
 
 const floor = [];
