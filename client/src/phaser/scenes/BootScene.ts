@@ -17,6 +17,10 @@ export class BootScene extends Phaser.Scene {
     });
 
     this.load.image('tileset_basic', `${BASE}assets/tilesets/basic.png${V}`);
+    // POC LimeZu — tilesets Modern Office (32x32). Clé = `tileset_<nom tmj>`.
+    this.load.image('tileset_room_builder', `${BASE}assets/tilesets/Room_Builder_Office_32x32.png${V}`);
+    this.load.image('tileset_office_shadow', `${BASE}assets/tilesets/Modern_Office_Black_Shadow_32x32.png${V}`);
+    this.load.image('tileset_office_shadowless', `${BASE}assets/tilesets/Modern_Office_Shadowless_32x32.png${V}`);
     this.load.tilemapTiledJSON('map_default', `${BASE}maps/default.tmj${V}`);
 
     // F11 — kart sprite (top-down, default facing up). Optional: KartOverlay
