@@ -400,14 +400,17 @@ export class GameScene extends Phaser.Scene {
     const map = this.make.tilemap({ key: 'map_default' });
     this.mapW = map.width;
     this.mapH = map.height;
-    const tilesetName = map.tilesets[0]?.name ?? 'basic';
-    const tileset = map.addTilesetImage(tilesetName, 'tileset_basic');
-    if (!tileset) {
+    // Chaque tileset du .tmj est bindé à la clé image `tileset_<nom>`
+    // (convention : voir BootScene). Rétro-compatible : basic -> tileset_basic.
+    const tilesets = map.tilesets
+      .map((ts) => map.addTilesetImage(ts.name, `tileset_${ts.name}`))
+      .filter((t): t is Phaser.Tilemaps.Tileset => t !== null);
+    if (tilesets.length === 0) {
       this.buildFallbackMap();
       return;
     }
     for (const layerData of map.layers) {
-      const layer = map.createLayer(layerData.name, tileset, 0, 0);
+      const layer = map.createLayer(layerData.name, tilesets, 0, 0);
       if (!layer) continue;
       const name = layerData.name.toLowerCase();
       if (/wall|collide|collision/.test(name)) {
