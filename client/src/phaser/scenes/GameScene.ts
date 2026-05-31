@@ -79,6 +79,7 @@ export class GameScene extends Phaser.Scene {
   private zKey?: Phaser.Input.Keyboard.Key;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
   private screenGlows: Array<{ wsId: string; glow: Phaser.GameObjects.Graphics; near: boolean }> = [];
+  private gymDoor?: { sprite: Phaser.GameObjects.Sprite; x: number; y: number; open: boolean };
   private lastLocalPresence: string | undefined = undefined;
   private workstationOverlay?: WorkstationOverlay;
   private kartOverlay?: KartOverlay;
@@ -116,6 +117,7 @@ export class GameScene extends Phaser.Scene {
       this.buildFallbackMap();
     }
     this.createScreenGlows();
+    this.createGymDoor();
 
     const worldW = this.mapW * TILE;
     const worldH = this.mapH * TILE;
@@ -414,6 +416,20 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: glow, alpha: 0.55, duration: 900, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
       this.screenGlows.push({ wsId: s.wsId, glow, near: false });
     }
+  }
+
+  // Porte animée à l'embrasure de la gym (col 64, lignes 15-16). S'ouvre à
+  // l'approche du joueur. Spritesheet 32x64, 5 frames (fermée -> ouverte).
+  private createGymDoor(): void {
+    if (!this.textures.exists('anim_door')) return;
+    if (!this.anims.exists('gym_door_open')) {
+      this.anims.create({ key: 'gym_door_open', frames: this.anims.generateFrameNumbers('anim_door', { start: 0, end: 4 }), frameRate: 14 });
+      this.anims.create({ key: 'gym_door_close', frames: this.anims.generateFrameNumbers('anim_door', { start: 4, end: 0 }), frameRate: 14 });
+    }
+    const x = 64 * TILE + TILE / 2; // centre tuile col 64
+    const y = 15 * TILE; // haut de l'embrasure (lignes 15-16)
+    const sprite = this.add.sprite(x, y, 'anim_door', 0).setOrigin(0.5, 0).setDepth(8.5);
+    this.gymDoor = { sprite, x, y: y + TILE, open: false }; // y = centre vertical embrasure
   }
 
   private buildTilemap(): void {
@@ -810,6 +826,17 @@ export class GameScene extends Phaser.Scene {
         if (shouldBeNear !== sg.near) {
           sg.near = shouldBeNear;
           this.tweens.add({ targets: sg.glow, scale: shouldBeNear ? 1.5 : 1, duration: 200, ease: 'Quad.easeOut' });
+        }
+      }
+      // Porte gym : ouverture à l'approche (hystérésis pour éviter le clignotement).
+      if (this.gymDoor) {
+        const d = Math.hypot(px - this.gymDoor.x, py - this.gymDoor.y);
+        if (!this.gymDoor.open && d < 96) {
+          this.gymDoor.open = true;
+          this.gymDoor.sprite.play('gym_door_open');
+        } else if (this.gymDoor.open && d > 120) {
+          this.gymDoor.open = false;
+          this.gymDoor.sprite.play('gym_door_close');
         }
       }
     }
