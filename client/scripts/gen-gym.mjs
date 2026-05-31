@@ -138,5 +138,12 @@ rect(gx0, (COR.y1 + 1) * T, T, (GYM.or + GYM.rows - (COR.y1 + 1)) * T); // gauch
 rect(COR.x0 * T, (COR.y0 - 1) * T, (COR.x1 - COR.x0 + 1) * T, T); // haut
 rect(COR.x0 * T, (COR.y1 + 1) * T, (COR.x1 - COR.x0 + 1) * T, T); // bas
 
+// --- murs de division internes de la gym (signalés par le user) ---
+// Mur horizontal gauche : ligne 17, cols 64-74 (laisse le couloir central 75-77 ouvert).
+rect(64 * T, 17 * T, 11 * T, T);
+// Mur horizontal droit : ligne 18, cols 78-82.
+rect(78 * T, 18 * T, 5 * T, T);
+// La sortie SUD de la gym reste ouverte volontairement (futur accès piste Kart/F1).
+
 writeFileSync(MAP_PATH, JSON.stringify(map));
 console.log(`OK — map ${NEW_W}x${H}, gym posée (cols ${GYM.oc}-${GYM.oc + GYM.cols - 1}), couloir cols ${COR.x0}-${COR.x1}, firstgids`, fg);
