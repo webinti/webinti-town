@@ -78,6 +78,7 @@ export class GameScene extends Phaser.Scene {
   private kartPrompt?: Phaser.GameObjects.Text;
   private zKey?: Phaser.Input.Keyboard.Key;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
+  private screenGlows: Array<{ wsId: string; glow: Phaser.GameObjects.Graphics; near: boolean }> = [];
   private lastLocalPresence: string | undefined = undefined;
   private workstationOverlay?: WorkstationOverlay;
   private kartOverlay?: KartOverlay;
@@ -114,6 +115,7 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.buildFallbackMap();
     }
+    this.createScreenGlows();
 
     const worldW = this.mapW * TILE;
     const worldH = this.mapH * TILE;
@@ -394,6 +396,24 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.fireplace = { x, y, glow, flame };
+  }
+
+  // Halos bleus "écran allumé" sur les pods LimeZu (procédural, aucun asset).
+  // Positions = tuile écran de chaque pod : pod A (30,16), pod B (35,16).
+  private createScreenGlows(): void {
+    const SCREENS = [
+      { wsId: 'poste-limezu-1', x: 30 * TILE + 16, y: 16 * TILE + 16 },
+      { wsId: 'poste-limezu-2', x: 35 * TILE + 16, y: 16 * TILE + 16 },
+    ];
+    for (const s of SCREENS) {
+      const glow = this.add.graphics({ x: s.x, y: s.y });
+      glow.fillStyle(0x4aa3ff, 0.5).fillRect(-12, -10, 24, 16);
+      glow.setBlendMode(Phaser.BlendModes.ADD);
+      glow.setDepth(9.5);
+      glow.setAlpha(0.3);
+      this.tweens.add({ targets: glow, alpha: 0.55, duration: 900, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
+      this.screenGlows.push({ wsId: s.wsId, glow, near: false });
+    }
   }
 
   private buildTilemap(): void {
@@ -783,6 +803,14 @@ export class GameScene extends Phaser.Scene {
       }
       if (nearestId !== storeState.nearbyWorkstationId) {
         storeState.setNearbyWorkstationId(nearestId);
+      }
+      // Feedback d'approche : l'écran du pod ciblé grossit légèrement.
+      for (const sg of this.screenGlows) {
+        const shouldBeNear = sg.wsId === nearestId;
+        if (shouldBeNear !== sg.near) {
+          sg.near = shouldBeNear;
+          this.tweens.add({ targets: sg.glow, scale: shouldBeNear ? 1.5 : 1, duration: 200, ease: 'Quad.easeOut' });
+        }
       }
     }
 
