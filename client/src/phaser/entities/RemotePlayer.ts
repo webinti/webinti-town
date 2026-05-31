@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import type { Appearance, Direction, PlayerState, Presence } from '../../types';
 import { advanceWalkTick, animatedFrame } from './avatarFrames';
+import { breathScaleY } from '../idleBreath';
+import { applyBreath } from '../applyBreath';
 
 const SHIRT_FALLBACK_COLORS = [
   0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x14b8a6,
@@ -26,6 +28,7 @@ export class RemotePlayer {
   private speakingPulseTween: Phaser.Tweens.Tween | null = null;
   targetX: number;
   targetY: number;
+  private idleMs = 0;
   hasLayers: boolean;
   appearance: Appearance;
   direction: Direction = 'down';
@@ -270,6 +273,15 @@ export class RemotePlayer {
     this.walkAccumMs = advanced.accumMs;
 
     this.updateAnimatedFrames();
+
+    // Respiration idle (procédurale) — basée sur le flag réseau isMoving.
+    if (this.isMoving) {
+      this.idleMs = 0;
+      applyBreath(this, 1);
+    } else {
+      this.idleMs += dt;
+      applyBreath(this, breathScaleY(this.idleMs));
+    }
   }
 
   destroy(): void {

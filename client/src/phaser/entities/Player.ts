@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import type { Appearance, Direction, Presence } from '../../types';
 import { advanceWalkTick, animatedFrame } from './avatarFrames';
 import { computeKartSpeed } from '../kartSpeed';
+import { breathScaleY } from '../idleBreath';
+import { applyBreath } from '../applyBreath';
 
 const SHIRT_FALLBACK_COLORS = [
   0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x14b8a6,
@@ -24,6 +26,7 @@ export class Player {
   label: Phaser.GameObjects.Text;
   direction: Direction = 'down';
   moving = false;
+  private idleMs = 0;
   speed = 160;
   kartId: string | null = null;
   boosting = false;
@@ -199,6 +202,16 @@ export class Player {
     this.pantsLayer?.setDepth(9.1 + bump);
     this.shirtLayer?.setDepth(9.2 + bump);
     this.hairLayer?.setDepth(9.3 + bump);
+
+    // Respiration idle (procédurale) — n'affecte pas la physique (scaleY only).
+    // `this.moving` est vrai pendant la danse, donc pas de cumul avec celle-ci.
+    if (this.moving) {
+      this.idleMs = 0;
+      applyBreath(this, 1);
+    } else {
+      this.idleMs += dt;
+      applyBreath(this, breathScaleY(this.idleMs));
+    }
 
     return this.moving !== wasMoving || this.direction !== prevDir || this.moving;
   }
