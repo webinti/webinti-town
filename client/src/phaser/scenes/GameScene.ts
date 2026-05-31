@@ -116,6 +116,7 @@ export class GameScene extends Phaser.Scene {
       this.buildFallbackMap();
     }
     this.createScreenGlows();
+    this.createGymTreadmills();
 
     const worldW = this.mapW * TILE;
     const worldH = this.mapH * TILE;
@@ -413,6 +414,23 @@ export class GameScene extends Phaser.Scene {
       glow.setAlpha(0.3);
       this.tweens.add({ targets: glow, alpha: 0.55, duration: 900, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
       this.screenGlows.push({ wsId: s.wsId, glow, near: false });
+    }
+  }
+
+  // Tapis de course animés (bande qui défile) posés sur les tapis statiques de
+  // la gym. Frame 96x128 ; la machine est à l'offset tuile (+1,+1), donc le
+  // sprite (origine 0,0) se place une tuile en haut-à-gauche de la machine.
+  private createGymTreadmills(): void {
+    if (!this.textures.exists('anim_treadmill')) return;
+    if (!this.anims.exists('treadmill_run')) {
+      this.anims.create({ key: 'treadmill_run', frames: this.anims.generateFrameNumbers('anim_treadmill', { start: 0, end: 2 }), frameRate: 8, repeat: -1 });
+    }
+    // machines statiques : tapis aux tuiles (67,18) et (69,18).
+    const MACHINES = [{ tc: 67, tr: 18 }, { tc: 69, tr: 18 }];
+    for (const mch of MACHINES) {
+      const x = (mch.tc - 1) * TILE; // offset machine +1 tuile dans la frame
+      const y = (mch.tr - 1) * TILE;
+      this.add.sprite(x, y, 'anim_treadmill', 0).setOrigin(0, 0).setDepth(2).play('treadmill_run');
     }
   }
 

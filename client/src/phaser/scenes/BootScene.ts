@@ -24,10 +24,15 @@ export class BootScene extends Phaser.Scene {
     // Gym — design pré-fait LimeZu (2 couches utilisées comme tilesets 19 colonnes).
     this.load.image('tileset_gym_floor', `${BASE}assets/tilesets/Gym_layer_1_32x32.png${V}`);
     this.load.image('tileset_gym_equip', `${BASE}assets/tilesets/Gym_layer_2_32x32.png${V}`);
-    // Porte animée (5 frames 32x64 : fermée -> ouverte).
+    // Porte animée (5 frames 32x64 : fermée -> ouverte) — réservée aux portes sud.
     this.load.spritesheet('anim_door', `${BASE}assets/sprites/animated_door_1_32x32.png${V}`, {
       frameWidth: 32,
       frameHeight: 64,
+    });
+    // Tapis de course animé (3 frames 96x128 ; machine à l'offset tuile +1,+1).
+    this.load.spritesheet('anim_treadmill', `${BASE}assets/sprites/animated_treadmill_32x32.png${V}`, {
+      frameWidth: 96,
+      frameHeight: 128,
     });
     this.load.tilemapTiledJSON('map_default', `${BASE}maps/default.tmj${V}`);
 
