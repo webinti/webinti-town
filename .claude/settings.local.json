@@ -108,7 +108,12 @@
       "Bash(rm -f /tmp/Gym_preview_32x32.png /tmp/Gym_2_preview_32x32.png)",
       "Bash(rm -rf /tmp/claude-1002/tmp.UtmLR0wAGH /tmp/claude-1002/tmp.*)",
       "Bash(unzip -l moderninteriors-win.zip)",
-      "Bash(echo \"tsc=$?\")"
+      "Bash(echo \"tsc=$?\")",
+      "Bash(node -e 'try{require\\(\"sharp\"\\);console.log\\(\"sharp OK\"\\)}catch\\(e\\){console.log\\(\"no sharp\"\\)}; try{require\\(\"canvas\"\\);console.log\\(\"canvas OK\"\\)}catch\\(e\\){console.log\\(\"no canvas\"\\)}; try{require\\(\"pngjs\"\\);console.log\\(\"pngjs OK\"\\)}catch\\(e\\){console.log\\(\"no pngjs\"\\)}')",
+      "Bash(cp /tmp/annot.mjs ./annot.mjs)",
+      "Bash(node ./annot.mjs)",
+      "Bash(node scripts/gen-walls.mjs)",
+      "Bash(node scripts/render-map.mjs /tmp/map_walls.png 0 60 9 41)"
     ]
   }
 }
