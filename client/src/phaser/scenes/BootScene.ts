@@ -21,6 +21,9 @@ export class BootScene extends Phaser.Scene {
     this.load.image('tileset_room_builder', `${BASE}assets/tilesets/Room_Builder_Office_32x32.png${V}`);
     this.load.image('tileset_office_shadow', `${BASE}assets/tilesets/Modern_Office_Black_Shadow_32x32.png${V}`);
     this.load.image('tileset_office_shadowless', `${BASE}assets/tilesets/Modern_Office_Shadowless_32x32.png${V}`);
+    // Réception premium — parquet bois (grand Room_Builder 76 col) + meubles cosy LivingRoom.
+    this.load.image('tileset_room_builder_big', `${BASE}assets/tilesets/Room_Builder_32x32.png${V}`);
+    this.load.image('tileset_livingroom', `${BASE}assets/tilesets/2_LivingRoom_Black_Shadow_32x32.png${V}`);
     // Gym — design pré-fait LimeZu (2 couches utilisées comme tilesets 19 colonnes).
     this.load.image('tileset_gym_floor', `${BASE}assets/tilesets/Gym_layer_1_32x32.png${V}`);
     this.load.image('tileset_gym_equip', `${BASE}assets/tilesets/Gym_layer_2_32x32.png${V}`);

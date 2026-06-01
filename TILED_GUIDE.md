@@ -1,94 +1,105 @@
-# Édition de la map avec Tiled
+# Éditer la map Webinti Town avec Tiled (workflow local)
 
-La map de Webinti Town est au format **Tiled** natif. Tu peux l'éditer visuellement avec l'éditeur officiel **gratuit**, et le jeu se met à jour automatiquement (Vite HMR).
+La map est au format **Tiled** natif (`client/public/maps/default.tmj`). Tu l'édites
+visuellement dans Tiled, tu prévisualises en local (Vite HMR), et quand c'est bon on
+déploie sur `/v2`.
 
-## 1. Installer Tiled
+---
 
-- Télécharge depuis https://www.mapeditor.org/ (Mac/Win/Linux, ou via `brew install --cask tiled` sur Mac)
-- Application gratuite, open source, ~50 Mo
+## 0. Pré-requis : récupérer la dernière version
 
-## 2. Ouvrir la map
+Avant d'ouvrir Tiled, mets ton repo local à jour pour avoir la map + les **2 nouveaux
+tilesets** (parquet + meubles cosy) :
 
-Ouvrir le fichier :
-
+```bash
+git pull
 ```
-/Users/Tim/Documents/Claude/Gather/client/public/maps/default.tmj
+
+Sinon tu n'auras ni le parquet ni les meubles LivingRoom dans la palette.
+
+---
+
+## 1. Installer / ouvrir
+
+- Tiled : https://www.mapeditor.org/ (gratuit). `brew install --cask tiled` sur Mac.
+- Ouvrir : `client/public/maps/default.tmj` (dans ton clone local).
+
+Tu verras 3 panneaux : **Layers** (couches), **Tilesets** (palettes en bas), la carte au centre.
+
+---
+
+## 2. Les couches (panneau Layers)
+
+| Couche          | Rôle                                              | Bloque ? |
+|-----------------|---------------------------------------------------|----------|
+| `ground`        | sol de base (herbe, dalles extérieures)           | non      |
+| **`limezu_floor`** | **sols des salles (parquet, béton, moquette…)** | non      |
+| `walls`         | murs + portes                                     | **oui**  |
+| `furniture`     | mobilier                                          | **oui**  |
+| `decoration`    | tapis, cadres muraux                              | non      |
+| `collision`     | (objets) rectangles de collision custom           | —        |
+
+👉 **Le sol des salles se peint sur `limezu_floor`**, PAS sur `ground`.
+
+---
+
+## 3. ⭐ Changer le parquet de la Réception en 5 étapes
+
+1. **Clique la couche `limezu_floor`** dans le panneau Layers (elle devient active).
+2. En bas, **onglet de palette `room_builder_big`** (le grand tileset 76 colonnes = tous les sols).
+3. **Clique le parquet voulu**. Le n° affiché en bas (tile ID) te dit lequel c'est :
+   - `1992` → **parquet brun moyen sobre** (mon préféré pour « pro »)
+   - `2468` ou `2467` → **bois clair uni** (très sobre, look stratifié mat)
+   - `853` → l'orangé actuel (à remplacer)
+   - …ou balade-toi dans le bloc des sols pour en trouver un autre (voir piège ⚠️ ci-dessous)
+4. **Outil Rectangle Fill** (touche **R**), puis **trace un rectangle** sur toute la zone
+   lounge de la Réception (en bas/centre de la salle, hors coin garage gris).
+5. **`Ctrl+S`** pour sauvegarder (garde le format `.tmj` / JSON).
+
+⚠️ **Piège seamless** : dans `room_builder_big`, seule la tuile *de remplissage* d'un
+matériau est sans joint. Si en remplissant tu vois des **lignes blanches ou sombres qui se
+répètent**, tu as pris une tuile de *bord* → décale-toi d'1 tuile et reprends. Les IDs
+`1992 / 2467 / 2468` ci-dessus sont déjà des remplissages propres.
+
+---
+
+## 4. Prévisualiser en local (instantané)
+
+Dans le dossier du projet :
+
+```bash
+npm run dev
 ```
 
-Tu verras :
-- À droite : panneau **Layers** avec `ground`, `walls`, `furniture`, `decoration`, `objects`, `spawns`
-- En bas à droite : panneau **Tilesets** avec la palette de tuiles `basic` (256 emplacements, ~115 dessinées)
-- Au centre : la carte 60×42
+Ouvre l'URL localhost affichée. Vite recharge à chaque save Tiled (HMR) → tu vois le sol
+changer en direct, **sans build**. Itère autant que tu veux.
 
-## 3. Éditer
+---
 
-### Sélectionner une couche
-Clique sur la couche dans le panneau **Layers**. Toutes tes modifications affecteront cette couche.
+## 5. Déployer sur /v2 quand c'est validé
 
-### Outils principaux (raccourcis clavier)
+```bash
+git add client/public/maps/default.tmj
+git commit -m "feat(reception): parquet sobre"
+git push
+```
 
-- **B** — Stamp Brush : pose la tuile sélectionnée au clic
-- **R** — Rectangle Fill : remplit une zone rectangulaire
-- **F** — Flood Fill (pot de peinture)
-- **E** — Eraser : efface une tuile (set à 0)
-- **S** — Select : sélection rectangulaire pour copier/coller (`Cmd+C`/`Cmd+V`)
+Puis préviens-moi : je `git pull` sur le VPS + `npm run build:v2` → visible sur
+`live.webinti.com/v2/` (hard reload `Ctrl+Shift+R`).
 
-### Choisir une tuile
-Clique sur une tuile dans le panneau **Tilesets** (en bas à droite). Elle devient l'élément actif pour le brush.
+---
 
-### Couches typiques
-- **ground** : sol (herbe, parquet, moquette, etc.) — toujours rempli
-- **walls** : murs et portes — toutes les tuiles ici **bloquent** le joueur (collision via propriété `collides:true`)
-- **furniture** : mobilier — bloque aussi (sauf certaines tuiles déco)
-- **decoration** : tapis, peintures murales — **ne bloque jamais**
-- **objects** (object layer, vide pour l'instant) : futurs objets interactifs
-- **spawns** (object layer) : points d'apparition. 4 spawns existent
+## 6. Autres tilesets dispo dans la map
 
-### Ajouter un point de spawn
-1. Sélectionne la couche `spawns`
-2. Outil **Insert Point** (raccourci T)
-3. Clique sur la map à la position voulue
-4. Donne-lui un nom dans le panneau **Properties**
-
-## 4. Activer/désactiver les collisions sur une tuile
-
-Si tu poses une tuile et que le joueur ne peut pas passer alors qu'il devrait (ou inversement) :
-
-1. Clique sur la tuile dans le panneau **Tilesets** (en bas à droite)
-2. Clic-droit → **Tile Properties**
-3. Coche/décoche `collides`
-
-Ça affectera **toutes** les occurrences de cette tuile dans la map.
-
-## 5. Sauvegarder
-
-`Cmd+S` (ou `Ctrl+S` sur Win/Linux).
-
-**Important** : enregistre au format **`.tmj` (JSON)**, pas `.tmx` (XML). Tiled garde le format d'origine donc en réouvrant `default.tmj` ça reste en JSON.
-
-## 6. Voir le résultat
-
-Vite détecte les changements dans `/public` et recharge automatiquement. Si le navigateur n'actualise pas, fais un **F5** (ou Cmd+R) sur l'onglet Webinti Town.
+`basic` · `room_builder` (office) · `office_shadow` (mobilier bureau) ·
+`office_shadowless` · `gym_floor` · `gym_equip` · **`room_builder_big`** (sols/parquets) ·
+**`livingroom`** (fauteuils rotin, pouf, palmiers, plantes cosy).
 
 ## 7. Pièges courants
 
-- **Tuile qui bloque mais ne devrait pas** : tu l'as posée sur la couche `furniture` ou `walls`. Déplace-la sur `decoration`.
-- **La porte ne s'ouvre pas** : les portes sont des tuiles murales sans collision (id 46 = porte fermée, walkable). Si tu poses une autre tuile par-dessus, elle peut bloquer.
-- **Mobilier décalé visuellement** : Tiled aligne tout sur la grille 32×32. Pour des objets multi-tuiles (canapé 3 pièces, table de réunion 6×2), pose chaque tuile l'une à côté de l'autre — le générateur a découpé les meubles en pièces compatibles.
-- **Importer un nouveau tileset (LimeZu, etc.)** : `Map → Add External Tileset`, pointe vers ton PNG. Configure tilewidth/height. Garde le firstgid si possible pour ne pas casser les références existantes.
-
-## 8. Références rapides
-
-- **Tuiles de sol** : gid 1 = herbe, gid 17+ = sols intérieurs
-- **Murs** : gid 33-48 (briques, fenêtres, coins, portes, partitions)
-- **Mobilier** : gid 65-128 (bureaux, chaises, canapés, plantes, cuisine, etc.)
-- **Déco** : gid 129-192 (tapis, arbres, lampes, bancs, arcade, billard, piano)
-
-Voir le commentaire en haut de `/tmp/gen_tileset_v2.py` pour la liste complète.
-
-## 9. Workflow conseillé
-
-1. Pars de `default.tmj` comme base
-2. Fais une copie (`default.tmj.bak`) avant grosse modif
-3. Édite par petites passes, sauvegarde, vérifie en jeu
-4. Quand satisfait, commit
+- **Tuile qui bloque alors qu'elle ne devrait pas** : posée sur `furniture`/`walls`.
+  Mets-la sur `decoration` (tapis) ou `limezu_floor` (sol).
+- **Meuble multi-tuiles décalé** : Tiled aligne sur la grille 32×32 ; pose chaque tuile du
+  meuble l'une à côté de l'autre.
+- **Toujours sauvegarder en `.tmj` (JSON)**, jamais `.tmx` (XML).
+- **Ne change pas l'ordre / les `firstgid` des tilesets** (ça casse toutes les références).
