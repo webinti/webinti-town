@@ -20,6 +20,7 @@ const ROOMS = [
   { name: 'rnd', tile: [4, 11], c0: 50, c1: 58, r0: 11, r1: 21 },        // blanc
   { name: 'conference', tile: [4, 5], c0: 1, c1: 29, r0: 23, r1: 40 },   // lavande
   { name: 'red_zone', tile: [10, 11], c0: 31, c1: 58, r0: 23, r1: 40 },  // rouge (bandeau + 3 salles)
+  { name: 'open_space_fill', tile: [10, 5], c0: 15, c1: 48, r0: 11, r1: 21 }, // gris : couvre tout l'open space
 ];
 
 const floor = map.layers.find((l) => l.name === 'limezu_floor' && l.type === 'tilelayer');
