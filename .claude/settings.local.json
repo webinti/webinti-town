@@ -113,7 +113,10 @@
       "Bash(cp /tmp/annot.mjs ./annot.mjs)",
       "Bash(node ./annot.mjs)",
       "Bash(node scripts/gen-walls.mjs)",
-      "Bash(node scripts/render-map.mjs /tmp/map_walls.png 0 60 9 41)"
+      "Bash(node scripts/render-map.mjs /tmp/map_walls.png 0 60 9 41)",
+      "Bash(node scripts/gen-floors.mjs)",
+      "Bash(node scripts/render-map.mjs /tmp/map_floors.png 0 60 9 41)",
+      "Bash(node scripts/render-map.mjs /tmp/map_full.png 0 60 0 41)"
     ]
   }
 }
