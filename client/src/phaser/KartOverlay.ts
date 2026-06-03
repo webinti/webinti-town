@@ -15,6 +15,11 @@ const FALLBACK_H = 20;
 const SPRITE_DISPLAY_W = 56;
 const SPRITE_DISPLAY_H = 56;
 
+// Décalage vertical du kart sous le joueur. L'avatar (sprite 32×64 centré sur
+// sa position) a les pieds vers le bas du cadre ; on descend le kart pour qu'il
+// entoure le bas du corps (effet "assis dans le kart"). Ajuster si besoin.
+const KART_Y_OFFSET = 12;
+
 const DEPTH_KART = 8;
 
 // Sprite top-down dessiné pointant vers le haut par défaut.
@@ -87,7 +92,7 @@ export class KartOverlay {
         img.setDisplaySize(SPRITE_DISPLAY_W, SPRITE_DISPLAY_H);
         this.sprites.set(k.id, img);
       }
-      img.setPosition(Math.round(x), Math.round(y));
+      img.setPosition(Math.round(x), Math.round(y + KART_Y_OFFSET));
       img.setAngle(DIRECTION_TO_ANGLE[dir]);
     }
 
@@ -106,7 +111,7 @@ export class KartOverlay {
     this.gfx.clear();
     for (const k of karts.values()) {
       const x = Math.round(k.x);
-      const y = Math.round(k.y);
+      const y = Math.round(k.y + KART_Y_OFFSET);
       this.gfx.fillStyle(FALLBACK_COLOR_BODY, 1);
       this.gfx.fillRect(x - FALLBACK_W / 2, y - FALLBACK_H / 2, FALLBACK_W, FALLBACK_H);
       this.gfx.lineStyle(1, FALLBACK_COLOR_EDGE, 1);
