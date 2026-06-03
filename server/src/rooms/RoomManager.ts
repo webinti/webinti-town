@@ -218,6 +218,9 @@ export class RoomManager {
     // cards) remain editable by the same browser across reconnects. Falls back
     // to a fresh UUID when missing or invalid.
     clientKey?: string,
+    // Position de spawn souhaitée (dernière position connue, envoyée par le
+    // client). Utilisée si valide, sinon on retombe sur le spawn par défaut.
+    spawn?: { x: number; y: number },
   ): PlayerState | undefined {
     const room = this.rooms.get(slug);
     if (!room) return undefined;
@@ -225,13 +228,15 @@ export class RoomManager {
     // If the same key is already in the room (e.g. opened a 2nd tab), drop
     // the previous record so the new socket fully replaces it.
     room.players.delete(playerId);
+    const valid = (n: number): boolean => Number.isFinite(n) && n >= 0 && n <= 100000;
+    const useSpawn = !!spawn && valid(spawn.x) && valid(spawn.y);
     const player: PlayerState = {
       playerId,
       socketId,
       name,
       appearance,
-      x: config.defaultSpawn.x,
-      y: config.defaultSpawn.y,
+      x: useSpawn ? spawn!.x : config.defaultSpawn.x,
+      y: useSpawn ? spawn!.y : config.defaultSpawn.y,
       direction: 'down',
       isMoving: false,
       isGhost: false,

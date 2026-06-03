@@ -5,6 +5,7 @@ import { socketManager } from '../network/SocketManager';
 import type { Appearance } from '../types';
 import { DEFAULT_APPEARANCE } from '../types';
 import { AvatarPreview, AvatarControls, clampAppearance } from './avatar/AvatarCustomizer';
+import { readLastPosition } from '../lastPosition';
 
 const HOST_TOKEN_KEY = 'webinti-town:hostToken';
 const ROOM_SLUG_KEY = 'webinti-town:roomSlug';
@@ -70,7 +71,12 @@ export function JoinScreen() {
     const roomSlug = readRoomSlug();
     useGameStore.getState().setCurrentRoomSlug(roomSlug);
     socketManager.connect();
-    socketManager.joinRoom({ roomSlug, playerName: name, appearance, hostToken });
+    // Respawn à la dernière position connue de cette salle (sinon spawn par défaut).
+    const pos = readLastPosition(roomSlug);
+    socketManager.joinRoom({
+      roomSlug, playerName: name, appearance, hostToken,
+      spawnX: pos?.x, spawnY: pos?.y,
+    });
   };
 
   return (

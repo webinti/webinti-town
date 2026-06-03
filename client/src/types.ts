@@ -155,6 +155,10 @@ export interface JoinRoomPayload {
   // server preserve our playerId across reconnects so we keep ownership of
   // resources we authored (e.g. Kanban cards).
   clientKey?: string;
+  // Dernière position connue (localStorage) pour respawn au même endroit après
+  // un refresh, au lieu du spawn par défaut. Le serveur valide.
+  spawnX?: number;
+  spawnY?: number;
 }
 
 export interface PlayerMovePayload {

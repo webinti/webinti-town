@@ -6,6 +6,7 @@ import { socketManager } from '../../network/SocketManager';
 import { stepMapZoom } from '../../mapZoom';
 import { setFireVolume } from '../../sounds/sounds';
 import type { Appearance, EmoteType, InteractiveObject, PlayerState } from '../../types';
+import { saveLastPosition } from '../../lastPosition';
 import { WorkstationOverlay } from '../WorkstationOverlay';
 import { WORKSTATIONS } from '../../workstations';
 import { KartOverlay } from '../KartOverlay';
@@ -172,6 +173,18 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+
+    // Sauvegarde périodique de la position (localStorage) pour réapparaître au
+    // même endroit après un refresh, plutôt qu'au spawn d'entrée.
+    this.time.addEvent({
+      delay: 2000,
+      loop: true,
+      callback: () => {
+        if (!this.player) return;
+        const slug = useGameStore.getState().currentRoomSlug;
+        if (slug) saveLastPosition(slug, this.player.sprite.x, this.player.sprite.y);
+      },
+    });
 
     // Mode debug collision : B superpose les rectangles solides en rouge.
     // (C est déjà pris par le chat dans le HUD.)
