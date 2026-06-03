@@ -245,19 +245,25 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
       el.volume = 1;
       return;
     }
-    // Audio strictement isolé par poste de travail :
-    // - Si l'un des deux n'est dans AUCUN poste → silence total.
-    // - Si les deux sont dans des postes DIFFÉRENTS → silence total.
-    // - Si les deux sont dans le MÊME poste → volume plein.
-    // La proximité (distance) et la conference zone sont désactivées par cette règle :
-    // pour s'entendre, il faut explicitement se trouver dans la même zone de travail.
+    // Règles audio :
+    //  - Dans un poste/salle (workstation, dont 'salle-conf') : audio ISOLÉ au
+    //    groupe → on s'entend uniquement avec le MÊME workstationId, distance
+    //    ignorée (d'où "salle de conf = tout le monde s'entend sans proximité",
+    //    et "bureau revendiqué = bulle privée"). Si l'un est dans un poste et
+    //    pas l'autre (ou postes différents) → silence (isolation).
+    //  - Hors poste (zones communes, couloirs) : PROXIMITÉ → le volume décroît
+    //    avec la distance, silence au-delà du rayon.
     const localWs = local.workstationId ?? null;
     const remoteWs = remotePlayer.workstationId ?? null;
-    if (localWs === null || remoteWs === null || localWs !== remoteWs) {
-      el.volume = 0;
+    if (localWs !== null || remoteWs !== null) {
+      el.volume = localWs !== null && localWs === remoteWs ? 1 : 0;
       return;
     }
-    el.volume = 1;
+    const FULL_PX = 4 * 32; // volume plein en deçà de 4 tuiles
+    const ZERO_PX = 8 * 32; // silence au-delà de 8 tuiles
+    const dist = Math.hypot(local.x - remotePlayer.x, local.y - remotePlayer.y);
+    el.volume =
+      dist <= FULL_PX ? 1 : dist >= ZERO_PX ? 0 : 1 - (dist - FULL_PX) / (ZERO_PX - FULL_PX);
   }, [players, localPlayerId, remote.identity, remote.audioTrack]);
 
   return (
