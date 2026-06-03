@@ -194,11 +194,12 @@ export function JoinScreen() {
   };
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-slate-100">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-xl rounded-2xl bg-slate-800/80 p-8 shadow-2xl ring-1 ring-white/10 backdrop-blur"
-      >
+    <div className="h-full w-full overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-slate-100">
+      <div className="flex min-h-full w-full items-center justify-center p-4">
+        <form
+          onSubmit={handleSubmit}
+          className="my-4 w-full max-w-xl rounded-2xl bg-slate-800/80 p-6 shadow-2xl ring-1 ring-white/10 backdrop-blur"
+        >
         <div className="mb-1 flex items-start justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight">Webinti Town</h1>
           <button
@@ -297,14 +298,17 @@ export function JoinScreen() {
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting || !pseudo.trim()}
-          className="w-full rounded-lg bg-indigo-500 px-4 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {submitting ? 'Connexion...' : 'Rejoindre'}
-        </button>
-      </form>
+          <div className="sticky bottom-0 -mx-6 -mb-6 mt-4 rounded-b-2xl border-t border-white/10 bg-slate-800/95 px-6 py-3 backdrop-blur">
+            <button
+              type="submit"
+              disabled={submitting || !pseudo.trim()}
+              className="w-full rounded-lg bg-indigo-500 px-4 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? 'Connexion...' : 'Rejoindre'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
