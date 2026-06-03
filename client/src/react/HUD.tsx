@@ -15,6 +15,7 @@ import { KanbanToasts } from './components/KanbanToasts';
 import { DmToasts } from './components/DmToasts';
 import { HelpPanel } from './components/HelpPanel';
 import { AdminPanel } from './components/AdminPanel';
+import { AvatarEditModal } from './components/AvatarEditModal';
 import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/sounds';
 import { useActivityHeartbeat } from './hooks/useActivityHeartbeat';
 import { WorkstationPanel } from './components/WorkstationPanel';
@@ -31,6 +32,7 @@ export function HUD() {
   const currentRoomSlug = useGameStore((s) => s.currentRoomSlug);
   const mapZoom = useGameStore((s) => s.mapZoom);
   const [soundsMuted, setSoundsMutedState] = useState(soundsIsMuted());
+  const [avatarEditOpen, setAvatarEditOpen] = useState(false);
 
   const toggleSounds = () => {
     const next = !soundsMuted;
@@ -110,9 +112,14 @@ export function HUD() {
     <div className="pointer-events-none absolute inset-0 flex flex-col">
       <div className="pointer-events-auto flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-5 py-4 text-slate-100">
         <div className="flex items-center gap-3">
-          <div className="rounded-full bg-indigo-500/30 px-3.5 py-1.5 text-sm font-semibold ring-1 ring-indigo-400/50">
-            {name || 'Anonyme'}
-          </div>
+          <button
+            type="button"
+            onClick={() => setAvatarEditOpen(true)}
+            title="Modifier mon avatar"
+            className="rounded-full bg-indigo-500/30 px-3.5 py-1.5 text-sm font-semibold ring-1 ring-indigo-400/50 transition hover:bg-indigo-500/50 hover:ring-indigo-300"
+          >
+            {name || 'Anonyme'} <span className="ml-0.5 opacity-70">✎</span>
+          </button>
           <PresenceSelector />
           {isHost && (
             <div className="rounded-full bg-amber-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/50">
@@ -182,6 +189,7 @@ export function HUD() {
       <KanbanModal />
       <HelpPanel />
       <AdminPanel />
+      {avatarEditOpen && <AvatarEditModal onClose={() => setAvatarEditOpen(false)} />}
       <KanbanToasts />
       <DmToasts />
       <WorkstationPanel />

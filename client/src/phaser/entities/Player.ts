@@ -115,7 +115,9 @@ export class Player {
   private updateAnimatedFrames(): void {
     if (!this.hasLayers) return;
     const dir = this.direction;
-    const moving = this.moving;
+    // Sur un kart : on garde la frame idle (pas de cycle de marche par-dessus
+    // le kart), mais l'avatar reste tourné dans la direction du déplacement.
+    const moving = this.moving && this.kartId === null;
     const tick = this.walkTick;
     if (this.sprite instanceof Phaser.Physics.Arcade.Sprite) {
       this.sprite.setFrame(animatedFrame(this.appearance.skin, dir, moving, tick));

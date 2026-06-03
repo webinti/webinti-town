@@ -5,7 +5,7 @@ import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
 import { stepMapZoom } from '../../mapZoom';
 import { setFireVolume } from '../../sounds/sounds';
-import type { EmoteType, InteractiveObject, PlayerState } from '../../types';
+import type { Appearance, EmoteType, InteractiveObject, PlayerState } from '../../types';
 import { WorkstationOverlay } from '../WorkstationOverlay';
 import { WORKSTATIONS } from '../../workstations';
 import { KartOverlay } from '../KartOverlay';
@@ -75,6 +75,7 @@ export class GameScene extends Phaser.Scene {
   private objectVisuals = new Map<string, ObjectVisual>();
   private nearbyObjectId: string | null = null;
   private appliedZoom = 1;
+  private appliedAppearance: Appearance | null = null;
   private eKey?: Phaser.Input.Keyboard.Key;
   private lastEDown = false;
   private kartPrompt?: Phaser.GameObjects.Text;
@@ -296,6 +297,11 @@ export class GameScene extends Phaser.Scene {
       const localState = lid ? s.players.get(lid) : undefined;
       if (this.player && localState) {
         this.player.setGhost(localState.isGhost === true);
+      }
+      // Changement d'avatar en jeu (menu HUD) : applique au Player local en live.
+      if (this.player && s.appearance !== this.appliedAppearance) {
+        this.appliedAppearance = s.appearance;
+        this.player.appearance = s.appearance;
       }
       for (const [id, p] of s.players) {
         if (id === lid) continue;

@@ -93,6 +93,7 @@ export class RemotePlayer {
     this.targetY = state.y;
     this.direction = state.direction;
     this.isMoving = state.isMoving;
+    this.appearance = state.appearance; // maj live si le joueur change d'avatar
     this.setGhost(state.isGhost === true);
     this.setKart(state.kartId);
     this.setBoosting(state.boosting);
@@ -205,7 +206,8 @@ export class RemotePlayer {
   private updateAnimatedFrames(): void {
     if (!this.hasLayers) return;
     const dir = this.direction;
-    const moving = this.isMoving;
+    // Sur un kart : frame idle (pas de marche par-dessus le kart).
+    const moving = this.isMoving && this.kartId === null;
     const tick = this.walkTick;
     if (this.sprite instanceof Phaser.GameObjects.Sprite) {
       this.sprite.setFrame(animatedFrame(this.appearance.skin, dir, moving, tick));

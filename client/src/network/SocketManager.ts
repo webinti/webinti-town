@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import type {
+  Appearance,
   ChatAttachment,
   ChatMessage,
   ChatMessageType,
@@ -536,6 +537,10 @@ class SocketManager {
   }
   markDmRead(withPlayerId: string): void {
     this.socket?.emit('dm:read', { withPlayerId });
+  }
+
+  sendAppearanceUpdate(appearance: Appearance): void {
+    this.socket?.emit('update_appearance', { appearance });
   }
 
   sendPresenceSet(presence: Presence): void {
