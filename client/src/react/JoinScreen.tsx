@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import { useAuthStore } from '../stores/authStore';
 import { socketManager } from '../network/SocketManager';
 import type { Appearance } from '../types';
 import {
@@ -10,7 +11,6 @@ import {
   HAIR_COLOR_COUNT,
 } from '../types';
 
-const STORAGE_KEY = 'webinti-town:profile';
 const HOST_TOKEN_KEY = 'webinti-town:hostToken';
 const ROOM_SLUG_KEY = 'webinti-town:roomSlug';
 const ROOM_SLUG_RE = /^[a-z0-9-]{1,50}$/;
@@ -45,43 +45,20 @@ function readRoomSlug(): string {
   }
 }
 
-interface StoredProfile {
-  name: string;
-  appearance: Appearance;
-}
-
-function loadProfile(): StoredProfile | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<StoredProfile>;
-    if (typeof parsed.name !== 'string') return null;
-    const a = parsed.appearance;
-    if (!a || typeof a !== 'object') return null;
-    const clamp = (v: unknown, max: number): number => {
-      const n = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : 0;
-      return Math.max(0, Math.min(max, n));
-    };
-    return {
-      name: parsed.name.slice(0, 20),
-      appearance: {
-        skin: clamp(a.skin, SKIN_COUNT - 1),
-        outfit: clamp((a as Partial<Appearance>).outfit, OUTFIT_COUNT - 1),
-        hairStyle: clamp(a.hairStyle, HAIR_STYLE_COUNT - 1),
-        hairColor: clamp(a.hairColor, HAIR_COLOR_COUNT - 1),
-      },
-    };
-  } catch {
-    return null;
-  }
-}
-
-function saveProfile(p: StoredProfile): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
-  } catch {
-    // ignore quota / private mode failures
-  }
+// Sanitise l'apparence stockée sur le user PocketBase (champ JSON) vers un
+// Appearance valide et borné.
+function clampAppearance(a: unknown): Appearance {
+  const o = (a && typeof a === 'object' ? a : {}) as Partial<Appearance>;
+  const clamp = (v: unknown, max: number): number => {
+    const n = typeof v === 'number' && Number.isFinite(v) ? Math.floor(v) : 0;
+    return Math.max(0, Math.min(max, n));
+  };
+  return {
+    skin: clamp(o.skin, SKIN_COUNT - 1),
+    outfit: clamp(o.outfit, OUTFIT_COUNT - 1),
+    hairStyle: clamp(o.hairStyle, HAIR_STYLE_COUNT - 1),
+    hairColor: clamp(o.hairColor, HAIR_COLOR_COUNT - 1),
+  };
 }
 
 const FRAME_W = 32;
@@ -180,28 +157,35 @@ function VariantThumb({ base, override, selected, onClick, title }: VariantThumb
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
 export function JoinScreen() {
-  const stored = loadProfile();
-  const [roomSlug] = useState<string>(() => readRoomSlug());
-  const [pseudo, setPseudo] = useState(stored?.name ?? '');
-  const [appearance, setAppearance] = useState<Appearance>(stored?.appearance ?? DEFAULT_APPEARANCE);
-  const [submitting, setSubmitting] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const saveProfile = useAuthStore((s) => s.saveProfile);
+  const logout = useAuthStore((s) => s.logout);
 
-  useEffect(() => {
-    saveProfile({ name: pseudo, appearance });
-  }, [pseudo, appearance]);
+  const [roomSlug] = useState<string>(() => readRoomSlug());
+  // Pré-rempli depuis le user connecté (PocketBase), plus de localStorage.
+  const [pseudo, setPseudo] = useState(user?.name ?? '');
+  const [appearance, setAppearance] = useState<Appearance>(
+    user?.appearance ? clampAppearance(user.appearance) : DEFAULT_APPEARANCE,
+  );
+  const [submitting, setSubmitting] = useState(false);
 
   const update = <K extends keyof Appearance>(key: K, value: Appearance[K]) => {
     setAppearance((a) => ({ ...a, [key]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = pseudo.trim().slice(0, 20);
     if (!name) return;
     setSubmitting(true);
+    // Persiste pseudo + avatar sur le compte (best-effort, ne bloque pas l'entrée).
+    try {
+      await saveProfile(name, appearance);
+    } catch {
+      /* on entre quand même si la sauvegarde échoue */
+    }
     useGameStore.getState().setName(name);
     useGameStore.getState().setAppearance(appearance);
-    saveProfile({ name, appearance });
     const hostToken = readHostToken();
     const roomSlug = readRoomSlug();
     useGameStore.getState().setCurrentRoomSlug(roomSlug);
@@ -215,8 +199,20 @@ export function JoinScreen() {
         onSubmit={handleSubmit}
         className="w-full max-w-xl rounded-2xl bg-slate-800/80 p-8 shadow-2xl ring-1 ring-white/10 backdrop-blur"
       >
-        <h1 className="mb-1 text-3xl font-bold tracking-tight">Webinti Town</h1>
-        <p className="mb-4 text-sm text-slate-400">Personnalisez votre avatar.</p>
+        <div className="mb-1 flex items-start justify-between gap-3">
+          <h1 className="text-3xl font-bold tracking-tight">Webinti Town</h1>
+          <button
+            type="button"
+            onClick={logout}
+            className="mt-1 shrink-0 text-xs text-slate-400 underline-offset-2 hover:text-slate-200 hover:underline"
+          >
+            Déconnexion
+          </button>
+        </div>
+        <p className="mb-4 text-sm text-slate-400">
+          Personnalisez votre avatar.
+          {user?.email ? <span className="text-slate-500"> · {user.email}</span> : null}
+        </p>
 
         <div className="mb-2 flex justify-center">
           <div className="rounded-lg bg-slate-900/60 p-3 ring-1 ring-slate-700">
