@@ -172,8 +172,9 @@ export class GameScene extends Phaser.Scene {
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
 
-    // Mode debug collision : C superpose les rectangles solides en rouge.
-    this.input.keyboard?.on('keydown-C', () => {
+    // Mode debug collision : B superpose les rectangles solides en rouge.
+    // (C est déjà pris par le chat dans le HUD.)
+    this.input.keyboard?.on('keydown-B', () => {
       if (useGameStore.getState().inputFocused) return;
       this.collisionLayer?.toggleDebug();
     });

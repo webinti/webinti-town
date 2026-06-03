@@ -40,6 +40,7 @@ const GROUPS: ShortcutGroup[] = [
     rows: [
       { keys: 'E', desc: 'Interagir avec un objet (écran, tableau, ...)' },
       { keys: 'G', desc: 'Mode fantôme (traverser les avatars)' },
+      { keys: 'B', desc: 'Afficher les collisions (debug / édition map)' },
     ],
   },
   {
