@@ -3,6 +3,7 @@ import type {
   ChatAttachment,
   ChatMessage,
   ChatMessageType,
+  ConfettiEvent,
   DmMessage,
   EmoteEvent,
   EmoteType,
@@ -86,6 +87,7 @@ class SocketManager {
   private proximityListeners = new Set<(ids: string[]) => void>();
   private chatListeners = new Set<(msg: ChatMessage) => void>();
   private emoteListeners = new Set<(e: EmoteEvent) => void>();
+  private confettiListeners = new Set<(e: ConfettiEvent) => void>();
   private objectListeners = new Set<(obj: InteractiveObject) => void>();
   private whiteboardStrokeListeners = new Set<(p: WhiteboardStrokePayload) => void>();
   private whiteboardTextListeners = new Set<(p: WhiteboardTextPayload) => void>();
@@ -191,6 +193,10 @@ class SocketManager {
         playApplause();
       }
       for (const fn of this.emoteListeners) fn(e);
+    });
+
+    socket.on('confetti', (e: ConfettiEvent) => {
+      for (const fn of this.confettiListeners) fn(e);
     });
 
     socket.on('object_update', (obj: InteractiveObject) => {
@@ -353,6 +359,10 @@ class SocketManager {
     this.socket?.emit('emote', { emoteType });
   }
 
+  sendConfetti(): void {
+    this.socket?.emit('confetti');
+  }
+
   sendTypingStart(): void {
     this.socket?.emit('typing_start');
   }
@@ -442,6 +452,13 @@ class SocketManager {
     this.emoteListeners.add(fn);
     return () => {
       this.emoteListeners.delete(fn);
+    };
+  }
+
+  onConfetti(fn: (e: ConfettiEvent) => void): () => void {
+    this.confettiListeners.add(fn);
+    return () => {
+      this.confettiListeners.delete(fn);
     };
   }
 

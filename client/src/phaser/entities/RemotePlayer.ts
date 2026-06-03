@@ -1,27 +1,24 @@
 import Phaser from 'phaser';
 import type { Appearance, Direction, PlayerState, Presence } from '../../types';
+import { HAIR_COLOR_COUNT } from '../../types';
 import { advanceWalkTick, animatedFrame } from './avatarFrames';
 import { breathScaleY } from '../idleBreath';
 import { applyBreath } from '../applyBreath';
 
-const SHIRT_FALLBACK_COLORS = [
+const OUTFIT_FALLBACK_COLORS = [
   0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x14b8a6,
   0x3b82f6, 0x6366f1, 0xa855f7, 0xec4899, 0xf3f4f6,
 ];
 
-const HAIR_COLS = 6;
-
-function hairFrame(appearance: Appearance): number {
-  return appearance.hairColor * HAIR_COLS + appearance.hairStyle;
+function hairVariant(a: Appearance): number {
+  return a.hairStyle * HAIR_COLOR_COUNT + a.hairColor;
 }
 
 export class RemotePlayer {
   scene: Phaser.Scene;
   sprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
-  pantsLayer?: Phaser.GameObjects.Sprite;
-  shirtLayer?: Phaser.GameObjects.Sprite;
+  outfitLayer?: Phaser.GameObjects.Sprite;
   hairLayer?: Phaser.GameObjects.Sprite;
-  hairBackLayer?: Phaser.GameObjects.Sprite;
   label: Phaser.GameObjects.Text;
   private typingBubble: Phaser.GameObjects.Text | null = null;
   private speakingBubble: Phaser.GameObjects.Text | null = null;
@@ -54,26 +51,20 @@ export class RemotePlayer {
     const a = state.appearance;
 
     if (hasLayers) {
-      this.hairBackLayer = scene.add
-        .sprite(state.x, state.y, 'layer_hair_back', hairFrame(a))
-        .setDepth(8.9);
       this.sprite = scene.add
         .sprite(state.x, state.y, 'layer_body', animatedFrame(a.skin, 'down', false, 0))
         .setDepth(9.0);
-      this.pantsLayer = scene.add
-        .sprite(state.x, state.y, 'layer_pants', animatedFrame(a.pants, 'down', false, 0))
+      this.outfitLayer = scene.add
+        .sprite(state.x, state.y, 'layer_outfit', animatedFrame(a.outfit, 'down', false, 0))
         .setDepth(9.1);
-      this.shirtLayer = scene.add
-        .sprite(state.x, state.y, 'layer_shirt', animatedFrame(a.shirt, 'down', false, 0))
-        .setDepth(9.2);
       this.hairLayer = scene.add
-        .sprite(state.x, state.y, 'layer_hair', hairFrame(a))
-        .setDepth(9.3);
+        .sprite(state.x, state.y, 'layer_hair', animatedFrame(hairVariant(a), 'down', false, 0))
+        .setDepth(9.2);
     } else {
-      const tex = `avatar_circle_${a.shirt}`;
+      const tex = `avatar_circle_${a.outfit}`;
       if (!scene.textures.exists(tex)) {
         const g = scene.make.graphics({ x: 0, y: 0 }, false);
-        g.fillStyle(SHIRT_FALLBACK_COLORS[a.shirt % SHIRT_FALLBACK_COLORS.length], 1);
+        g.fillStyle(OUTFIT_FALLBACK_COLORS[a.outfit % OUTFIT_FALLBACK_COLORS.length], 1);
         g.fillCircle(16, 16, 14);
         g.lineStyle(2, 0x000000, 1);
         g.strokeCircle(16, 16, 14);
@@ -111,14 +102,11 @@ export class RemotePlayer {
     if (this.kartId === kartId) return;
     this.kartId = kartId;
     // F11 — bump +1 sur chaque couche en préservant les offsets fractionnaires
-    // (hairBack 8.9 / body 9.0 / pants 9.1 / shirt 9.2 / hair 9.3) qui
-    // contrôlent l'ordre de rendu entre couches.
+    // (body 9.0 / outfit 9.1 / hair 9.2) qui contrôlent l'ordre de rendu.
     const bump = kartId !== null ? 1 : 0;
-    this.hairBackLayer?.setDepth(8.9 + bump);
     this.sprite.setDepth(9.0 + bump);
-    this.pantsLayer?.setDepth(9.1 + bump);
-    this.shirtLayer?.setDepth(9.2 + bump);
-    this.hairLayer?.setDepth(9.3 + bump);
+    this.outfitLayer?.setDepth(9.1 + bump);
+    this.hairLayer?.setDepth(9.2 + bump);
   }
 
   setBoosting(b: boolean): void { this.boosting = b; }
@@ -128,9 +116,7 @@ export class RemotePlayer {
     this.isGhost = isGhost;
     const a = isGhost ? 0.5 : 1;
     this.sprite.setAlpha(a);
-    this.hairBackLayer?.setAlpha(a);
-    this.pantsLayer?.setAlpha(a);
-    this.shirtLayer?.setAlpha(a);
+    this.outfitLayer?.setAlpha(a);
     this.hairLayer?.setAlpha(a);
     this.label.setAlpha(a);
     this.typingBubble?.setAlpha(a);
@@ -224,8 +210,8 @@ export class RemotePlayer {
     if (this.sprite instanceof Phaser.GameObjects.Sprite) {
       this.sprite.setFrame(animatedFrame(this.appearance.skin, dir, moving, tick));
     }
-    this.pantsLayer?.setFrame(animatedFrame(this.appearance.pants, dir, moving, tick));
-    this.shirtLayer?.setFrame(animatedFrame(this.appearance.shirt, dir, moving, tick));
+    this.outfitLayer?.setFrame(animatedFrame(this.appearance.outfit, dir, moving, tick));
+    this.hairLayer?.setFrame(animatedFrame(hairVariant(this.appearance), dir, moving, tick));
   }
 
   /**
@@ -242,9 +228,9 @@ export class RemotePlayer {
     body.setAllowGravity(false);
     body.setImmovable(true);
     body.moves = false;
-    // Match the local Player hitbox (24x16 with offset 4,28) when we have
-    // tall layered sprites; fall back to the circle's natural 24x24 otherwise.
-    if (this.hasLayers) body.setSize(24, 16).setOffset(4, 28);
+    // Match the local Player hitbox (16x12 with offset 8,48 on a 32x64 frame)
+    // when we have tall layered sprites; fall back to 24x24 otherwise.
+    if (this.hasLayers) body.setSize(16, 12).setOffset(8, 48);
     else body.setSize(24, 24);
     this.sprite.setData('remote', this);
     group.add(this.sprite);
@@ -257,9 +243,7 @@ export class RemotePlayer {
     const x = this.sprite.x;
     const y = this.sprite.y;
     // F11 — pas d'offset Y, vêtements alignés sur le body.
-    if (this.hairBackLayer) this.hairBackLayer.setPosition(x, y);
-    if (this.pantsLayer) this.pantsLayer.setPosition(x, y);
-    if (this.shirtLayer) this.shirtLayer.setPosition(x, y);
+    if (this.outfitLayer) this.outfitLayer.setPosition(x, y);
     if (this.hairLayer) this.hairLayer.setPosition(x, y);
     this.label.setPosition(x, y - 28);
     if (this.typingBubble) this.typingBubble.setPosition(x, y - 42);
@@ -286,9 +270,7 @@ export class RemotePlayer {
 
   destroy(): void {
     this.sprite.destroy();
-    this.hairBackLayer?.destroy();
-    this.pantsLayer?.destroy();
-    this.shirtLayer?.destroy();
+    this.outfitLayer?.destroy();
     this.hairLayer?.destroy();
     this.label.destroy();
     this.typingBubble?.destroy();

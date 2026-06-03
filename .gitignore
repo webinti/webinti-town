@@ -18,3 +18,8 @@ server/data/uploads/*
 
 # Zips sources LimeZu (volumineux) — seuls les PNG extraits sont versionnés
 client/public/assets/*.zip
+
+# Map générée par prepare-map. Ces artefacts SONT versionnés : le déploiement
+# prod est un `git pull + build` sur le VPS, qui ne peut pas lancer prepare-map
+# (sources LimeZu absentes). Régénère-les sur le Mac via `npm run prepare-map`
+# après chaque édition de la map dans Tiled, puis commit.

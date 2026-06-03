@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { socketManager } from '../network/SocketManager';
 import type { Appearance } from '../types';
-import { DEFAULT_APPEARANCE } from '../types';
+import {
+  DEFAULT_APPEARANCE,
+  SKIN_COUNT,
+  OUTFIT_COUNT,
+  HAIR_STYLE_COUNT,
+  HAIR_COLOR_COUNT,
+} from '../types';
 
 const STORAGE_KEY = 'webinti-town:profile';
 const HOST_TOKEN_KEY = 'webinti-town:hostToken';
@@ -59,11 +65,10 @@ function loadProfile(): StoredProfile | null {
     return {
       name: parsed.name.slice(0, 20),
       appearance: {
-        skin: clamp(a.skin, 2) as Appearance['skin'],
-        hairStyle: clamp(a.hairStyle, 5) as Appearance['hairStyle'],
-        hairColor: clamp(a.hairColor, 5) as Appearance['hairColor'],
-        shirt: clamp(a.shirt, 9) as Appearance['shirt'],
-        pants: clamp(a.pants, 5) as Appearance['pants'],
+        skin: clamp(a.skin, SKIN_COUNT - 1),
+        outfit: clamp((a as Partial<Appearance>).outfit, OUTFIT_COUNT - 1),
+        hairStyle: clamp(a.hairStyle, HAIR_STYLE_COUNT - 1),
+        hairColor: clamp(a.hairColor, HAIR_COLOR_COUNT - 1),
       },
     };
   } catch {
@@ -80,38 +85,24 @@ function saveProfile(p: StoredProfile): void {
 }
 
 const FRAME_W = 32;
-const FRAME_H = 48;
+const FRAME_H = 64;
 
-const SKIN_COLORS = ['#f4c79a', '#c79870', '#8b5a3a'];
-const HAIR_STYLE_LABELS = ['Aucun', 'Court', 'Mi-long', 'Queue', 'Casquette', 'Mohawk'];
-const HAIR_COLORS = ['#1a1a1a', '#5c3a1e', '#e8c870', '#a64427', '#9aa0a6', '#f0f0f0'];
-const SHIRT_COLORS = [
-  '#ef4444',
-  '#f97316',
-  '#eab308',
-  '#22c55e',
-  '#14b8a6',
-  '#3b82f6',
-  '#6366f1',
-  '#a855f7',
-  '#ec4899',
-  '#f3f4f6',
-];
-const PANTS_COLORS = ['#2d3a5a', '#1f2937', '#a08868', '#6b4426', '#6b7280', '#7c8862'];
+const HAIR_STYLE_LABELS = ['Court', 'Ondulé', 'Mi-long', 'Bouclé', 'Long', 'Chignon'];
+// Pastilles indicatives pour les 4 couleurs de cheveux LimeZu (variantes 01-04).
+const HAIR_COLOR_SWATCHES = ['#3b2a1a', '#6b4423', '#c98a3a', '#1a1a1a'];
 
-const HAIR_COLS = 6;
+const hairVariantOf = (a: Appearance) => a.hairStyle * HAIR_COLOR_COUNT + a.hairColor;
 
 interface AvatarPreviewProps {
   appearance: Appearance;
   scale: number;
 }
 
+// Affiche la frame "face, idle" (col 0) en superposant les 3 couches.
+// Layout des planches: row = variante*4 + dir ; frame face-idle = variante*4.
 function AvatarPreview({ appearance, scale }: AvatarPreviewProps) {
   const w = FRAME_W * scale;
   const h = FRAME_H * scale;
-  const hairFrame = appearance.hairColor * HAIR_COLS + appearance.hairStyle;
-  const hairCol = hairFrame % HAIR_COLS;
-  const hairRow = Math.floor(hairFrame / HAIR_COLS);
 
   const layerStyle = {
     position: 'absolute' as const,
@@ -123,48 +114,18 @@ function AvatarPreview({ appearance, scale }: AvatarPreviewProps) {
     backgroundRepeat: 'no-repeat' as const,
   };
 
+  const layer = (file: string, variant: number, count: number) => ({
+    ...layerStyle,
+    backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/${file}.png')`,
+    backgroundSize: `${3 * w}px ${count * 4 * h}px`,
+    backgroundPosition: `0px -${variant * 4 * h}px`,
+  });
+
   return (
     <div style={{ position: 'relative', width: w, height: h }}>
-      <div
-        style={{
-          ...layerStyle,
-          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/hair_back.png')`,
-          backgroundSize: `${HAIR_COLS * w}px ${HAIR_COLORS.length * h}px`,
-          backgroundPosition: `-${hairCol * w}px -${hairRow * h}px`,
-        }}
-      />
-      <div
-        style={{
-          ...layerStyle,
-          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/body.png')`,
-          backgroundSize: `${3 * w}px ${SKIN_COLORS.length * 4 * h}px`,
-          backgroundPosition: `0px -${appearance.skin * 4 * h}px`,
-        }}
-      />
-      <div
-        style={{
-          ...layerStyle,
-          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/pants.png')`,
-          backgroundSize: `${3 * w}px ${PANTS_COLORS.length * 4 * h}px`,
-          backgroundPosition: `0px -${appearance.pants * 4 * h}px`,
-        }}
-      />
-      <div
-        style={{
-          ...layerStyle,
-          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/shirt.png')`,
-          backgroundSize: `${3 * w}px ${SHIRT_COLORS.length * 4 * h}px`,
-          backgroundPosition: `0px -${appearance.shirt * 4 * h}px`,
-        }}
-      />
-      <div
-        style={{
-          ...layerStyle,
-          backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/hair.png')`,
-          backgroundSize: `${HAIR_COLS * w}px ${HAIR_COLORS.length * h}px`,
-          backgroundPosition: `-${hairCol * w}px -${hairRow * h}px`,
-        }}
-      />
+      <div style={layer('body', appearance.skin, SKIN_COUNT)} />
+      <div style={layer('outfit', appearance.outfit, OUTFIT_COUNT)} />
+      <div style={layer('hair', hairVariantOf(appearance), HAIR_STYLE_COUNT * HAIR_COLOR_COUNT)} />
     </div>
   );
 }
@@ -191,29 +152,32 @@ function Swatch({ color, selected, onClick, label }: SwatchProps) {
   );
 }
 
-interface HairStyleThumbProps {
-  styleIndex: number;
+interface VariantThumbProps {
+  base: Appearance;
+  override: Partial<Appearance>;
   selected: boolean;
   onClick: () => void;
-  appearance: Appearance;
+  title?: string;
 }
 
-function HairStyleThumb({ styleIndex, selected, onClick, appearance }: HairStyleThumbProps) {
-  const previewAppearance: Appearance = { ...appearance, hairStyle: styleIndex as Appearance['hairStyle'] };
+// Vignette cliquable : prévisualise l'apparence courante avec un champ modifié.
+function VariantThumb({ base, override, selected, onClick, title }: VariantThumbProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      title={HAIR_STYLE_LABELS[styleIndex]}
-      className={`flex flex-col items-center rounded-lg bg-slate-900/60 p-1 ring-2 transition ${
+      title={title}
+      className={`flex items-center justify-center overflow-hidden rounded-lg bg-slate-900/60 p-1 ring-2 transition ${
         selected ? 'ring-indigo-400 bg-indigo-500/20' : 'ring-transparent hover:ring-slate-600'
       }`}
     >
-      <AvatarPreview appearance={previewAppearance} scale={1} />
-      <span className="mt-1 text-[10px] text-slate-300">{HAIR_STYLE_LABELS[styleIndex]}</span>
+      <AvatarPreview appearance={{ ...base, ...override }} scale={1} />
     </button>
   );
 }
+
+// Indices [0, n[ — petit utilitaire pour mapper sur les variantes.
+const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
 export function JoinScreen() {
   const stored = loadProfile();
@@ -276,14 +240,31 @@ export function JoinScreen() {
 
         <div className="mb-3">
           <label className="mb-2 block text-sm font-medium">Peau</label>
-          <div className="flex gap-2">
-            {SKIN_COLORS.map((c, i) => (
-              <Swatch
+          <div className="flex flex-wrap gap-2">
+            {range(SKIN_COUNT).map((i) => (
+              <VariantThumb
                 key={i}
-                color={c}
+                base={appearance}
+                override={{ skin: i }}
                 selected={appearance.skin === i}
-                onClick={() => update('skin', i as Appearance['skin'])}
-                label={`Peau ${i + 1}`}
+                onClick={() => update('skin', i)}
+                title={`Peau ${i + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="mb-2 block text-sm font-medium">Tenue</label>
+          <div className="flex flex-wrap gap-2">
+            {range(OUTFIT_COUNT).map((i) => (
+              <VariantThumb
+                key={i}
+                base={appearance}
+                override={{ outfit: i }}
+                selected={appearance.outfit === i}
+                onClick={() => update('outfit', i)}
+                title={`Tenue ${i + 1}`}
               />
             ))}
           </div>
@@ -292,58 +273,29 @@ export function JoinScreen() {
         <div className="mb-3">
           <label className="mb-2 block text-sm font-medium">Coiffure</label>
           <div className="flex flex-wrap gap-2">
-            {HAIR_STYLE_LABELS.map((_label, i) => (
-              <HairStyleThumb
+            {range(HAIR_STYLE_COUNT).map((i) => (
+              <VariantThumb
                 key={i}
-                styleIndex={i}
+                base={appearance}
+                override={{ hairStyle: i }}
                 selected={appearance.hairStyle === i}
-                onClick={() => update('hairStyle', i as Appearance['hairStyle'])}
-                appearance={appearance}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-3">
-          <label className="mb-2 block text-sm font-medium">Couleur des cheveux</label>
-          <div className="flex gap-2">
-            {HAIR_COLORS.map((c, i) => (
-              <Swatch
-                key={i}
-                color={c}
-                selected={appearance.hairColor === i}
-                onClick={() => update('hairColor', i as Appearance['hairColor'])}
-                label={`Cheveux ${i + 1}`}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-3">
-          <label className="mb-2 block text-sm font-medium">Haut</label>
-          <div className="flex flex-wrap gap-2">
-            {SHIRT_COLORS.map((c, i) => (
-              <Swatch
-                key={i}
-                color={c}
-                selected={appearance.shirt === i}
-                onClick={() => update('shirt', i as Appearance['shirt'])}
-                label={`Haut ${i + 1}`}
+                onClick={() => update('hairStyle', i)}
+                title={HAIR_STYLE_LABELS[i] ?? `Coiffure ${i + 1}`}
               />
             ))}
           </div>
         </div>
 
         <div className="mb-6">
-          <label className="mb-2 block text-sm font-medium">Pantalon</label>
+          <label className="mb-2 block text-sm font-medium">Couleur des cheveux</label>
           <div className="flex gap-2">
-            {PANTS_COLORS.map((c, i) => (
+            {range(HAIR_COLOR_COUNT).map((i) => (
               <Swatch
                 key={i}
-                color={c}
-                selected={appearance.pants === i}
-                onClick={() => update('pants', i as Appearance['pants'])}
-                label={`Pantalon ${i + 1}`}
+                color={HAIR_COLOR_SWATCHES[i] ?? '#888'}
+                selected={appearance.hairColor === i}
+                onClick={() => update('hairColor', i)}
+                label={`Cheveux ${i + 1}`}
               />
             ))}
           </div>

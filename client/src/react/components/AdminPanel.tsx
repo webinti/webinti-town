@@ -91,7 +91,7 @@ export function AdminPanel() {
           <ul className="space-y-1.5">
             {sortedPlayers.map((p) => {
               const isSelf = p.playerId === localPlayerId;
-              const color = SHIRT_COLORS[p.appearance.shirt % SHIRT_COLORS.length];
+              const color = SHIRT_COLORS[p.appearance.outfit % SHIRT_COLORS.length];
               return (
                 <li
                   key={p.playerId}

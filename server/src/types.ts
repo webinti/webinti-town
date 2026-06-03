@@ -5,19 +5,17 @@ export type ChatMessageType = 'local' | 'global' | 'system';
 export type EmoteType = 'wave' | 'heart' | 'laugh' | 'thumbsup' | 'question' | 'exclaim';
 
 export interface Appearance {
-  skin: 0 | 1 | 2;
-  hairStyle: 0 | 1 | 2 | 3 | 4 | 5;
-  hairColor: 0 | 1 | 2 | 3 | 4 | 5;
-  shirt: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-  pants: 0 | 1 | 2 | 3 | 4 | 5;
+  skin: number;       // 0..8
+  outfit: number;     // 0..11
+  hairStyle: number;  // 0..5
+  hairColor: number;  // 0..3
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
-  skin: 0,
+  skin: 2,
+  outfit: 0,
   hairStyle: 1,
-  hairColor: 0,
-  shirt: 5,
-  pants: 0,
+  hairColor: 1,
 };
 
 export type Presence = 'available' | 'away' | 'brb' | 'dnd' | 'inactive';

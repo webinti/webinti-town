@@ -1,6 +1,6 @@
 import type { Direction } from '../../types';
 
-// Sheet layout for animated layers (body / pants / shirt):
+// Sheet layout for animated layers (body / outfit / hair — LimeZu 32x64):
 //   rows  = categoryIdx * 4 (directions) + dirIdx
 //   cols  = FRAMES_PER_DIR (idle, walkA, walkB)
 //   frame = (categoryIdx * 4 + dirIdx) * FRAMES_PER_DIR + walkPhase

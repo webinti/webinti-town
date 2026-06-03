@@ -32,6 +32,7 @@ const GROUPS: ShortcutGroup[] = [
       { keys: '4', desc: '\u{2764}\u{FE0F} Cœur' },
       { keys: '5', desc: '\u{2753} Question' },
       { keys: '6', desc: '\u{2757} Exclamation' },
+      { keys: 'F', desc: '\u{1F389} Confettis (pour toute la salle)' },
     ],
   },
   {

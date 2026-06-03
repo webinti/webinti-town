@@ -16,6 +16,9 @@ WEBINTI_ROOT="${WEBINTI_ROOT:-/var/www/webinti-town}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+echo "==> Preparing map (default.built.tmj + tilesets)"
+npm run prepare-map
+
 echo "==> Building client (Vite prod)"
 (cd client && npm ci --silent && npm run build)
 

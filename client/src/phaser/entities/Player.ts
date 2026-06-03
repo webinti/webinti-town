@@ -1,28 +1,26 @@
 import Phaser from 'phaser';
 import type { Appearance, Direction, Presence } from '../../types';
+import { HAIR_COLOR_COUNT } from '../../types';
 import { advanceWalkTick, animatedFrame } from './avatarFrames';
 import { computeKartSpeed } from '../kartSpeed';
 import { breathScaleY } from '../idleBreath';
 import { applyBreath } from '../applyBreath';
 
-const SHIRT_FALLBACK_COLORS = [
+const OUTFIT_FALLBACK_COLORS = [
   0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x14b8a6,
   0x3b82f6, 0x6366f1, 0xa855f7, 0xec4899, 0xf3f4f6,
 ];
 
-const HAIR_COLS = 6;
-
-function hairFrame(appearance: Appearance): number {
-  return appearance.hairColor * HAIR_COLS + appearance.hairStyle;
+// Variante de la planche `hair` (cheveux désormais directionnels + animés).
+function hairVariant(a: Appearance): number {
+  return a.hairStyle * HAIR_COLOR_COUNT + a.hairColor;
 }
 
 export class Player {
   scene: Phaser.Scene;
   sprite: Phaser.Physics.Arcade.Sprite | Phaser.Physics.Arcade.Image;
-  pantsLayer?: Phaser.GameObjects.Sprite;
-  shirtLayer?: Phaser.GameObjects.Sprite;
+  outfitLayer?: Phaser.GameObjects.Sprite;
   hairLayer?: Phaser.GameObjects.Sprite;
-  hairBackLayer?: Phaser.GameObjects.Sprite;
   label: Phaser.GameObjects.Text;
   direction: Direction = 'down';
   moving = false;
@@ -66,27 +64,22 @@ export class Player {
         'layer_body',
         animatedFrame(appearance.skin, 'down', false, 0),
       );
-      body.setSize(24, 16).setOffset(4, 28);
+      // Frame 32x64, sprite centré : la boîte de collision est aux pieds.
+      body.setSize(16, 12).setOffset(8, 48);
       body.setDepth(9.0);
       this.sprite = body;
 
-      this.hairBackLayer = scene.add
-        .sprite(x, y, 'layer_hair_back', hairFrame(appearance))
-        .setDepth(8.9);
-      this.pantsLayer = scene.add
-        .sprite(x, y, 'layer_pants', animatedFrame(appearance.pants, 'down', false, 0))
+      this.outfitLayer = scene.add
+        .sprite(x, y, 'layer_outfit', animatedFrame(appearance.outfit, 'down', false, 0))
         .setDepth(9.1);
-      this.shirtLayer = scene.add
-        .sprite(x, y, 'layer_shirt', animatedFrame(appearance.shirt, 'down', false, 0))
-        .setDepth(9.2);
       this.hairLayer = scene.add
-        .sprite(x, y, 'layer_hair', hairFrame(appearance))
-        .setDepth(9.3);
+        .sprite(x, y, 'layer_hair', animatedFrame(hairVariant(appearance), 'down', false, 0))
+        .setDepth(9.2);
     } else {
-      const tex = `avatar_circle_${appearance.shirt}`;
+      const tex = `avatar_circle_${appearance.outfit}`;
       if (!scene.textures.exists(tex)) {
         const g = scene.make.graphics({ x: 0, y: 0 }, false);
-        g.fillStyle(SHIRT_FALLBACK_COLORS[appearance.shirt % SHIRT_FALLBACK_COLORS.length], 1);
+        g.fillStyle(OUTFIT_FALLBACK_COLORS[appearance.outfit % OUTFIT_FALLBACK_COLORS.length], 1);
         g.fillCircle(16, 16, 14);
         g.lineStyle(2, 0x000000, 1);
         g.strokeCircle(16, 16, 14);
@@ -115,9 +108,7 @@ export class Player {
   private syncLayers(): void {
     const x = this.sprite.x;
     const y = this.sprite.y;
-    if (this.hairBackLayer) this.hairBackLayer.setPosition(x, y);
-    if (this.pantsLayer) this.pantsLayer.setPosition(x, y);
-    if (this.shirtLayer) this.shirtLayer.setPosition(x, y);
+    if (this.outfitLayer) this.outfitLayer.setPosition(x, y);
     if (this.hairLayer) this.hairLayer.setPosition(x, y);
   }
 
@@ -129,9 +120,8 @@ export class Player {
     if (this.sprite instanceof Phaser.Physics.Arcade.Sprite) {
       this.sprite.setFrame(animatedFrame(this.appearance.skin, dir, moving, tick));
     }
-    this.pantsLayer?.setFrame(animatedFrame(this.appearance.pants, dir, moving, tick));
-    this.shirtLayer?.setFrame(animatedFrame(this.appearance.shirt, dir, moving, tick));
-    // hair / hair_back are static (front-facing) -- no per-direction update needed.
+    this.outfitLayer?.setFrame(animatedFrame(this.appearance.outfit, dir, moving, tick));
+    this.hairLayer?.setFrame(animatedFrame(hairVariant(this.appearance), dir, moving, tick));
   }
 
   update(cursors: {
@@ -194,14 +184,12 @@ export class Player {
 
     // F11 — quand on est sur un kart, on bumpe TOUTES les couches de +1 pour
     // passer au-dessus du sprite kart (depth 8) tout en préservant les offsets
-    // fractionnaires entre couches (8.9 hairBack / 9.0 body / 9.1 pants / 9.2
-    // shirt / 9.3 hair) qui contrôlent l'ordre de rendu.
+    // fractionnaires entre couches (9.0 body / 9.1 outfit / 9.2 hair) qui
+    // contrôlent l'ordre de rendu.
     const bump = this.kartId !== null ? 1 : 0;
-    this.hairBackLayer?.setDepth(8.9 + bump);
     this.sprite.setDepth(9.0 + bump);
-    this.pantsLayer?.setDepth(9.1 + bump);
-    this.shirtLayer?.setDepth(9.2 + bump);
-    this.hairLayer?.setDepth(9.3 + bump);
+    this.outfitLayer?.setDepth(9.1 + bump);
+    this.hairLayer?.setDepth(9.2 + bump);
 
     // Respiration idle (procédurale) — n'affecte pas la physique (scaleY only).
     // `this.moving` est vrai pendant la danse, donc pas de cumul avec celle-ci.
@@ -221,9 +209,7 @@ export class Player {
     this.isGhost = isGhost;
     const a = isGhost ? 0.5 : 1;
     this.sprite.setAlpha(a);
-    this.hairBackLayer?.setAlpha(a);
-    this.pantsLayer?.setAlpha(a);
-    this.shirtLayer?.setAlpha(a);
+    this.outfitLayer?.setAlpha(a);
     this.hairLayer?.setAlpha(a);
     this.label.setAlpha(a);
     this.speakingBubble?.setAlpha(a);
@@ -290,9 +276,7 @@ export class Player {
 
   destroy(): void {
     this.sprite.destroy();
-    this.hairBackLayer?.destroy();
-    this.pantsLayer?.destroy();
-    this.shirtLayer?.destroy();
+    this.outfitLayer?.destroy();
     this.hairLayer?.destroy();
     this.label.destroy();
     this.speakingPulseTween?.stop();

@@ -6,7 +6,7 @@ function mk(id: string, x: number, y: number): PlayerState {
   return {
     playerId: id,
     name: id,
-    appearance: { skin: 0, hairStyle: 0, hairColor: 0, shirt: 0, pants: 0 },
+    appearance: { skin: 0, outfit: 0, hairStyle: 0, hairColor: 0 },
     x,
     y,
     direction: 'down',

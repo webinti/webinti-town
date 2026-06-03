@@ -65,6 +65,8 @@ export class GameScene extends Phaser.Scene {
   private unsubRemove?: () => void;
   private unsubStore?: () => void;
   private unsubEmote?: () => void;
+  private unsubConfetti?: () => void;
+  private fKey?: Phaser.Input.Keyboard.Key;
   private unsubObject?: () => void;
   private unsubTyping?: () => void;
   private unsubChatForTyping?: () => void;
@@ -79,6 +81,7 @@ export class GameScene extends Phaser.Scene {
   private zKey?: Phaser.Input.Keyboard.Key;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
   private screenGlows: Array<{ wsId: string; glow: Phaser.GameObjects.Graphics; near: boolean }> = [];
+  private animatedDoors: Array<{ sprite: Phaser.GameObjects.Sprite; cx: number; cy: number; open: boolean }> = [];
   private lastLocalPresence: string | undefined = undefined;
   private workstationOverlay?: WorkstationOverlay;
   private kartOverlay?: KartOverlay;
@@ -102,9 +105,8 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.hasLayers =
       this.textures.exists('layer_body') &&
-      this.textures.exists('layer_hair') &&
-      this.textures.exists('layer_shirt') &&
-      this.textures.exists('layer_pants');
+      this.textures.exists('layer_outfit') &&
+      this.textures.exists('layer_hair');
 
     const tilemapKey = 'map_default';
     const cacheHasMap = this.cache.tilemap.has(tilemapKey);
@@ -220,6 +222,7 @@ export class GameScene extends Phaser.Scene {
     this.unsubUpdate = socketManager.onPlayerUpdate((p) => this.handleRemoteUpdate(p));
     this.unsubRemove = socketManager.onPlayerRemoved((id) => this.handleRemoteRemove(id));
     this.unsubEmote = socketManager.onEmote((e) => this.handleEmote(e.playerId, e.emoteType));
+    this.unsubConfetti = socketManager.onConfetti((e) => this.spawnConfetti(e.playerId));
     this.unsubObject = socketManager.onObjectUpdate((obj) => this.refreshObject(obj));
 
     this.unsubTyping = socketManager.onTypingState((payload) => {
@@ -232,6 +235,12 @@ export class GameScene extends Phaser.Scene {
 
     this.eKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.E);
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+    // F — lance des confettis pour toute la salle (comme dans Gather).
+    this.fKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+    this.fKey?.on('down', () => {
+      if (useGameStore.getState().inputFocused) return;
+      socketManager.sendConfetti();
+    });
     this.input.keyboard?.clearCaptures();
 
     this.kartPrompt = this.add.text(0, 0, '', {
@@ -308,6 +317,7 @@ export class GameScene extends Phaser.Scene {
       this.unsubRemove?.();
       this.unsubStore?.();
       this.unsubEmote?.();
+      this.unsubConfetti?.();
       this.unsubObject?.();
       this.unsubTyping?.();
       this.unsubChatForTyping?.();
@@ -438,6 +448,44 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // Portes animées (battant bois qui s'ouvre/se ferme). Marquées par des objets
+  // `door` (points) sur le calque `objects` du .tmj. Sprite 32x64 = 1 tuile de
+  // large × 2 de haut, vue de face ("porte sud") : on cale le haut du sprite une
+  // tuile au-dessus de la tuile pointée pour que le battant couvre la porte, et
+  // on joue l'ouverture quand un joueur (local ou distant) s'approche.
+  private createAnimatedDoors(map: Phaser.Tilemaps.Tilemap): void {
+    if (!this.textures.exists('anim_door')) return;
+    if (!this.anims.exists('door_open')) {
+      this.anims.create({ key: 'door_open', frames: this.anims.generateFrameNumbers('anim_door', { start: 0, end: 4 }), frameRate: 16 });
+      this.anims.create({ key: 'door_close', frames: this.anims.generateFrameNumbers('anim_door', { start: 4, end: 0 }), frameRate: 16 });
+    }
+    const layer = map.getObjectLayer('objects');
+    if (!layer) return;
+    const doors = layer.objects
+      .filter((o) => String(o.name ?? '').toLowerCase() === 'door')
+      .map((o) => ({ tc: Math.floor(Number(o.x ?? 0) / TILE), tr: Math.floor(Number(o.y ?? 0) / TILE) }));
+    const has = (c: number, r: number) => doors.some((d) => d.tc === c && d.tr === r);
+    for (const { tc, tr } of doors) {
+      // Le sprite est de face ("porte sud") : on ignore les portes sur mur
+      // vertical (battant adjacent au-dessus/dessous) qu'il ne sait pas montrer.
+      if (has(tc, tr - 1) || has(tc, tr + 1)) continue;
+      // Empreinte du battant : 1 tuile large × 2 haut, calée sur le haut de la porte.
+      // On efface la porte statique (furniture) ET le mur derrière (walls) pour
+      // obtenir une vraie ouverture traversable une fois le battant ouvert.
+      for (let r = tr - 1; r <= tr; r++) {
+        this.furnitureLayer?.removeTileAt(tc, r);
+        this.wallsLayer?.removeTileAt(tc, r);
+      }
+      const x = tc * TILE;
+      const y = (tr - 1) * TILE;
+      const sprite = this.add.sprite(x, y, 'anim_door', 0).setOrigin(0, 0).setDepth(2);
+      // Double porte : le battant de droite (un voisin existe à sa gauche)
+      // s'ouvre en miroir, pour que les deux dégagent le centre.
+      if (has(tc - 1, tr)) sprite.setFlipX(true);
+      this.animatedDoors.push({ sprite, cx: x + TILE / 2, cy: y + TILE, open: false });
+    }
+  }
+
   private buildTilemap(): void {
     const map = this.make.tilemap({ key: 'map_default' });
     this.mapW = map.width;
@@ -507,6 +555,7 @@ export class GameScene extends Phaser.Scene {
           .setDepth(20);
       }
     }
+    this.createAnimatedDoors(map);
   }
 
   private buildFallbackMap(): void {
@@ -836,6 +885,21 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Portes animées : s'ouvrent dès qu'un joueur (local ou distant) est à portée.
+    if (this.animatedDoors.length) {
+      const DOOR_RADIUS = 56; // px
+      const positions: Array<{ x: number; y: number }> = [];
+      if (this.player) positions.push({ x: this.player.sprite.x, y: this.player.sprite.y });
+      for (const rp of this.remotePlayers.values()) positions.push({ x: rp.sprite.x, y: rp.sprite.y });
+      for (const d of this.animatedDoors) {
+        const near = positions.some((p) => Math.abs(p.x - d.cx) <= DOOR_RADIUS && Math.abs(p.y - d.cy) <= DOOR_RADIUS);
+        if (near !== d.open) {
+          d.open = near;
+          d.sprite.play(near ? 'door_open' : 'door_close');
+        }
+      }
+    }
+
     // Debug Shift+D — toggle affichage coords + zones
     const shiftDown = this.shiftKey?.isDown ?? false;
     const dDown = !!this.dKey?.isDown;
@@ -943,6 +1007,37 @@ export class GameScene extends Phaser.Scene {
     const p = useGameStore.getState().players.get(playerId);
     if (p) return { x: p.x, y: p.y };
     return null;
+  }
+
+  // Confettis (touche F) — burst de particules colorées centré sur le joueur,
+  // déclenché pour tout le monde via l'événement réseau 'confetti'.
+  private spawnConfetti(playerId: string): void {
+    const pos = this.getPlayerSprite(playerId);
+    if (!pos) return;
+    if (!this.textures.exists('confetti_px')) {
+      const g = this.make.graphics({ x: 0, y: 0 }, false);
+      g.fillStyle(0xffffff, 1);
+      g.fillRect(0, 0, 6, 10);
+      g.generateTexture('confetti_px', 6, 10);
+      g.destroy();
+    }
+    const colors = [
+      0xef4444, 0xf97316, 0xfacc15, 0x22c55e,
+      0x3b82f6, 0xa855f7, 0xec4899, 0x06b6d4,
+    ];
+    const emitter = this.add.particles(pos.x, pos.y - 36, 'confetti_px', {
+      lifespan: 1200,
+      speed: { min: 140, max: 340 },
+      angle: { min: 180, max: 360 }, // hémisphère haut (gauche -> haut -> droite)
+      gravityY: 700,
+      scale: { start: 1, end: 0.6 },
+      rotate: { min: 0, max: 360 },
+      tint: colors,
+      emitting: false,
+    });
+    emitter.setDepth(30);
+    emitter.explode(70);
+    this.time.delayedCall(1500, () => emitter.destroy());
   }
 
   private handleEmote(playerId: string, emoteType: EmoteType): void {

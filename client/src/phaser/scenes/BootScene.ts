@@ -16,17 +16,25 @@ export class BootScene extends Phaser.Scene {
       console.warn('[BootScene] Asset failed to load:', file.key, file.src);
     });
 
-    this.load.image('tileset_basic', `${BASE}assets/tilesets/basic.png${V}`);
-    // POC LimeZu — tilesets Modern Office (32x32). Clé = `tileset_<nom tmj>`.
-    this.load.image('tileset_room_builder', `${BASE}assets/tilesets/Room_Builder_Office_32x32.png${V}`);
-    this.load.image('tileset_office_shadow', `${BASE}assets/tilesets/Modern_Office_Black_Shadow_32x32.png${V}`);
-    this.load.image('tileset_office_shadowless', `${BASE}assets/tilesets/Modern_Office_Shadowless_32x32.png${V}`);
-    // Réception premium — parquet bois (grand Room_Builder 76 col) + meubles cosy LivingRoom.
-    this.load.image('tileset_room_builder_big', `${BASE}assets/tilesets/Room_Builder_32x32.png${V}`);
-    this.load.image('tileset_livingroom', `${BASE}assets/tilesets/2_LivingRoom_Black_Shadow_32x32.png${V}`);
-    // Gym — design pré-fait LimeZu (2 couches utilisées comme tilesets 19 colonnes).
-    this.load.image('tileset_gym_floor', `${BASE}assets/tilesets/Gym_layer_1_32x32.png${V}`);
-    this.load.image('tileset_gym_equip', `${BASE}assets/tilesets/Gym_layer_2_32x32.png${V}`);
+    // Map prête pour le jeu, générée par `npm run prepare-map` à partir de la
+    // source Tiled (default.tmj). Voir scripts/prepare-map.py.
+    this.load.tilemapTiledJSON('map_default', `${BASE}maps/default.built.tmj${V}`);
+    // Chargement DYNAMIQUE des tilesets : dès que le JSON de la map est lu, on
+    // charge l'image de chaque tileset avec la clé `tileset_<nom>` (convention
+    // attendue par GameScene). Plus besoin d'éditer ce fichier à chaque ajout.
+    this.load.once('filecomplete-tilemapJSON-map_default', () => {
+      const data = this.cache.tilemap.get('map_default')?.data as
+        | { tilesets?: Array<{ name: string; image?: string }> }
+        | undefined;
+      for (const ts of data?.tilesets ?? []) {
+        if (!ts.image) continue;
+        const base = ts.image.split('/').pop();
+        const key = `tileset_${ts.name}`;
+        if (base && !this.textures.exists(key)) {
+          this.load.image(key, `${BASE}assets/tilesets/${base}${V}`);
+        }
+      }
+    });
     // Porte animée (5 frames 32x64 : fermée -> ouverte) — réservée aux portes sud.
     this.load.spritesheet('anim_door', `${BASE}assets/sprites/animated_door_1_32x32.png${V}`, {
       frameWidth: 32,
@@ -37,37 +45,24 @@ export class BootScene extends Phaser.Scene {
       frameWidth: 96,
       frameHeight: 128,
     });
-    this.load.tilemapTiledJSON('map_default', `${BASE}maps/default.tmj${V}`);
 
     // F11 — kart sprite (top-down, default facing up). Optional: KartOverlay
     // falls back to a procedural sprite if this asset is missing.
     this.load.image('kart', `${BASE}assets/karts/kart.png${V}`);
 
-    // Animated layers: rows = category * 4 directions, cols = 3 frames
-    //   body  -> 96 x 576  (3 cols, 12 rows = 3 skins * 4 dirs)
-    //   pants -> 96 x 1152 (3 cols, 24 rows = 6 colors * 4 dirs)
-    //   shirt -> 96 x 1920 (3 cols, 40 rows = 10 colors * 4 dirs)
-    // Static layers (front-facing only): hair / hair_back unchanged 192 x 288.
-    this.load.spritesheet('layer_body', `${BASE}assets/avatars/body.png${V}`, {
-      frameWidth: 32,
-      frameHeight: 48,
-    });
-    this.load.spritesheet('layer_hair', `${BASE}assets/avatars/hair.png${V}`, {
-      frameWidth: 32,
-      frameHeight: 48,
-    });
-    this.load.spritesheet('layer_hair_back', `${BASE}assets/avatars/hair_back.png${V}`, {
-      frameWidth: 32,
-      frameHeight: 48,
-    });
-    this.load.spritesheet('layer_shirt', `${BASE}assets/avatars/shirt.png${V}`, {
-      frameWidth: 32,
-      frameHeight: 48,
-    });
-    this.load.spritesheet('layer_pants', `${BASE}assets/avatars/pants.png${V}`, {
-      frameWidth: 32,
-      frameHeight: 48,
-    });
+    // Couches d'avatar LimeZu (générées par scripts/build-avatars.py).
+    // Toutes en frames 32x64, layout: rows = variante*4 + direction, cols = 3
+    // phases [idle, walkA, walkB] (cf. avatarFrames.ts). Les 3 couches sont
+    // directionnelles et animées (y compris les cheveux).
+    //   body   -> 96 x 2304 (9 teints)
+    //   outfit -> 96 x 3072 (12 tenues)
+    //   hair   -> 96 x 6144 (6 styles x 4 couleurs = 24 variantes)
+    for (const layer of ['body', 'outfit', 'hair']) {
+      this.load.spritesheet(`layer_${layer}`, `${BASE}assets/avatars/${layer}.png${V}`, {
+        frameWidth: 32,
+        frameHeight: 64,
+      });
+    }
   }
 
   create(): void {

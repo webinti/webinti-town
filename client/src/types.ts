@@ -1,19 +1,25 @@
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
+// Couches d'avatar LimeZu (Modern Interiors). Les spritesheets sont générées
+// par scripts/build-avatars.py — garder ces compteurs synchronisés avec lui.
+export const SKIN_COUNT = 9;        // Bodies/32x32 (teints)
+export const OUTFIT_COUNT = 12;     // tenues curatées
+export const HAIR_STYLE_COUNT = 6;  // coiffures curatées
+export const HAIR_COLOR_COUNT = 4;  // couleurs de cheveux
+// Variante de la planche `hair` = hairStyle * HAIR_COLOR_COUNT + hairColor.
+
 export interface Appearance {
-  skin: 0 | 1 | 2;
-  hairStyle: 0 | 1 | 2 | 3 | 4 | 5;
-  hairColor: 0 | 1 | 2 | 3 | 4 | 5;
-  shirt: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-  pants: 0 | 1 | 2 | 3 | 4 | 5;
+  skin: number;       // 0..SKIN_COUNT-1
+  outfit: number;     // 0..OUTFIT_COUNT-1
+  hairStyle: number;  // 0..HAIR_STYLE_COUNT-1
+  hairColor: number;  // 0..HAIR_COLOR_COUNT-1
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
-  skin: 0,
+  skin: 2,
+  outfit: 0,
   hairStyle: 1,
-  hairColor: 0,
-  shirt: 5,
-  pants: 0,
+  hairColor: 1,
 };
 
 export type Presence = 'available' | 'away' | 'brb' | 'dnd' | 'inactive';
@@ -121,6 +127,11 @@ export type InteractiveObject =
 export interface EmoteEvent {
   playerId: string;
   emoteType: EmoteType;
+  timestamp: number;
+}
+
+export interface ConfettiEvent {
+  playerId: string;
   timestamp: number;
 }
 

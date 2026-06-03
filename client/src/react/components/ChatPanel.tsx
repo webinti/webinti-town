@@ -22,9 +22,9 @@ function formatTime(ts: number): string {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function shirtColorFor(playerId: string, players: Map<string, { appearance: { shirt: number } }>): string {
+function shirtColorFor(playerId: string, players: Map<string, { appearance: { outfit: number } }>): string {
   const p = players.get(playerId);
-  const idx = p?.appearance.shirt ?? 5;
+  const idx = p?.appearance.outfit ?? 0;
   return SHIRT_HEX[idx] ?? '#6366f1';
 }
 
@@ -461,7 +461,7 @@ function ChatRow({
 }: {
   msg: ChatMessage;
   localId: string | null;
-  players: Map<string, { appearance: { shirt: number } }>;
+  players: Map<string, { appearance: { outfit: number } }>;
 }) {
   const isMine = msg.playerId === localId;
   const borderColor = msg.type === 'local' ? 'border-l-blue-400' : 'border-l-purple-400';
@@ -492,7 +492,7 @@ function DmRow({
 }: {
   msg: DmMessage;
   localId: string | null;
-  players: Map<string, { appearance: { shirt: number }; name: string }>;
+  players: Map<string, { appearance: { outfit: number }; name: string }>;
 }) {
   const isMine = msg.from === localId;
   const fromPlayer = players.get(msg.from);
