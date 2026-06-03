@@ -9,6 +9,7 @@ import { config } from '../config.js';
  */
 
 let client: PocketBase | null = null;
+let authPromise: Promise<void> | null = null;
 let lastAuthAt = 0;
 const AUTH_REFRESH_MS = 12 * 60 * 60 * 1000; // 12h
 
@@ -24,22 +25,34 @@ async function authenticate(pb: PocketBase): Promise<void> {
 }
 
 /**
+ * (Ré)authentifie si nécessaire en MUTUALISANT l'appel en cours. Sans ça, les
+ * stores (kanban/DM/postes) qui appellent getPocketBase() en parallèle au
+ * démarrage lançaient plusieurs authWithPassword concurrents → auto-annulation
+ * du SDK → AbortError → 403 ensuite.
+ */
+function ensureAuth(pb: PocketBase): Promise<void> {
+  if (lastAuthAt !== 0 && Date.now() - lastAuthAt <= AUTH_REFRESH_MS) {
+    return Promise.resolve();
+  }
+  if (!authPromise) {
+    authPromise = authenticate(pb).finally(() => {
+      authPromise = null;
+    });
+  }
+  return authPromise;
+}
+
+/**
  * Returns an authenticated PocketBase client.
  * Lazily auth on first call; refreshes after AUTH_REFRESH_MS.
  */
 export async function getPocketBase(): Promise<PocketBase> {
   if (!client) {
     client = new PocketBase(config.pocketbaseUrl);
-    await authenticate(client);
-    return client;
+    // Évite l'AbortError sur des requêtes concurrentes (auth au démarrage).
+    client.autoCancellation(false);
   }
-  if (Date.now() - lastAuthAt > AUTH_REFRESH_MS) {
-    try {
-      await authenticate(client);
-    } catch (err) {
-      console.warn('[pocketbase] re-auth failed, will retry next call', err);
-    }
-  }
+  await ensureAuth(client);
   return client;
 }
 
