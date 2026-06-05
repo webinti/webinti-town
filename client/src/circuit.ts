@@ -10,13 +10,13 @@ export interface Checkpoint {
   h: number;
 }
 
-export const CIRCUIT_ID = 'jardin';
+export const CIRCUIT_ID = 'circuit-est';
 
 export const CIRCUIT: readonly Checkpoint[] = [
-  { x: 1360, y: 216, w: 72, h: 64 }, // 0 — DÉPART/ARRIVÉE (bas-gauche)
-  { x: 1748, y: 216, w: 72, h: 64 }, // 1 — virage bas-droite
-  { x: 1748, y: 56, w: 72, h: 64 },  // 2 — virage haut-droite
-  { x: 1360, y: 56, w: 72, h: 64 },  // 3 — virage haut-gauche
+  { x: 3120, y: 1168, w: 128, h: 96 }, // 0 — DÉPART/ARRIVÉE (ligne du bas)
+  { x: 3568, y: 600, w: 96, h: 112 },  // 1 — côté droit
+  { x: 3104, y: 80, w: 128, h: 96 },   // 2 — côté haut
+  { x: 2720, y: 600, w: 96, h: 112 },  // 3 — côté gauche
 ];
 
 export function checkpointCenter(c: Checkpoint): { x: number; y: number } {

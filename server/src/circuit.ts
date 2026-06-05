@@ -5,12 +5,11 @@
 // client (client/src/circuit.ts) pour que le rendu visuel des portiques corresponde
 // exactement à la détection serveur (autoritaire). Coordonnées en pixels monde.
 //
-// Tracé v1 : boucle rectangulaire dans la partie DROITE du jardin extérieur, une
-// zone libre de toute collision (x≈1360→1820, y≈56→284 — vérifié contre la couche
-// `collision`). Le centre/gauche du jardin est encombré (fontaine, bancs, arbres,
-// ping-pong) et bloquerait les karts. Boucle dans le sens horaire : 0(bas-g) →
-// 1(bas-d) → 2(haut-d) → 3(haut-g) → retour 0. Rectangles 72×64 (généreux pour la
-// vitesse). Ajuster ces coords (et la copie client) pour redessiner la piste.
+// Tracé v2 : grand circuit asphalté dans la zone extérieure DÉDIÉE ajoutée à l'est
+// de la map (scripts/extend-map-racetrack.py). Anneau asphalté avec intérieur
+// bloqué → la trajectoire suit l'asphalte. 4 portiques au milieu de chaque côté,
+// dans l'ordre : 0(bas/départ) → 1(droite) → 2(haut) → 3(gauche) → retour 0.
+// Les coords doivent matcher la piste peinte par le script (et la copie client).
 
 export interface Checkpoint {
   /** Coin haut-gauche du rectangle de détection (px monde). */
@@ -20,13 +19,13 @@ export interface Checkpoint {
   h: number;
 }
 
-export const CIRCUIT_ID = 'jardin';
+export const CIRCUIT_ID = 'circuit-est';
 
 export const CIRCUIT: readonly Checkpoint[] = [
-  { x: 1360, y: 216, w: 72, h: 64 }, // 0 — DÉPART/ARRIVÉE (bas-gauche)
-  { x: 1748, y: 216, w: 72, h: 64 }, // 1 — virage bas-droite
-  { x: 1748, y: 56, w: 72, h: 64 },  // 2 — virage haut-droite
-  { x: 1360, y: 56, w: 72, h: 64 },  // 3 — virage haut-gauche
+  { x: 3120, y: 1168, w: 128, h: 96 }, // 0 — DÉPART/ARRIVÉE (ligne du bas)
+  { x: 3568, y: 600, w: 96, h: 112 },  // 1 — côté droit
+  { x: 3104, y: 80, w: 128, h: 96 },   // 2 — côté haut
+  { x: 2720, y: 600, w: 96, h: 112 },  // 3 — côté gauche
 ];
 
 /** Centre d'un checkpoint (utile pour le rendu / les libellés). */

@@ -9,11 +9,17 @@ export interface KartDef {
 }
 
 export const KARTS: readonly KartDef[] = [
+  // Parking d'entrée (réception)
   { id: 'kart-1', parkingX:  44, parkingY: 356 },
   { id: 'kart-2', parkingX:  84, parkingY: 356 },
   { id: 'kart-3', parkingX: 124, parkingY: 356 },
   { id: 'kart-4', parkingX: 164, parkingY: 356 },
   { id: 'kart-5', parkingX: 204, parkingY: 356 },
+  // Grille de départ du circuit est (sur l'asphalte du bas, à gauche de la ligne)
+  { id: 'kart-6', parkingX: 2880, parkingY: 1216 },
+  { id: 'kart-7', parkingX: 2930, parkingY: 1216 },
+  { id: 'kart-8', parkingX: 2980, parkingY: 1216 },
+  { id: 'kart-9', parkingX: 3030, parkingY: 1216 },
 ];
 
 export const KART_SPEED_BASE  = 320;      // px/s, joueur monté sur kart, sans boost
