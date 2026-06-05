@@ -13,10 +13,10 @@ export interface Checkpoint {
 export const CIRCUIT_ID = 'circuit-est';
 
 export const CIRCUIT: readonly Checkpoint[] = [
-  { x: 3120, y: 1168, w: 128, h: 96 }, // 0 — DÉPART/ARRIVÉE (ligne du bas)
-  { x: 3568, y: 600, w: 96, h: 112 },  // 1 — côté droit
-  { x: 3104, y: 80, w: 128, h: 96 },   // 2 — côté haut
-  { x: 2720, y: 600, w: 96, h: 112 },  // 3 — côté gauche
+  { x: 3136, y: 1170, w: 128, h: 100 }, // 0 — DÉPART/ARRIVÉE (damier, ligne du bas)
+  { x: 3532, y: 610, w: 112, h: 124 },  // 1 — côté droit
+  { x: 3136, y: 74, w: 128, h: 100 },   // 2 — côté haut
+  { x: 2756, y: 610, w: 112, h: 124 },  // 3 — côté gauche
 ];
 
 export function checkpointCenter(c: Checkpoint): { x: number; y: number } {
