@@ -17,6 +17,8 @@ import type {
   RoomState,
   WhiteboardStroke,
   WhiteboardText,
+  CircuitEvent,
+  LeaderboardEntry,
 } from '../types';
 
 interface TypingStatePayload {
@@ -335,6 +337,16 @@ class SocketManager {
     });
     this.onKartInitial((p) => useGameStore.getState().setKartsInitial(p.karts));
     this.onKartState((p) => useGameStore.getState().setKartState(p));
+
+    // F12 — Course chronométrée
+    socket.on('circuit:event', (ev: CircuitEvent) => {
+      if (!ev || typeof ev.type !== 'string') return;
+      useGameStore.getState().applyCircuitEvent(ev);
+    });
+    socket.on('circuit:leaderboard', (payload: { entries?: LeaderboardEntry[] }) => {
+      if (!payload || !Array.isArray(payload.entries)) return;
+      useGameStore.getState().setLeaderboard(payload.entries);
+    });
 
     socket.on('speaking_state', (payload: SpeakingStatePayload) => {
       if (!payload || typeof payload.playerId !== 'string') return;

@@ -10,6 +10,7 @@ import { saveLastPosition } from '../../lastPosition';
 import { WorkstationOverlay } from '../WorkstationOverlay';
 import { WORKSTATIONS } from '../../workstations';
 import { KartOverlay } from '../KartOverlay';
+import { CircuitOverlay } from '../CircuitOverlay';
 import { MOUNT_DISTANCE, BOOST_DURATION_MS, BOOST_COOLDOWN_MS } from '../../karts';
 import { CollisionLayer, type CollisionRect } from '../collision/CollisionLayer';
 
@@ -87,6 +88,7 @@ export class GameScene extends Phaser.Scene {
   private lastLocalPresence: string | undefined = undefined;
   private workstationOverlay?: WorkstationOverlay;
   private kartOverlay?: KartOverlay;
+  private circuitOverlay?: CircuitOverlay;
   private debugMode = false;
   private debugText?: Phaser.GameObjects.Text;
   private debugZoneGfx?: Phaser.GameObjects.Graphics;
@@ -266,6 +268,7 @@ export class GameScene extends Phaser.Scene {
     // WorkstationOverlay
     this.workstationOverlay = new WorkstationOverlay(this);
     this.kartOverlay = new KartOverlay(this);
+    this.circuitOverlay = new CircuitOverlay(this);
 
     this.boostGfx = this.add.graphics().setDepth(11);
     this.boostTrail = this.add.graphics().setDepth(7);
@@ -345,6 +348,7 @@ export class GameScene extends Phaser.Scene {
       this.typingTimers.clear();
       this.workstationOverlay?.destroy();
       this.kartOverlay?.destroy();
+      this.circuitOverlay?.destroy();
       this.kartPrompt?.destroy();
       this.boostGfx?.destroy();
       this.boostTrail?.destroy();
@@ -724,6 +728,9 @@ export class GameScene extends Phaser.Scene {
     const storeState = useGameStore.getState();
     const localId = storeState.localPlayerId;
     this.workstationOverlay?.update(storeState.workstations, localId);
+
+    // F12 — surligne le prochain portique quand on est en kart.
+    this.circuitOverlay?.setNext(storeState.raceNextIndex, storeState.localKartId !== null);
 
     // F11 — render kart sprites. Resolver lit la position depuis les entités
     // Phaser (frame-accurate) et non le store, qui est laggué par le tick serveur.

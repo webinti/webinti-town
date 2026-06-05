@@ -11,9 +11,12 @@ import type {
   WhiteboardStroke,
   WhiteboardText,
   WorkstationState,
+  CircuitEvent,
+  LeaderboardEntry,
 } from '../types';
 import { DEFAULT_APPEARANCE } from '../types';
 import { clampMapZoom } from '../mapZoom';
+import { CIRCUIT } from '../circuit';
 
 const CHAT_CAP = 200;
 const WHITEBOARD_STROKE_CAP = 5000;
@@ -100,6 +103,18 @@ interface GameStore {
   setNearbyKartId: (id: string | null) => void;
   localBoosting: boolean;
   setLocalBoosting: (b: boolean) => void;
+  // F12 — Course chronométrée
+  raceActive: boolean;             // tour en cours (chrono démarré)
+  raceLocalStartMs: number | null; // horloge client, pour le chrono live
+  raceNextIndex: number;           // prochain checkpoint à franchir
+  raceTotal: number;               // nb de checkpoints du circuit
+  raceLastMs: number | null;       // dernier tour bouclé
+  raceLastWasBest: boolean;        // le dernier tour était-il un record perso ?
+  raceLastLapAt: number | null;    // horloge client du dernier tour (pour le toast)
+  raceBestMs: number | null;       // meilleur tour perso connu
+  applyCircuitEvent: (ev: CircuitEvent) => void;
+  leaderboard: LeaderboardEntry[];
+  setLeaderboard: (l: LeaderboardEntry[]) => void;
   pendingInvite: { fromPlayerName: string; workstationId: string; workstationName: string } | null;
   setPendingInvite: (inv: { fromPlayerName: string; workstationId: string; workstationName: string } | null) => void;
   // Auto-walk: cible que le joueur local doit rejoindre automatiquement.
@@ -392,6 +407,51 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setNearbyKartId: (id) => set({ nearbyKartId: id }),
   localBoosting: false,
   setLocalBoosting: (b) => set({ localBoosting: b }),
+  // F12 — Course chronométrée
+  raceActive: false,
+  raceLocalStartMs: null,
+  raceNextIndex: 0,
+  raceTotal: CIRCUIT.length,
+  raceLastMs: null,
+  raceLastWasBest: false,
+  raceLastLapAt: null,
+  raceBestMs: null,
+  applyCircuitEvent: (ev: CircuitEvent) =>
+    set(() => {
+      switch (ev.type) {
+        case 'lap_start':
+          return {
+            raceActive: true,
+            raceLocalStartMs: Date.now(),
+            raceNextIndex: 1,
+            raceTotal: CIRCUIT.length,
+          };
+        case 'checkpoint':
+          return {
+            raceNextIndex: (ev.index + 1) % ev.total,
+            raceTotal: ev.total,
+          };
+        case 'lap':
+          return {
+            raceLastMs: ev.ms,
+            raceLastWasBest: ev.isBest,
+            raceBestMs: ev.bestMs,
+            raceLastLapAt: Date.now(),
+            // Enchaîne sur un nouveau tour (tour lancé).
+            raceActive: true,
+            raceLocalStartMs: Date.now(),
+            raceNextIndex: 1,
+          };
+        case 'best':
+          return { raceBestMs: ev.ms };
+        case 'reset':
+          return { raceActive: false, raceLocalStartMs: null, raceNextIndex: 0 };
+        default:
+          return {};
+      }
+    }),
+  leaderboard: [],
+  setLeaderboard: (l: LeaderboardEntry[]) => set({ leaderboard: l }),
   pendingInvite: null,
   setPendingInvite: (inv) => set({ pendingInvite: inv }),
   autoWalkTarget: null,
@@ -435,6 +495,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       localKartId: null,
       nearbyKartId: null,
       localBoosting: false,
+      raceActive: false,
+      raceLocalStartMs: null,
+      raceNextIndex: 0,
+      raceLastMs: null,
+      raceLastWasBest: false,
+      raceLastLapAt: null,
+      raceBestMs: null,
+      leaderboard: [],
       pendingInvite: null,
       autoWalkTarget: null,
       speakingPlayerIds: new Set(),

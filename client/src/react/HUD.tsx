@@ -20,6 +20,7 @@ import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/
 import { useActivityHeartbeat } from './hooks/useActivityHeartbeat';
 import { WorkstationPanel } from './components/WorkstationPanel';
 import { WorkstationInviteToast } from './components/WorkstationInviteToast';
+import { RaceHud } from './components/RaceHud';
 import { useSpeakerBubbles } from './hooks/useSpeakerBubbles';
 
 export function HUD() {
@@ -194,6 +195,7 @@ export function HUD() {
       <DmToasts />
       <WorkstationPanel />
       <WorkstationInviteToast />
+      <RaceHud />
 
       {kickedReason && (
         <div className="pointer-events-auto fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-md bg-red-600/95 px-4 py-2 text-sm font-semibold text-white shadow-lg ring-1 ring-red-300/40">

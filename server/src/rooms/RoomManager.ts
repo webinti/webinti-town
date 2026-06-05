@@ -20,6 +20,9 @@ import { WorkstationManagerPocketBase } from '../workstations/WorkstationManager
 import { WORKSTATIONS, workstationIdForPointIn } from '../workstations.js';
 import { KartManager } from '../karts/KartManager.js';
 import { KARTS } from '../karts.js';
+import { RaceManager } from '../race/RaceManager.js';
+import { loadLeaderboard } from '../race/leaderboardStore.js';
+import { CIRCUIT_ID } from '../circuit.js';
 import { aabbOverlap, computeKnockback } from '../karts/collisionPush.js';
 import { KART_HALF_W, KART_HALF_H, PLAYER_HALF } from '../karts.js';
 
@@ -33,6 +36,15 @@ function slugify(name: string): string {
 }
 
 const CHAT_HISTORY_CAP = 200;
+
+/** Hydrate (best-effort) le leaderboard persistant d'une room dans son RaceManager. */
+function hydrateLeaderboard(slug: string, raceManager: RaceManager): void {
+  void loadLeaderboard(slug, CIRCUIT_ID)
+    .then((entries) => {
+      for (const e of entries) raceManager.seedBest(e);
+    })
+    .catch(() => { /* dégradation silencieuse → leaderboard en mémoire */ });
+}
 
 const VALID_PRESENCES: ReadonlySet<string> = new Set<Presence>([
   'available', 'away', 'brb', 'dnd', 'inactive',
@@ -110,6 +122,8 @@ export class RoomManager {
     const karts = new Map(
       kartManager.getAllStates().map((k) => [k.id, k]),
     );
+    const raceManager = new RaceManager();
+    hydrateLeaderboard(slug, raceManager);
     this.rooms.set(slug, {
       slug,
       name: cleanName,
@@ -125,6 +139,7 @@ export class RoomManager {
       workstationManager,
       karts,
       kartManager,
+      raceManager,
       dmStore,
     });
     return { slug, adminToken };
@@ -158,6 +173,8 @@ export class RoomManager {
     const karts = new Map(
       kartManager.getAllStates().map((k) => [k.id, k]),
     );
+    const raceManager = new RaceManager();
+    hydrateLeaderboard(slug, raceManager);
     const room: RoomState = {
       slug,
       name,
@@ -173,6 +190,7 @@ export class RoomManager {
       workstationManager,
       karts,
       kartManager,
+      raceManager,
       dmStore,
     };
     this.rooms.set(slug, room);
@@ -265,6 +283,7 @@ export class RoomManager {
       player.kartId = null;
       player.boosting = false;
     }
+    room.raceManager.reset(playerId);
     room.players.delete(playerId);
     if (room.hostPlayerId === playerId) {
       const next = room.players.values().next();
@@ -286,6 +305,7 @@ export class RoomManager {
             player.kartId = null;
             player.boosting = false;
           }
+          room.raceManager.reset(player.playerId);
           room.players.delete(player.playerId);
           if (room.hostPlayerId === player.playerId) {
             const next = room.players.values().next();

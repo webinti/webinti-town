@@ -135,6 +135,20 @@ export interface ConfettiEvent {
   timestamp: number;
 }
 
+// F12 — Circuit de kart chronométré
+export interface LeaderboardEntry {
+  playerId: string;
+  name: string;
+  ms: number;
+}
+
+export type CircuitEvent =
+  | { type: 'lap_start' }
+  | { type: 'checkpoint'; index: number; total: number }
+  | { type: 'lap'; ms: number; isBest: boolean; bestMs: number }
+  | { type: 'best'; ms: number }   // hydratation du meilleur tour (pas de toast)
+  | { type: 'reset' };
+
 export interface RoomState {
   playerId: string;
   roomSlug: string;
