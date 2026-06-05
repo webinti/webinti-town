@@ -21,11 +21,15 @@ export interface Checkpoint {
 
 export const CIRCUIT_ID = 'circuit-est';
 
+// Tracé spline (chicane) — checkpoints répartis le long du circuit, dans l'ordre.
+// Générés par scripts/extend-map-racetrack.py (qui imprime ces coords).
 export const CIRCUIT: readonly Checkpoint[] = [
-  { x: 3136, y: 1170, w: 128, h: 100 }, // 0 — DÉPART/ARRIVÉE (damier, ligne du bas)
-  { x: 3532, y: 610, w: 112, h: 124 },  // 1 — côté droit
-  { x: 3136, y: 74, w: 128, h: 100 },   // 2 — côté haut
-  { x: 2756, y: 610, w: 112, h: 124 },  // 3 — côté gauche
+  { x: 3145, y: 1150, w: 110, h: 110 }, // 0 — DÉPART/ARRIVÉE (damier, bas)
+  { x: 2792, y: 847, w: 110, h: 110 },  // 1 — bas-gauche
+  { x: 2837, y: 322, w: 110, h: 110 },  // 2 — gauche-haut
+  { x: 3280, y: 131, w: 110, h: 110 },  // 3 — haut
+  { x: 3477, y: 509, w: 110, h: 110 },  // 4 — droite-haut
+  { x: 3525, y: 866, w: 110, h: 110 },  // 5 — droite-bas (sortie chicane)
 ];
 
 /** Centre d'un checkpoint (utile pour le rendu / les libellés). */

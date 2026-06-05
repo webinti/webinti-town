@@ -15,11 +15,12 @@ export const KARTS: readonly KartDef[] = [
   { id: 'kart-3', parkingX: 124, parkingY: 356 },
   { id: 'kart-4', parkingX: 164, parkingY: 356 },
   { id: 'kart-5', parkingX: 204, parkingY: 356 },
-  // Grille de départ du circuit est (ligne du bas, à gauche du damier)
-  { id: 'kart-6', parkingX: 3000, parkingY: 1240 },
-  { id: 'kart-7', parkingX: 3050, parkingY: 1240 },
-  { id: 'kart-8', parkingX: 3100, parkingY: 1240 },
-  { id: 'kart-9', parkingX: 3150, parkingY: 1240 },
+  // Karts du circuit est : garés dans le paddock (entrée haut-gauche, depuis le
+  // jardin) → le joueur en prend un à pied dès l'arrivée, puis rejoint la ligne.
+  { id: 'kart-6', parkingX: 2750, parkingY: 110 },
+  { id: 'kart-7', parkingX: 2800, parkingY: 110 },
+  { id: 'kart-8', parkingX: 2750, parkingY: 185 },
+  { id: 'kart-9', parkingX: 2800, parkingY: 185 },
 ];
 
 export const KART_SPEED_BASE  = 320;      // px/s, joueur monté sur kart, sans boost

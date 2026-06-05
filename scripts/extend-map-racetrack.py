@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 """
-extend-map-racetrack — étend la map SOURCE vers l'EST et y peint un VRAI circuit
-de kart dessiné (anneau arrondi, surface rouge, lignes de couloirs, vibreurs
-blancs, barrières jaune/noir), sans décaler l'existant.
+extend-map-racetrack — étend la map vers l'EST et y peint un VRAI circuit de kart
+avec COURBES (chemin libre via spline Catmull-Rom), sans décaler l'existant.
 
-Repart TOUJOURS de la copie pristine `default.tmj.preracetrack` → idempotent.
+Repart TOUJOURS de `default.tmj.preracetrack` (pristine) → idempotent.
 
 Pipeline :
-  1. élargit la map 84 → NEW_W (colonnes ajoutées à l'est)
-  2. remplit la nouvelle zone de pelouse (sous la piste ; le rendu de piste a un
-     fond TRANSPARENT donc la pelouse de la map traverse → pas de raccord)
-  3. RENDU PIL d'une image de piste (RGBA, transparente hors-piste) → tileset
-     `racetrack.png` ; ajoute le tileset + un calque 'racetrack' qui la pose
-  4. collisions : intérieur plein (force la trajectoire) + barrières + connecteur
+  1. élargit la map 84 → NEW_W (colonnes à l'est)
+  2. pelouse sur la nouvelle zone (la piste a un fond transparent → l'herbe passe)
+  3. RENDU PIL de la piste le long d'un CHEMIN : barrières jaune/noir, vibreurs
+     blancs, asphalte rouge, ligne médiane pointillée, damier départ → tileset
+     `racetrack.png` + calque 'racetrack'
+  4. collision STRICTE : tout ce qui n'est pas la piste (ni le paddock d'entrée)
+     est un mur → on suit forcément le tracé. Plus scellés du connecteur.
+  5. imprime les checkpoints (le long du tracé) et la grille de karts à recopier.
 
-Après : `npm run prepare-map` régénère default.built.tmj.
+Après : `npm run prepare-map`.
 """
-import json, os
+import json, os, math
 from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,82 +28,146 @@ OUT = os.path.join(MAPS, 'default.tmj')
 RACE_PNG = os.path.join(TILESETS, 'racetrack.png')
 
 T = 32
-GRASS = 1            # GID pelouse (sous la piste)
+GRASS = 1
+NEW_W = 116
+FIELD = dict(x0=84, x1=115, y0=0, y1=41)
+CONN = dict(x0=60, x1=83, y0=1, y1=8)
 
-# ── Géométrie (tuiles) ──────────────────────────────────────────────────────
-NEW_W = 116                                  # 84 + 32 colonnes
-FIELD = dict(x0=84, x1=115, y0=0, y1=41)     # nouvelles colonnes (zone piste)
-CONN = dict(x0=60, x1=83, y0=1, y1=8)        # couloir jardin → field
-
-# Image de piste = exactement la taille du field, en px
 FW = (FIELD['x1'] - FIELD['x0'] + 1) * T     # 1024
 FH = (FIELD['y1'] - FIELD['y0'] + 1) * T     # 1344
-FOX = FIELD['x0'] * T                         # origine px monde du field (x=2688)
-FOY = FIELD['y0'] * T                         # (y=0)
+FOX = FIELD['x0'] * T                          # origine monde x = 2688
+FOY = FIELD['y0'] * T                          # 0
 
-# ── Paramètres visuels de la piste (px, repère image field) ─────────────────
-M = 40            # marge bord field → bord extérieur piste
-TW = 168          # largeur de piste
-RO = 230          # rayon coin extérieur
-RI = max(28, RO - TW)
-NLANES = 6        # nombre de couloirs (lignes blanches)
-# Couleurs
-COL_TRACK = (190, 64, 66, 255)     # rouge piste (style athlétisme)
-COL_LANE = (236, 236, 236, 190)    # lignes de couloirs
-COL_CURB = (245, 245, 245, 255)    # vibreurs (bord intérieur/extérieur)
+# ── Tracé : points de contrôle (repère image field), boucle fermée ──────────
+# Départ en bas-centre (près de la grille), sens horaire-ish avec une chicane.
+CONTROL = [
+    (512, 1205),   # 0 bas-centre — DÉPART
+    (235, 1120),   # bas-gauche
+    (150, 820),    # gauche bas
+    (175, 470),    # gauche haut
+    (300, 235),    # haut-gauche
+    (560, 180),    # haut-centre
+    (815, 250),    # haut-droite
+    (885, 520),    # droite haut
+    (690, 660),    # chicane (rentre)
+    (885, 870),    # chicane (ressort)
+    (815, 1110),   # bas-droite
+]
+
+# Largeurs (px)
+TW = 150          # largeur d'asphalte
+CURB = 6          # vibreur blanc (chaque bord)
+BAR = 14          # barrière jaune/noir
+ENTRANCE = dict(x0=0, x1=250, y0=24, y1=300)   # paddock : connecteur → piste
+
+COL_TRACK = (190, 64, 66, 255)
+COL_CENTER = (240, 240, 240, 150)
+COL_CURB = (245, 245, 245, 255)
 COL_YEL = (245, 205, 40, 255)
 COL_BLK = (28, 28, 28, 255)
-
-# Rectangles extérieur / intérieur de l'anneau (image field)
-OUT_BOX = (M, M, FW - M, FH - M)
-IN_BOX = (M + TW, M + TW, FW - M - TW, FH - M - TW)
+N_CHECKPOINTS = 6
 
 
-def rrect(d, box, r, **kw):
-    d.rounded_rectangle(box, radius=r, **kw)
+def catmull_rom(points, samples_per_seg=24):
+    """Spline Catmull-Rom passant par les points (boucle fermée)."""
+    n = len(points)
+    out = []
+    for i in range(n):
+        p0 = points[(i - 1) % n]
+        p1 = points[i]
+        p2 = points[(i + 1) % n]
+        p3 = points[(i + 2) % n]
+        for s in range(samples_per_seg):
+            t = s / samples_per_seg
+            t2, t3 = t * t, t * t * t
+            x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t +
+                       (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 +
+                       (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3)
+            y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t +
+                       (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 +
+                       (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3)
+            out.append((x, y))
+    out.append(out[0])
+    return out
+
+
+PATH = catmull_rom(CONTROL)
+
+
+def dist_point_seg(px, py, ax, ay, bx, by):
+    dx, dy = bx - ax, by - ay
+    if dx == 0 and dy == 0:
+        return math.hypot(px - ax, py - ay)
+    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+def dist_to_path(px, py):
+    best = 1e9
+    for i in range(len(PATH) - 1):
+        ax, ay = PATH[i]
+        bx, by = PATH[i + 1]
+        d = dist_point_seg(px, py, ax, ay, bx, by)
+        if d < best:
+            best = d
+    return best
 
 
 def render_track():
     img = Image.new('RGBA', (FW, FH), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
+    line = [(int(x), int(y)) for x, y in PATH]
 
-    # 1. Barrière jaune/noir : anneau rayé juste à l'extérieur de la piste.
+    # 1. Barrière jaune/noir (anneau autour de la piste) via masque + rayures.
+    outer = TW + 2 * CURB + 2 * BAR
+    inner = TW + 2 * CURB
+    mask = Image.new('L', (FW, FH), 0)
+    md = ImageDraw.Draw(mask)
+    md.line(line, fill=255, width=outer, joint='curve')
+    md.line(line, fill=0, width=inner, joint='curve')
     stripe = Image.new('RGBA', (FW, FH), (0, 0, 0, 0))
     sd = ImageDraw.Draw(stripe)
-    SW = 22
+    SW = 20
     for i in range(-FH, FW + FH, SW):
-        color = COL_YEL if (i // SW) % 2 == 0 else COL_BLK
-        sd.polygon([(i, 0), (i + SW, 0), (i + SW - FH, FH), (i - FH, FH)], fill=color)
-    bar_mask = Image.new('L', (FW, FH), 0)
-    bd = ImageDraw.Draw(bar_mask)
-    bd.rounded_rectangle((M - 16, M - 16, FW - M + 16, FH - M + 16), radius=RO + 16, fill=255)
-    bd.rounded_rectangle(OUT_BOX, radius=RO, fill=0)
-    img.paste(stripe, (0, 0), bar_mask)
+        c = COL_YEL if (i // SW) % 2 == 0 else COL_BLK
+        sd.polygon([(i, 0), (i + SW, 0), (i + SW - FH, FH), (i - FH, FH)], fill=c)
+    img.paste(stripe, (0, 0), mask)
 
-    # 2. Surface de piste (rouge), puis on évide l'intérieur (pelouse traverse).
-    rrect(d, OUT_BOX, RO, fill=COL_TRACK)
-    rrect(d, IN_BOX, RI, fill=(0, 0, 0, 0))
+    # 2. Vibreurs blancs (bord), puis asphalte par-dessus.
+    d.line(line, fill=COL_CURB, width=TW + 2 * CURB, joint='curve')
+    d.line(line, fill=COL_TRACK, width=TW, joint='curve')
 
-    # 3. Lignes de couloirs (concentriques entre extérieur et intérieur).
-    for i in range(1, NLANES):
-        ins = TW * i / NLANES
-        box = (M + ins, M + ins, FW - M - ins, FH - M - ins)
-        r = max(6, RO - ins)
-        rrect(d, box, r, outline=COL_LANE, width=2)
+    # 3. Ligne médiane pointillée.
+    dash, gap, acc, draw_on = 26, 22, 0.0, True
+    for i in range(len(PATH) - 1):
+        ax, ay = PATH[i]
+        bx, by = PATH[i + 1]
+        seg = math.hypot(bx - ax, by - ay)
+        if seg < 1e-6:
+            continue
+        pos = 0.0
+        while pos < seg:
+            step = min((dash if draw_on else gap) - acc, seg - pos)
+            if draw_on:
+                t0, t1 = pos / seg, (pos + step) / seg
+                d.line([(ax + (bx - ax) * t0, ay + (by - ay) * t0),
+                        (ax + (bx - ax) * t1, ay + (by - ay) * t1)],
+                       fill=COL_CENTER, width=3)
+            acc += step
+            pos += step
+            if acc >= (dash if draw_on else gap):
+                acc = 0.0
+                draw_on = not draw_on
 
-    # 4. Vibreurs blancs aux deux bords de la piste.
-    rrect(d, OUT_BOX, RO, outline=COL_CURB, width=5)
-    rrect(d, IN_BOX, RI, outline=COL_CURB, width=5)
-
-    # 5. Ligne départ/arrivée : damier en travers de la ligne du bas (centre x).
-    cx = FW // 2
-    by0, by1 = FH - M - TW, FH - M    # bande de piste du bas
-    sq = 14
-    for gy in range(int(by0), int(by1), sq):
-        for k, gx in enumerate(range(cx - 28, cx + 28, sq)):
-            row = (gy - int(by0)) // sq
-            color = COL_BLK if (k + row) % 2 == 0 else COL_CURB
-            d.rectangle([gx, gy, gx + sq, gy + sq], fill=color)
+    # 4. Ligne départ/arrivée : damier en travers de la piste au point 0.
+    sx, sy = PATH[0]
+    sq = 13
+    for r in range(-1, TW // (2 * sq) + 1):
+        for c in range(int(-TW / 2 / sq) - 1, int(TW / 2 / sq) + 1):
+            color = COL_BLK if (r + c) % 2 == 0 else COL_CURB
+            x0 = int(sx + c * sq)
+            y0 = int(sy - 6 + r * sq)
+            d.rectangle([x0, y0, x0 + sq, y0 + sq], fill=color)
 
     img.save(RACE_PNG)
     return img
@@ -110,13 +175,13 @@ def render_track():
 
 def main():
     track_img = render_track()
+    DRIVE_R = TW / 2 + CURB + 12   # rayon "roulable" (un peu > visuel)
 
     with open(SRC, encoding='utf-8') as f:
         m = json.load(f)
     W, H = m['width'], m['height']
-    assert W == 84, f'attendu largeur source 84, vu {W}'
+    assert W == 84
 
-    # ── 1. Élargir chaque tilelayer ─────────────────────────────────────────
     for l in m['layers']:
         if l.get('type') != 'tilelayer':
             continue
@@ -131,46 +196,42 @@ def main():
 
     layers = {l['name']: l for l in m['layers'] if l.get('type') == 'tilelayer'}
     ground = layers['ground']['data']
-
-    # ── 2. Pelouse sur toute tuile vide à l'est (field + connector + poches) ──
-    for ty in range(0, H):
+    for ty in range(H):
         for tx in range(CONN['x0'], NEW_W):
             if ground[ty * NEW_W + tx] == 0:
                 ground[ty * NEW_W + tx] = GRASS
 
-    # ── 3. Tileset + calque 'racetrack' ─────────────────────────────────────
-    cols = (FIELD['x1'] - FIELD['x0'] + 1)       # 32
-    rows = (FIELD['y1'] - FIELD['y0'] + 1)       # 42
+    # Tileset + calque racetrack
+    cols = FIELD['x1'] - FIELD['x0'] + 1
+    rows = FIELD['y1'] - FIELD['y0'] + 1
     firstgid = max(ts['firstgid'] + ts.get('tilecount', 0) for ts in m['tilesets'])
     m['tilesets'].append({
-        'firstgid': firstgid,
-        'name': 'racetrack',
+        'firstgid': firstgid, 'name': 'racetrack',
         'image': '../assets/tilesets/racetrack.png',
-        'imagewidth': FW, 'imageheight': FH,
-        'tilewidth': T, 'tileheight': T,
-        'columns': cols, 'tilecount': cols * rows,
-        'margin': 0, 'spacing': 0,
+        'imagewidth': FW, 'imageheight': FH, 'tilewidth': T, 'tileheight': T,
+        'columns': cols, 'tilecount': cols * rows, 'margin': 0, 'spacing': 0,
     })
-    # data du calque : poser chaque tuile NON entièrement transparente
     alpha = track_img.split()[3]
-    data = [0] * (NEW_W * H)
+    rdata = [0] * (NEW_W * H)
     for ry in range(rows):
         for rx in range(cols):
-            tile = alpha.crop((rx * T, ry * T, rx * T + T, ry * T + T))
-            if tile.getbbox() is None:
-                continue   # tuile vide → laisser 0
-            localid = ry * cols + rx
+            if alpha.crop((rx * T, ry * T, rx * T + T, ry * T + T)).getbbox() is None:
+                continue
             tx, ty = FIELD['x0'] + rx, FIELD['y0'] + ry
-            data[ty * NEW_W + tx] = firstgid + localid
-    race_layer = {
-        'type': 'tilelayer', 'name': 'racetrack', 'visible': True, 'opacity': 1,
-        'x': 0, 'y': 0, 'width': NEW_W, 'height': H, 'data': data,
-    }
-    # insérer juste après 'ground' (au-dessus de la pelouse, sous le reste)
+            rdata[ty * NEW_W + tx] = firstgid + (ry * cols + rx)
+    race_layer = {'type': 'tilelayer', 'name': 'racetrack', 'visible': True,
+                  'opacity': 1, 'x': 0, 'y': 0, 'width': NEW_W, 'height': H, 'data': rdata}
     gi = next(i for i, l in enumerate(m['layers']) if l.get('name') == 'ground')
     m['layers'].insert(gi + 1, race_layer)
 
-    # ── 4. Collisions ───────────────────────────────────────────────────────
+    # ── Collision STRICTE : tuiles non-roulables du field → murs ────────────
+    def drivable(fx, fy):
+        cx, cy = fx * T + T / 2, fy * T + T / 2            # centre tuile (field-local)
+        if (ENTRANCE['x0'] <= cx <= ENTRANCE['x1'] and
+                ENTRANCE['y0'] <= cy <= ENTRANCE['y1']):
+            return True
+        return dist_to_path(cx, cy) <= DRIVE_R
+
     coll = next(l for l in m['layers'] if l.get('name') == 'collision')
     nid = max((o.get('id', 0) for o in coll['objects']), default=0) + 1
 
@@ -180,44 +241,53 @@ def main():
                                 'visible': True, 'x': px, 'y': py, 'width': w, 'height': h})
         nid += 1
 
-    # Intérieur plein (bloc inscrit dans l'anneau intérieur) → force l'asphalte.
-    ix0 = FOX + IN_BOX[0] + RI
-    iy0 = FOY + IN_BOX[1] + RI
-    ix1 = FOX + IN_BOX[2] - RI
-    iy1 = FOY + IN_BOX[3] - RI
-    wall(ix0, iy0, ix1 - ix0, iy1 - iy0)
-
-    # Barrières extérieures (4 murs droits au bord ext. de la piste). Le mur
-    # gauche laisse une OUVERTURE au niveau du connecteur (entrée paddock).
-    ox0, oy0, ox1, oy1 = FOX + OUT_BOX[0], FOY + OUT_BOX[1], FOX + OUT_BOX[2], FOY + OUT_BOX[3]
-    wall(ox0, oy0 - T, ox1 - ox0, T)                 # haut
-    wall(ox0, oy1, ox1 - ox0, T)                     # bas
-    wall(ox1, oy0, T, oy1 - oy0)                      # droite
-    conn_y0, conn_y1 = CONN['y0'] * T, (CONN['y1'] + 1) * T
-    wall(ox0 - T, oy0, T, max(0, conn_y0 - oy0))      # gauche au-dessus du connecteur
-    wall(ox0 - T, conn_y1, T, max(0, oy1 - conn_y1))  # gauche en-dessous
+    walls_added = 0
+    for fy in range(rows):
+        rx = 0
+        while rx < cols:
+            if drivable(rx, fy):
+                rx += 1
+                continue
+            run = rx
+            while run < cols and not drivable(run, fy):
+                run += 1
+            wall(FOX + rx * T, FOY + fy * T, (run - rx) * T, T)
+            walls_added += 1
+            rx = run
 
     # Scellés du connecteur (vide autour de la gym).
-    wall(CONN['x0'] * T, (CONN['y0'] - 1) * T, (CONN['x1'] - CONN['x0'] + 1) * T, T)  # nord
-    wall(CONN['x0'] * T, (CONN['y1'] + 1) * T, 4 * T, T)                               # sud-ouest
+    wall(CONN['x0'] * T, (CONN['y0'] - 1) * T, (CONN['x1'] - CONN['x0'] + 1) * T, T)
+    wall(CONN['x0'] * T, (CONN['y1'] + 1) * T, 4 * T, T)
 
     with open(OUT, 'w', encoding='utf-8') as f:
         json.dump(m, f, ensure_ascii=False)
 
-    print(f'OK — map {W}x{H} → {NEW_W}x{H} ; tileset racetrack firstgid={firstgid}')
-    print(f'  image piste : {FW}x{FH}px → {RACE_PNG}')
-    print(f'  collisions  : {len(coll["objects"])} objets')
-    # Checkpoints suggérés (ligne médiane de piste, en px MONDE) :
-    cl = M + TW / 2
-    cps = [
-        ('0 bas/depart', FOX + FW / 2, FOY + FH - cl),
-        ('1 droite', FOX + FW - cl, FOY + FH / 2),
-        ('2 haut', FOX + FW / 2, FOY + cl),
-        ('3 gauche', FOX + cl, FOY + FH / 2),
-    ]
-    print('  checkpoints (centre x,y monde) :')
-    for n, x, y in cps:
-        print(f'    {n}: ({x:.0f}, {y:.0f})')
+    # ── Checkpoints le long du tracé (longueur d'arc régulière) ─────────────
+    seglen = [math.hypot(PATH[i + 1][0] - PATH[i][0], PATH[i + 1][1] - PATH[i][1])
+              for i in range(len(PATH) - 1)]
+    total = sum(seglen)
+    targets = [total * k / N_CHECKPOINTS for k in range(N_CHECKPOINTS)]
+    cps, acc, ti = [], 0.0, 0
+    for i in range(len(seglen)):
+        while ti < len(targets) and targets[ti] <= acc + seglen[i]:
+            f = (targets[ti] - acc) / seglen[i] if seglen[i] else 0
+            x = PATH[i][0] + (PATH[i + 1][0] - PATH[i][0]) * f
+            y = PATH[i][1] + (PATH[i + 1][1] - PATH[i][1]) * f
+            cps.append((FOX + x, FOY + y))
+            ti += 1
+        acc += seglen[i]
+
+    # Grille de karts : 4 points juste avant le départ (fin de boucle).
+    grid = [PATH[len(PATH) - 1 - k * 10] for k in (2, 3, 4, 5)]
+    grid = [(FOX + x, FOY + y) for x, y in grid]
+
+    print(f'OK — map {W}x{H} → {NEW_W}x{H} ; {walls_added} murs ; {len(coll["objects"])} collisions')
+    print('  CHECKPOINTS (recopier dans circuit.ts, gates ~110x110) :')
+    for n, (x, y) in enumerate(cps):
+        print(f'    {n}: x={x - 55:.0f}, y={y - 55:.0f}  (centre {x:.0f},{y:.0f})')
+    print('  GRILLE KARTS (recopier dans server/src/karts.ts) :')
+    for n, (x, y) in enumerate(grid):
+        print(f'    kart-{6+n}: parkingX={x:.0f}, parkingY={y:.0f}')
 
 
 if __name__ == '__main__':
