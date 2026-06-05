@@ -1,0 +1,183 @@
+import Phaser from 'phaser';
+
+// Vie de la map (vague 1) : flammes de cheminée, vapeur (café), papillons dans le
+// jardin, et bulle d'accueil de la secrétaire à l'approche. Positions en px monde,
+// faciles à ajuster ci-dessous.
+
+const FIRE_SPOTS = [{ x: 1412, y: 730 }];            // cheminée
+const STEAM_SPOTS = [{ x: 1771, y: 716 }];           // coin café/cuisine
+const GREETERS = [
+  { x: 48, y: 560, text: 'Bienvenue ! 👋', radius: 130 }, // secrétaire (bulle au-dessus d'elle)
+];
+const BUTTERFLY_ZONE = { x0: 60, y0: 30, x1: 1860, y1: 300 };
+const N_BUTTERFLIES = 7;
+const BUTTERFLY_COLORS = [0xfacc15, 0xf472b6, 0x60a5fa, 0xfb923c, 0xa78bfa];
+
+interface Butterfly {
+  s: Phaser.GameObjects.Sprite;
+  tx: number; ty: number;          // cible courante
+  speed: number;
+  phase: number;
+}
+
+interface Greeter {
+  bubble: Phaser.GameObjects.Text;
+  x: number; y: number; radius: number;
+  shown: boolean;
+}
+
+export class AmbientLayer {
+  private readonly scene: Phaser.Scene;
+  private readonly objs: Phaser.GameObjects.GameObject[] = [];
+  private butterflies: Butterfly[] = [];
+  private greeters: Greeter[] = [];
+
+  constructor(scene: Phaser.Scene) {
+    this.scene = scene;
+    this.ensureTextures();
+    this.createFire();
+    this.createSteam();
+    this.createButterflies();
+    this.createGreeters();
+  }
+
+  private ensureTextures(): void {
+    const s = this.scene;
+    if (!s.textures.exists('fx_dot')) {
+      const g = s.make.graphics({ x: 0, y: 0 }, false);
+      // disque doux (dégradé d'alpha) pour fumée/feu
+      for (let r = 8; r >= 1; r--) {
+        g.fillStyle(0xffffff, 0.16);
+        g.fillCircle(8, 8, r);
+      }
+      g.generateTexture('fx_dot', 16, 16);
+      g.destroy();
+    }
+    if (!s.textures.exists('fx_butterfly')) {
+      const g = s.make.graphics({ x: 0, y: 0 }, false);
+      // petit papillon : 2 ailes + corps (blanc, teinté ensuite)
+      g.fillStyle(0xffffff, 1);
+      g.fillEllipse(4, 6, 7, 9);
+      g.fillEllipse(10, 6, 7, 9);
+      g.fillStyle(0x333333, 1);
+      g.fillRect(6, 2, 2, 9);
+      g.generateTexture('fx_butterfly', 14, 12);
+      g.destroy();
+    }
+  }
+
+  private createFire(): void {
+    for (const p of FIRE_SPOTS) {
+      // lueur vacillante
+      const glow = this.scene.add.image(p.x, p.y, 'fx_dot')
+        .setTint(0xff7a18).setScale(4).setAlpha(0.5).setDepth(4).setBlendMode(Phaser.BlendModes.ADD);
+      this.scene.tweens.add({
+        targets: glow, alpha: 0.28, scaleX: 3.4, scaleY: 3.0,
+        duration: 140, yoyo: true, repeat: -1, ease: 'Sine.InOut',
+      });
+      this.objs.push(glow);
+      // flammes qui montent
+      const fire = this.scene.add.particles(p.x, p.y + 4, 'fx_dot', {
+        lifespan: { min: 380, max: 640 },
+        speedY: { min: -55, max: -22 },
+        speedX: { min: -10, max: 10 },
+        scale: { start: 1.1, end: 0 },
+        alpha: { start: 0.9, end: 0 },
+        tint: [0xffd24a, 0xff8a1e, 0xff4d1e],
+        blendMode: Phaser.BlendModes.ADD,
+        frequency: 60,
+        quantity: 1,
+      }).setDepth(5);
+      this.objs.push(fire);
+    }
+  }
+
+  private createSteam(): void {
+    for (const p of STEAM_SPOTS) {
+      const steam = this.scene.add.particles(p.x, p.y, 'fx_dot', {
+        lifespan: { min: 1200, max: 1900 },
+        speedY: { min: -26, max: -14 },
+        speedX: { min: -6, max: 6 },
+        scale: { start: 0.35, end: 1.25 },
+        alpha: { start: 0.45, end: 0 },
+        tint: 0xeaeaea,
+        frequency: 220,
+        quantity: 1,
+      }).setDepth(5);
+      this.objs.push(steam);
+    }
+  }
+
+  private createButterflies(): void {
+    const z = BUTTERFLY_ZONE;
+    for (let i = 0; i < N_BUTTERFLIES; i++) {
+      // pas de Math.random au runtime initial : on étale via i (déterministe)
+      const x = z.x0 + ((i * 263) % (z.x1 - z.x0));
+      const y = z.y0 + ((i * 91) % (z.y1 - z.y0));
+      const s = this.scene.add.sprite(x, y, 'fx_butterfly')
+        .setDepth(6).setTint(BUTTERFLY_COLORS[i % BUTTERFLY_COLORS.length]!).setScale(1);
+      // battement d'ailes
+      this.scene.tweens.add({
+        targets: s, scaleX: 0.3, duration: 120 + (i % 4) * 20,
+        yoyo: true, repeat: -1, ease: 'Sine.InOut',
+      });
+      this.objs.push(s);
+      this.butterflies.push({ s, tx: x, ty: y, speed: 26 + (i % 5) * 6, phase: i });
+    }
+  }
+
+  private createGreeters(): void {
+    for (const g of GREETERS) {
+      const bubble = this.scene.add.text(g.x, g.y, g.text, {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '13px',
+        color: '#ffffff',
+        backgroundColor: '#1e293bdd',
+        padding: { x: 8, y: 5 },
+        align: 'center',
+      }).setOrigin(0.5, 1).setDepth(16).setAlpha(0).setScale(0.9);
+      this.objs.push(bubble);
+      this.greeters.push({ bubble, x: g.x, y: g.y, radius: g.radius, shown: false });
+    }
+  }
+
+  /** Appelé chaque frame depuis GameScene.update() avec la position du joueur local. */
+  update(localX: number, localY: number, dt: number): void {
+    const z = BUTTERFLY_ZONE;
+    for (const b of this.butterflies) {
+      const dx = b.tx - b.s.x;
+      const dy = b.ty - b.s.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 8) {
+        // nouvelle cible pseudo-aléatoire (basée sur la position courante, sans Math.random)
+        b.phase += 1;
+        b.tx = z.x0 + ((Math.abs(Math.floor(b.s.x * 7 + b.phase * 131))) % (z.x1 - z.x0));
+        b.ty = z.y0 + ((Math.abs(Math.floor(b.s.y * 13 + b.phase * 57))) % (z.y1 - z.y0));
+      } else {
+        const step = (b.speed * dt) / 1000;
+        b.s.x += (dx / d) * step;
+        // léger flottement vertical
+        b.s.y += (dy / d) * step + Math.sin((b.s.x + b.phase * 40) / 26) * 0.25;
+        b.s.setFlipX(dx < 0);
+      }
+    }
+
+    for (const g of this.greeters) {
+      const near = Math.hypot(localX - g.x, localY - g.y) < g.radius;
+      if (near && !g.shown) {
+        g.shown = true;
+        this.scene.tweens.add({ targets: g.bubble, alpha: 1, scale: 1, duration: 180, ease: 'Back.Out' });
+      } else if (!near && g.shown) {
+        g.shown = false;
+        this.scene.tweens.add({ targets: g.bubble, alpha: 0, scale: 0.9, duration: 160 });
+      }
+    }
+  }
+
+  destroy(): void {
+    for (const o of this.objs) o.destroy();
+    this.objs.length = 0;
+    this.butterflies = [];
+    this.greeters = [];
+  }
+}
