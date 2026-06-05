@@ -89,6 +89,10 @@ interface GameStore {
   setRecording: (on: boolean, hostName: string) => void;
   mapZoom: number;
   setMapZoom: (z: number) => void;
+  // Mute master : coupe TOUT le son entrant (effets + voix LiveKit) pour le joueur
+  // local (= "sourdine"). N'affecte pas le micro (ce que les autres entendent).
+  deafened: boolean;
+  setDeafened: (v: boolean) => void;
   workstations: Map<string, WorkstationState>;
   setWorkstationState: (ws: WorkstationState) => void;
   setWorkstationsInitial: (list: WorkstationState[]) => void;
@@ -382,6 +386,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setRecording: (on, hostName) => set({ isRecording: on, recordingHostName: hostName }),
   mapZoom: 1,
   setMapZoom: (z) => set({ mapZoom: clampMapZoom(z) }),
+  deafened: false,
+  setDeafened: (v) => set({ deafened: v }),
   workstations: new Map<string, WorkstationState>(),
   setWorkstationState: (ws) =>
     set((s) => {
@@ -489,6 +495,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       isRecording: false,
       recordingHostName: '',
       mapZoom: 1,
+      deafened: false,
       workstations: new Map(),
       nearbyWorkstationId: null,
       karts: new Map(),

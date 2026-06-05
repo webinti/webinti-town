@@ -215,6 +215,7 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
   const players = useGameStore((s) => s.players);
   const remotePlayer = useGameStore((s) => s.players.get(remote.identity));
   const presence = remotePlayer?.presence;
+  const deafened = useGameStore((s) => s.deafened);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -239,6 +240,11 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
+    // Sourdine totale (bouton 🔇) : on coupe toute voix entrante, distance ignorée.
+    if (deafened) {
+      el.volume = 0;
+      return;
+    }
     const local = localPlayerId ? players.get(localPlayerId) : undefined;
     const remotePlayer = players.get(remote.identity);
     if (!local || !remotePlayer) {
@@ -264,7 +270,7 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
     const dist = Math.hypot(local.x - remotePlayer.x, local.y - remotePlayer.y);
     el.volume =
       dist <= FULL_PX ? 1 : dist >= ZERO_PX ? 0 : 1 - (dist - FULL_PX) / (ZERO_PX - FULL_PX);
-  }, [players, localPlayerId, remote.identity, remote.audioTrack]);
+  }, [players, localPlayerId, remote.identity, remote.audioTrack, deafened]);
 
   return (
     <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">

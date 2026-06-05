@@ -37,8 +37,9 @@ export function HUD() {
 
   const toggleSounds = () => {
     const next = !soundsMuted;
-    setSoundsMuted(next);
+    setSoundsMuted(next);                         // effets sonores (WebAudio)
     setSoundsMutedState(next);
+    useGameStore.getState().setDeafened(next);    // voix LiveKit (sourdine totale)
   };
   const {
     micEnabled,
@@ -169,7 +170,7 @@ export function HUD() {
         )}
         <button
           onClick={toggleSounds}
-          title={soundsMuted ? 'Activer les sons' : 'Couper les sons'}
+          title={soundsMuted ? 'Activer le son' : 'Couper tout le son (effets + voix)'}
           className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/80 text-base text-slate-100 ring-1 ring-white/10 backdrop-blur hover:bg-slate-800"
         >
           {soundsMuted ? '🔇' : '🔊'}
