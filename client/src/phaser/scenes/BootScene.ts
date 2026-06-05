@@ -46,6 +46,12 @@ export class BootScene extends Phaser.Scene {
       frameHeight: 128,
     });
 
+    // Chat animé (LimeZu, 36 frames 32x32 sur une rangée) — idle/repos en boucle.
+    this.load.spritesheet('anim_cat', `${BASE}assets/sprites/animated_cat_32x32.png${V}`, {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+
     // F11 — kart sprite (top-down, default facing up). Optional: KartOverlay
     // falls back to a procedural sprite if this asset is missing.
     this.load.image('kart', `${BASE}assets/karts/kart.png${V}`);

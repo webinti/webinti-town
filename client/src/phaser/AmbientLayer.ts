@@ -1,17 +1,34 @@
 import Phaser from 'phaser';
+import { Npc } from './Npc';
+import type { Appearance } from '../types';
 
-// Vie de la map (vague 1) : flammes de cheminée, vapeur (café), papillons dans le
-// jardin, et bulle d'accueil de la secrétaire à l'approche. Positions en px monde,
-// faciles à ajuster ci-dessous.
+// Vie de la map : flammes de cheminée, papillons, bulle d'accueil de la secrétaire
+// (vague 1) + chat qui se prélasse près de la cheminée et PNJ d'ambiance (vague 2).
+// Positions en px monde, faciles à ajuster ci-dessous.
 
 const FIRE_SPOTS = [{ x: 1412, y: 730 }];            // cheminée
-const STEAM_SPOTS = [{ x: 1771, y: 716 }];           // coin café/cuisine
+// Vapeur café retirée : le "coin café" était en fait une buanderie/sanitaires.
+// (à replacer si une vraie machine à café est identifiée sur la map)
+const STEAM_SPOTS: Array<{ x: number; y: number }> = [];
 const GREETERS = [
   { x: 48, y: 560, text: 'Bienvenue ! 👋', radius: 130 }, // secrétaire (bulle au-dessus d'elle)
 ];
 const BUTTERFLY_ZONE = { x0: 60, y0: 30, x1: 1860, y1: 300 };
 const N_BUTTERFLIES = 7;
 const BUTTERFLY_COLORS = [0xfacc15, 0xf472b6, 0x60a5fa, 0xfb923c, 0xa78bfa];
+
+// Chat qui dort/se prélasse devant la cheminée (face au feu → flipX).
+const CAT_SPOT = { x: 1338, y: 772, flip: true };
+// PNJ d'ambiance : { x, y, appearance, dir, bob:[amp,durMs] }
+const NPCS: Array<{
+  x: number; y: number; appearance: Appearance;
+  dir: 'down' | 'up' | 'left' | 'right'; bob: [number, number];
+}> = [
+  // Personne qui tape au clavier dans l'open space (face à l'écran = haut)
+  { x: 640, y: 470, appearance: { skin: 3, outfit: 5, hairStyle: 2, hairColor: 0 }, dir: 'up', bob: [2, 240] },
+  // Sportif sur le tapis de la gym
+  { x: 2200, y: 470, appearance: { skin: 5, outfit: 8, hairStyle: 0, hairColor: 2 }, dir: 'down', bob: [5, 300] },
+];
 
 interface Butterfly {
   s: Phaser.GameObjects.Sprite;
@@ -31,6 +48,7 @@ export class AmbientLayer {
   private readonly objs: Phaser.GameObjects.GameObject[] = [];
   private butterflies: Butterfly[] = [];
   private greeters: Greeter[] = [];
+  private npcs: Npc[] = [];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -39,6 +57,30 @@ export class AmbientLayer {
     this.createSteam();
     this.createButterflies();
     this.createGreeters();
+    this.createCat();
+    this.createNpcs();
+  }
+
+  private createCat(): void {
+    if (!this.scene.textures.exists('anim_cat')) return;
+    if (!this.scene.anims.exists('cat_idle')) {
+      this.scene.anims.create({
+        key: 'cat_idle',
+        frames: this.scene.anims.generateFrameNumbers('anim_cat', { start: 0, end: 35 }),
+        frameRate: 7,
+        repeat: -1,
+      });
+    }
+    const cat = this.scene.add.sprite(CAT_SPOT.x, CAT_SPOT.y, 'anim_cat', 0)
+      .setDepth(6).setFlipX(CAT_SPOT.flip).play('cat_idle');
+    this.objs.push(cat);
+  }
+
+  private createNpcs(): void {
+    for (const n of NPCS) {
+      const npc = new Npc(this.scene, n.x, n.y, n.appearance, n.dir).bob(n.bob[0], n.bob[1]);
+      this.npcs.push(npc);
+    }
   }
 
   private ensureTextures(): void {
@@ -176,8 +218,10 @@ export class AmbientLayer {
 
   destroy(): void {
     for (const o of this.objs) o.destroy();
+    for (const n of this.npcs) n.destroy();
     this.objs.length = 0;
     this.butterflies = [];
     this.greeters = [];
+    this.npcs = [];
   }
 }
