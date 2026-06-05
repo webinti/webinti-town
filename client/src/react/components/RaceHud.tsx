@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
+import { inCircuitZone } from '../../circuit';
 
 // F12 — HUD de course : chrono live, toast de tour bouclé, et leaderboard 🏆.
 // La détection des passages est faite côté serveur ; ce composant ne fait
@@ -27,6 +28,12 @@ export function RaceHud() {
   const raceLastLapAt = useGameStore((s) => s.raceLastLapAt);
   const leaderboard = useGameStore((s) => s.leaderboard);
   const localPlayerId = useGameStore((s) => s.localPlayerId);
+  // Vrai uniquement quand le joueur local est dans la zone du circuit. Sélecteur
+  // renvoyant un booléen → ne re-render que lorsqu'on franchit la frontière.
+  const nearTrack = useGameStore((s) => {
+    const p = s.localPlayerId ? s.players.get(s.localPlayerId) : undefined;
+    return p ? inCircuitZone(p.x, p.y) : false;
+  });
 
   const [board, setBoard] = useState(false);
   const [, force] = useState(0);
@@ -117,8 +124,9 @@ export function RaceHud() {
         )}
       </div>
 
-      {/* Chrono live (seulement en kart) */}
-      {onKart && (
+      {/* Chrono live — seulement en kart ET sur/près de la piste (masqué dans
+          les bureaux même si on roule). */}
+      {onKart && nearTrack && (
         <div className="pointer-events-none absolute left-1/2 top-32 z-30 -translate-x-1/2">
           <div className="flex flex-col items-center gap-0.5 rounded-xl bg-slate-900/80 px-4 py-2 ring-1 ring-white/10 backdrop-blur">
             <div className="font-mono text-2xl font-bold tabular-nums text-white">

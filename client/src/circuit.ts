@@ -22,3 +22,14 @@ export const CIRCUIT: readonly Checkpoint[] = [
 export function checkpointCenter(c: Checkpoint): { x: number; y: number } {
   return { x: c.x + c.w / 2, y: c.y + c.h / 2 };
 }
+
+// Zone du circuit (la zone extérieure ajoutée à l'est, px monde). Sert à n'afficher
+// le HUD de course que lorsqu'on est sur/près de la piste (pas dans les bureaux).
+export const CIRCUIT_ZONE = { x0: 2650, y0: 0, x1: 3712, y1: 1344 };
+
+export function inCircuitZone(x: number, y: number): boolean {
+  return (
+    x >= CIRCUIT_ZONE.x0 && x <= CIRCUIT_ZONE.x1 &&
+    y >= CIRCUIT_ZONE.y0 && y <= CIRCUIT_ZONE.y1
+  );
+}
