@@ -7,9 +7,11 @@ import type { Appearance } from '../types';
 // Positions en px monde, faciles à ajuster ci-dessous.
 
 const FIRE_SPOTS = [{ x: 1412, y: 730 }];            // cheminée
-// Vapeur café retirée : le "coin café" était en fait une buanderie/sanitaires.
-// (à replacer si une vraie machine à café est identifiée sur la map)
-const STEAM_SPOTS: Array<{ x: number; y: number }> = [];
+// Vapeur sur les 2 machines à café du coin pause (comptoirs sombres avec tasses).
+const STEAM_SPOTS: Array<{ x: number; y: number }> = [
+  { x: 478, y: 740 }, // machine à café gauche
+  { x: 768, y: 740 }, // machine à café droite
+];
 const GREETERS = [
   { x: 48, y: 560, text: 'Bienvenue ! 👋', radius: 130 }, // secrétaire (bulle au-dessus d'elle)
 ];
@@ -137,15 +139,15 @@ export class AmbientLayer {
   private createSteam(): void {
     for (const p of STEAM_SPOTS) {
       const steam = this.scene.add.particles(p.x, p.y, 'fx_dot', {
-        lifespan: { min: 1200, max: 1900 },
-        speedY: { min: -26, max: -14 },
-        speedX: { min: -6, max: 6 },
-        scale: { start: 0.35, end: 1.25 },
-        alpha: { start: 0.45, end: 0 },
-        tint: 0xeaeaea,
-        frequency: 220,
+        lifespan: { min: 1300, max: 2000 },
+        speedY: { min: -30, max: -16 },
+        speedX: { min: -7, max: 7 },
+        scale: { start: 0.4, end: 1.4 },
+        alpha: { start: 0.62, end: 0 },
+        tint: 0xf2f2f2,
+        frequency: 160,
         quantity: 1,
-      }).setDepth(5);
+      }).setDepth(8);
       this.objs.push(steam);
     }
   }
