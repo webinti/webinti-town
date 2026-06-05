@@ -37,6 +37,14 @@ export function useLiveKit() {
     return off;
   }, []);
 
+  // Mute forcé par l'hôte (admin) → on coupe le micro local.
+  useEffect(() => {
+    const off = socketManager.onForceMute(() => {
+      void liveKitManager.setMicEnabled(false).catch(() => { /* ignore */ });
+    });
+    return off;
+  }, []);
+
   useEffect(() => {
     if (!localPlayerId) return;
     const off = socketManager.onObjectUpdate((obj) => {
