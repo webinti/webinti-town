@@ -25,9 +25,10 @@ const BUTTERFLY_COLORS = [0xfacc15, 0xf472b6, 0x60a5fa, 0xfb923c, 0xa78bfa];
 const CAT_ZONE = { x0: 1240, y0: 778, x1: 1520, y1: 852 };
 const CAT_SPEED = 20;          // px/s (chat tranquille)
 const CAT_MEOW_RANGE = 180;    // px : miaule si un joueur est plus près que ça
-// La planche LimeZu a une frame VIDE tous les 3 index (0,3,6…) → on les exclut,
-// sinon le chat clignote.
-const CAT_FRAMES = Array.from({ length: 36 }, (_, i) => i).filter((i) => i % 3 !== 0);
+// La planche LimeZu a un cycle de 3 par "vraie" frame : i%3==1 = chat complet
+// (32×30), i%3==2 = sliver (6px), i%3==0 = demi-chat. On ne garde QUE les chats
+// complets (i%3==1), sinon ça clignote.
+const CAT_FRAMES = Array.from({ length: 36 }, (_, i) => i).filter((i) => i % 3 === 1);
 // PNJ d'ambiance : { x, y, appearance, dir, bob:[amp,durMs] }
 const NPCS: Array<{
   x: number; y: number; appearance: Appearance;
