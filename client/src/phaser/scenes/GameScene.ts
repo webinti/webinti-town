@@ -191,9 +191,11 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Mode debug collision : B superpose les rectangles solides en rouge.
-    // (C est déjà pris par le chat dans le HUD.)
+    // Réservé à l'hôte. (C est déjà pris par le chat dans le HUD.)
     this.input.keyboard?.on('keydown-B', () => {
-      if (useGameStore.getState().inputFocused) return;
+      const s = useGameStore.getState();
+      if (s.inputFocused) return;
+      if (!s.hostPlayerId || s.hostPlayerId !== s.localPlayerId) return;
       this.collisionLayer?.toggleDebug();
     });
 

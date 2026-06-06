@@ -153,40 +153,22 @@ function sweep(fromHz: number, toHz: number, duration: number, gain = 0.15): voi
   osc.stop(t0 + duration + 0.05);
 }
 
+// Miaou : vrai sample mp3 (respecte la sourdine 🔇 via `muted`).
+const MEOW_URL = `${import.meta.env.BASE_URL}assets/sounds/meow.mp3`;
+let meowAudio: HTMLAudioElement | null = null;
 export function playMeow(): void {
-  const c = ensureCtx();
-  if (!c) return;
-  const t0 = c.currentTime;
-  const env = c.createGain();
-  const lp = c.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.value = 2200;
-  lp.connect(env).connect(c.destination);
-  // Vibrato partagé
-  const vib = c.createOscillator();
-  const vibG = c.createGain();
-  vib.frequency.value = 17;
-  vibG.gain.value = 13;
-  vib.connect(vibG);
-  for (const [type, detune] of [['sawtooth', 0], ['triangle', 12]] as const) {
-    const osc = c.createOscillator();
-    osc.type = type;
-    osc.detune.value = detune;
-    // Contour « mi-aou » : monte vite puis redescend.
-    osc.frequency.setValueAtTime(480, t0);
-    osc.frequency.linearRampToValueAtTime(820, t0 + 0.10);
-    osc.frequency.linearRampToValueAtTime(430, t0 + 0.42);
-    vibG.connect(osc.frequency);
-    osc.connect(lp);
-    osc.start(t0);
-    osc.stop(t0 + 0.55);
+  if (muted) return;
+  try {
+    if (!meowAudio) {
+      meowAudio = new Audio(MEOW_URL);
+      meowAudio.preload = 'auto';
+    }
+    const a = meowAudio.cloneNode() as HTMLAudioElement;
+    a.volume = 0.45;
+    void a.play().catch(() => { /* autoplay/gesture — ignore */ });
+  } catch {
+    /* ignore */
   }
-  env.gain.setValueAtTime(0, t0);
-  env.gain.linearRampToValueAtTime(0.16, t0 + 0.04);
-  env.gain.setValueAtTime(0.15, t0 + 0.26);
-  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
-  vib.start(t0);
-  vib.stop(t0 + 0.55);
 }
 
 export function playJoin(): void {
