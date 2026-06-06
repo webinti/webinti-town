@@ -112,7 +112,7 @@ export class AmbientLayer {
         const step = (CAT_SPEED * dt) / 1000;
         cat.x += (dx / d) * step;
         cat.y += (dy / d) * step;
-        cat.setFlipX(dx > 0); // sprite face à gauche par défaut → flip si va à droite
+        cat.setFlipX(dx < 0); // sprite face à droite par défaut → flip si va à gauche
       }
     }
     // Miaou quand un joueur est proche (cooldown aléatoire).
