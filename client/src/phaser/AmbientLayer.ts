@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Npc } from './Npc';
 import type { Appearance } from '../types';
+import { playMeow } from '../sounds/sounds';
 
 // Vie de la map : flammes de cheminée, papillons, bulle d'accueil de la secrétaire
 // (vague 1) + chat qui se prélasse près de la cheminée et PNJ d'ambiance (vague 2).
@@ -19,8 +20,14 @@ const BUTTERFLY_ZONE = { x0: 60, y0: 30, x1: 1860, y1: 300 };
 const N_BUTTERFLIES = 7;
 const BUTTERFLY_COLORS = [0xfacc15, 0xf472b6, 0x60a5fa, 0xfb923c, 0xa78bfa];
 
-// Chat qui dort/se prélasse devant la cheminée (face au feu → flipX).
-const CAT_SPOT = { x: 1338, y: 772, flip: true };
+// Chat qui se balade dans le coin cheminée (zone de sol dégagée). Miaule quand
+// un joueur est à proximité.
+const CAT_ZONE = { x0: 1240, y0: 778, x1: 1520, y1: 852 };
+const CAT_SPEED = 20;          // px/s (chat tranquille)
+const CAT_MEOW_RANGE = 180;    // px : miaule si un joueur est plus près que ça
+// La planche LimeZu a une frame VIDE tous les 3 index (0,3,6…) → on les exclut,
+// sinon le chat clignote.
+const CAT_FRAMES = Array.from({ length: 36 }, (_, i) => i).filter((i) => i % 3 !== 0);
 // PNJ d'ambiance : { x, y, appearance, dir, bob:[amp,durMs] }
 const NPCS: Array<{
   x: number; y: number; appearance: Appearance;
@@ -51,6 +58,11 @@ export class AmbientLayer {
   private butterflies: Butterfly[] = [];
   private greeters: Greeter[] = [];
   private npcs: Npc[] = [];
+  private cat?: Phaser.GameObjects.Sprite;
+  private catTx = 0;
+  private catTy = 0;
+  private catPauseUntil = 0;
+  private catLastMeow = 0;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -68,14 +80,48 @@ export class AmbientLayer {
     if (!this.scene.anims.exists('cat_idle')) {
       this.scene.anims.create({
         key: 'cat_idle',
-        frames: this.scene.anims.generateFrameNumbers('anim_cat', { start: 0, end: 35 }),
+        // Exclut les frames vides (sinon clignotement).
+        frames: this.scene.anims.generateFrameNumbers('anim_cat', { frames: CAT_FRAMES }),
         frameRate: 7,
         repeat: -1,
       });
     }
-    const cat = this.scene.add.sprite(CAT_SPOT.x, CAT_SPOT.y, 'anim_cat', 0)
-      .setDepth(6).setFlipX(CAT_SPOT.flip).play('cat_idle');
-    this.objs.push(cat);
+    const x = (CAT_ZONE.x0 + CAT_ZONE.x1) / 2;
+    const y = (CAT_ZONE.y0 + CAT_ZONE.y1) / 2;
+    this.cat = this.scene.add.sprite(x, y, 'anim_cat', CAT_FRAMES[0]).setDepth(6).play('cat_idle');
+    this.catTx = x;
+    this.catTy = y;
+    this.objs.push(this.cat);
+  }
+
+  private updateCat(localX: number, localY: number, dt: number, now: number): void {
+    const cat = this.cat;
+    if (!cat) return;
+    // Déplacement (avec pauses).
+    if (now >= this.catPauseUntil) {
+      const dx = this.catTx - cat.x;
+      const dy = this.catTy - cat.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 6) {
+        // Arrivé : pause puis nouvelle cible au hasard dans la zone.
+        this.catPauseUntil = now + 1500 + Math.random() * 3500;
+        this.catTx = CAT_ZONE.x0 + Math.random() * (CAT_ZONE.x1 - CAT_ZONE.x0);
+        this.catTy = CAT_ZONE.y0 + Math.random() * (CAT_ZONE.y1 - CAT_ZONE.y0);
+      } else {
+        const step = (CAT_SPEED * dt) / 1000;
+        cat.x += (dx / d) * step;
+        cat.y += (dy / d) * step;
+        cat.setFlipX(dx > 0); // sprite face à gauche par défaut → flip si va à droite
+      }
+    }
+    // Miaou quand un joueur est proche (cooldown aléatoire).
+    if (now >= this.catLastMeow + 6000) {
+      const near = Math.hypot(localX - cat.x, localY - cat.y) < CAT_MEOW_RANGE;
+      if (near) {
+        playMeow();
+        this.catLastMeow = now + Math.random() * 6000; // 6–12 s avant le prochain
+      }
+    }
   }
 
   private createNpcs(): void {
@@ -187,6 +233,7 @@ export class AmbientLayer {
 
   /** Appelé chaque frame depuis GameScene.update() avec la position du joueur local. */
   update(localX: number, localY: number, dt: number): void {
+    this.updateCat(localX, localY, dt, Date.now());
     const z = BUTTERFLY_ZONE;
     for (const b of this.butterflies) {
       const dx = b.tx - b.s.x;
@@ -225,5 +272,6 @@ export class AmbientLayer {
     this.butterflies = [];
     this.greeters = [];
     this.npcs = [];
+    this.cat = undefined;
   }
 }
