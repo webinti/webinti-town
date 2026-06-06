@@ -93,6 +93,12 @@ interface GameStore {
   // local (= "sourdine"). N'affecte pas le micro (ce que les autres entendent).
   deafened: boolean;
   setDeafened: (v: boolean) => void;
+  // Volume de sortie (0..1) appliqué aux voix entrantes (multiplie la proximité).
+  masterVolume: number;
+  setMasterVolume: (v: number) => void;
+  // Miroir de SA PROPRE caméra (vue locale uniquement ; n'affecte pas les autres).
+  camMirror: boolean;
+  setCamMirror: (v: boolean) => void;
   workstations: Map<string, WorkstationState>;
   setWorkstationState: (ws: WorkstationState) => void;
   setWorkstationsInitial: (list: WorkstationState[]) => void;
@@ -390,6 +396,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setMapZoom: (z) => set({ mapZoom: clampMapZoom(z) }),
   deafened: false,
   setDeafened: (v) => set({ deafened: v }),
+  masterVolume: 1,
+  setMasterVolume: (v) => set({ masterVolume: Math.max(0, Math.min(1, v)) }),
+  camMirror: true,
+  setCamMirror: (v) => set({ camMirror: v }),
   workstations: new Map<string, WorkstationState>(),
   setWorkstationState: (ws) =>
     set((s) => {
@@ -500,6 +510,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       recordingHostName: '',
       mapZoom: 1,
       deafened: false,
+      masterVolume: 1,
+      camMirror: true,
       workstations: new Map(),
       nearbyWorkstationId: null,
       claimError: null,

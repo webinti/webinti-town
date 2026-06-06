@@ -16,11 +16,11 @@ import { DmToasts } from './components/DmToasts';
 import { HelpPanel } from './components/HelpPanel';
 import { AdminPanel } from './components/AdminPanel';
 import { AvatarEditModal } from './components/AvatarEditModal';
-import { setMuted as setSoundsMuted, isMuted as soundsIsMuted } from '../sounds/sounds';
 import { useActivityHeartbeat } from './hooks/useActivityHeartbeat';
 import { WorkstationPanel } from './components/WorkstationPanel';
 import { WorkstationInviteToast } from './components/WorkstationInviteToast';
 import { RaceHud } from './components/RaceHud';
+import { AvControls } from './components/AvControls';
 import { useSpeakerBubbles } from './hooks/useSpeakerBubbles';
 
 export function HUD() {
@@ -32,18 +32,8 @@ export function HUD() {
   const isHost = !!localPlayerId && localPlayerId === hostPlayerId;
   const currentRoomSlug = useGameStore((s) => s.currentRoomSlug);
   const mapZoom = useGameStore((s) => s.mapZoom);
-  const [soundsMuted, setSoundsMutedState] = useState(soundsIsMuted());
   const [avatarEditOpen, setAvatarEditOpen] = useState(false);
-
-  const toggleSounds = () => {
-    const next = !soundsMuted;
-    setSoundsMuted(next);                         // effets sonores (WebAudio)
-    setSoundsMutedState(next);
-    useGameStore.getState().setDeafened(next);    // voix LiveKit (sourdine totale)
-  };
   const {
-    micEnabled,
-    camEnabled,
     screenShareEnabled,
     toggleMic,
     toggleCam,
@@ -169,13 +159,6 @@ export function HUD() {
           </button>
         )}
         <button
-          onClick={toggleSounds}
-          title={soundsMuted ? 'Activer le son' : 'Couper tout le son (effets + voix)'}
-          className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/80 text-base text-slate-100 ring-1 ring-white/10 backdrop-blur hover:bg-slate-800"
-        >
-          {soundsMuted ? '🔇' : '🔊'}
-        </button>
-        <button
           onClick={() => useGameStore.getState().setHelpOpen(true)}
           title="Raccourcis clavier (H)"
           className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/80 text-base font-bold text-slate-100 ring-1 ring-white/10 backdrop-blur hover:bg-slate-800"
@@ -206,20 +189,7 @@ export function HUD() {
 
       <div className="pointer-events-none flex items-end justify-between p-4">
         <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">
-          <ControlButton
-            active={micEnabled}
-            onClick={() => {
-              void toggleMic();
-            }}
-            label="Mic"
-          />
-          <ControlButton
-            active={camEnabled}
-            onClick={() => {
-              void toggleCam();
-            }}
-            label="Cam"
-          />
+          <AvControls />
           <ControlButton
             active={screenShareEnabled}
             onClick={() => {

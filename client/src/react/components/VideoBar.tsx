@@ -152,6 +152,7 @@ function LocalTile({ track, name, id, localPresence }: {
   localPresence: Presence | undefined;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
+  const camMirror = useGameStore((s) => s.camMirror);
   // Le track LiveKit peut être référencé mais muted/disposé (ex : setCameraEnabled(false)
   // qui mute au lieu d'unpublish). Dans ce cas, montrer l'Initial au lieu d'un cadre
   // noir résiduel. On s'abonne aux events muted/unmuted du track pour mettre à jour.
@@ -190,7 +191,14 @@ function LocalTile({ track, name, id, localPresence }: {
   return (
     <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">
       {isLive ? (
-        <video ref={ref} autoPlay muted playsInline className="h-full w-full object-cover" />
+        <video
+          ref={ref}
+          autoPlay
+          muted
+          playsInline
+          className="h-full w-full object-cover"
+          style={camMirror ? { transform: 'scaleX(-1)' } : undefined}
+        />
       ) : (
         <Initial name={name} id={id} />
       )}
@@ -216,6 +224,7 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
   const remotePlayer = useGameStore((s) => s.players.get(remote.identity));
   const presence = remotePlayer?.presence;
   const deafened = useGameStore((s) => s.deafened);
+  const masterVolume = useGameStore((s) => s.masterVolume);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -245,32 +254,30 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
       el.volume = 0;
       return;
     }
+    // base = volume "proximité/poste" (0..1), puis × volume master (slider).
+    let base: number;
     const local = localPlayerId ? players.get(localPlayerId) : undefined;
     const remotePlayer = players.get(remote.identity);
     if (!local || !remotePlayer) {
-      el.volume = 1;
-      return;
+      base = 1;
+    } else {
+      // Règles audio :
+      //  - Dans un poste/salle (workstation, dont 'salle-conf') : audio ISOLÉ au
+      //    groupe → même workstationId seulement, distance ignorée.
+      //  - Hors poste (zones communes) : PROXIMITÉ → décroît avec la distance.
+      const localWs = local.workstationId ?? null;
+      const remoteWs = remotePlayer.workstationId ?? null;
+      if (localWs !== null || remoteWs !== null) {
+        base = localWs !== null && localWs === remoteWs ? 1 : 0;
+      } else {
+        const FULL_PX = 4 * 32; // volume plein en deçà de 4 tuiles
+        const ZERO_PX = 8 * 32; // silence au-delà de 8 tuiles
+        const dist = Math.hypot(local.x - remotePlayer.x, local.y - remotePlayer.y);
+        base = dist <= FULL_PX ? 1 : dist >= ZERO_PX ? 0 : 1 - (dist - FULL_PX) / (ZERO_PX - FULL_PX);
+      }
     }
-    // Règles audio :
-    //  - Dans un poste/salle (workstation, dont 'salle-conf') : audio ISOLÉ au
-    //    groupe → on s'entend uniquement avec le MÊME workstationId, distance
-    //    ignorée (d'où "salle de conf = tout le monde s'entend sans proximité",
-    //    et "bureau revendiqué = bulle privée"). Si l'un est dans un poste et
-    //    pas l'autre (ou postes différents) → silence (isolation).
-    //  - Hors poste (zones communes, couloirs) : PROXIMITÉ → le volume décroît
-    //    avec la distance, silence au-delà du rayon.
-    const localWs = local.workstationId ?? null;
-    const remoteWs = remotePlayer.workstationId ?? null;
-    if (localWs !== null || remoteWs !== null) {
-      el.volume = localWs !== null && localWs === remoteWs ? 1 : 0;
-      return;
-    }
-    const FULL_PX = 4 * 32; // volume plein en deçà de 4 tuiles
-    const ZERO_PX = 8 * 32; // silence au-delà de 8 tuiles
-    const dist = Math.hypot(local.x - remotePlayer.x, local.y - remotePlayer.y);
-    el.volume =
-      dist <= FULL_PX ? 1 : dist >= ZERO_PX ? 0 : 1 - (dist - FULL_PX) / (ZERO_PX - FULL_PX);
-  }, [players, localPlayerId, remote.identity, remote.audioTrack, deafened]);
+    el.volume = base * masterVolume;
+  }, [players, localPlayerId, remote.identity, remote.audioTrack, deafened, masterVolume]);
 
   return (
     <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">

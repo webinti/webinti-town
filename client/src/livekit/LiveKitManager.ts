@@ -133,6 +133,37 @@ class LiveKitManager {
     }
   }
 
+  /** Liste les périphériques d'un type (micro = 'audioinput', caméra = 'videoinput'). */
+  async listDevices(kind: MediaDeviceKind): Promise<MediaDeviceInfo[]> {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices.filter((d) => d.kind === kind && d.deviceId);
+    } catch {
+      return [];
+    }
+  }
+
+  /** Id du périphérique actif pour un type (pour cocher le bon dans la liste). */
+  getActiveDeviceId(kind: MediaDeviceKind): string | undefined {
+    try {
+      return this.room?.getActiveDevice(kind);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Change le périphérique actif (caméra/micro). */
+  async switchDevice(kind: MediaDeviceKind, deviceId: string): Promise<void> {
+    if (!this.room) return;
+    try {
+      await this.room.switchActiveDevice(kind, deviceId);
+      this.emit();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Périphérique: ${msg}`);
+    }
+  }
+
   async setScreenShareEnabled(enabled: boolean): Promise<void> {
     if (!this.room) return;
     try {
