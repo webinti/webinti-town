@@ -239,6 +239,8 @@ export class RoomManager {
     // Position de spawn souhaitée (dernière position connue, envoyée par le
     // client). Utilisée si valide, sinon on retombe sur le spawn par défaut.
     spawn?: { x: number; y: number },
+    // Email du compte connecté (PocketBase). Seul config.hostEmail devient hôte.
+    email?: string,
   ): PlayerState | undefined {
     const room = this.rooms.get(slug);
     if (!room) return undefined;
@@ -266,7 +268,10 @@ export class RoomManager {
       boosting: false,
     };
     room.players.set(playerId, player);
-    if (!room.hostPlayerId) room.hostPlayerId = playerId;
+    // Hôte = uniquement le compte config.hostEmail (plus de "premier arrivé").
+    if (email && email.toLowerCase() === config.hostEmail) {
+      room.hostPlayerId = playerId;
+    }
     return player;
   }
 
@@ -286,8 +291,8 @@ export class RoomManager {
     room.raceManager.reset(playerId);
     room.players.delete(playerId);
     if (room.hostPlayerId === playerId) {
-      const next = room.players.values().next();
-      room.hostPlayerId = next.done ? null : next.value.playerId;
+      // Pas de transfert au "suivant" : seul config.hostEmail peut être hôte.
+      room.hostPlayerId = null;
       room.isRecording = false;
     }
     return player;
@@ -308,8 +313,7 @@ export class RoomManager {
           room.raceManager.reset(player.playerId);
           room.players.delete(player.playerId);
           if (room.hostPlayerId === player.playerId) {
-            const next = room.players.values().next();
-            room.hostPlayerId = next.done ? null : next.value.playerId;
+            room.hostPlayerId = null; // seul config.hostEmail peut être hôte
             room.isRecording = false;
           }
           return { slug: room.slug, player };

@@ -76,6 +76,7 @@ export function JoinScreen() {
     socketManager.joinRoom({
       roomSlug, playerName: name, appearance, hostToken,
       spawnX: pos?.x, spawnY: pos?.y,
+      email: user?.email,
     });
   };
 
