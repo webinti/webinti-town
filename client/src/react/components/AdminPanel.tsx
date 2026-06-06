@@ -1,6 +1,16 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
+
+/** "il y a 3 s / 12 min / 1 h 05" depuis joinedAt. */
+function formatConnected(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  return `${h} h ${String(m % 60).padStart(2, '0')}`;
+}
 
 const SHIRT_COLORS = [
   '#ef4444',
@@ -22,6 +32,15 @@ export function AdminPanel() {
   const hostPlayerId = useGameStore((s) => s.hostPlayerId);
   const players = useGameStore((s) => s.players);
   const isHost = !!localPlayerId && localPlayerId === hostPlayerId;
+
+  // Horloge qui avance pour rafraîchir les durées de connexion (toutes les 15 s).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open) return;
+    setNow(Date.now());
+    const t = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(t);
+  }, [open]);
 
   const sortedPlayers = useMemo(() => {
     return Array.from(players.values()).sort((a, b) => {
@@ -113,6 +132,11 @@ export function AdminPanel() {
                         </span>
                       )}
                     </div>
+                    {typeof p.joinedAt === 'number' && (
+                      <div className="text-[11px] text-slate-400">
+                        connecté depuis {formatConnected(now - p.joinedAt)}
+                      </div>
+                    )}
                   </div>
                   <button
                     disabled={isSelf}

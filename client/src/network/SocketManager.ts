@@ -89,6 +89,7 @@ class SocketManager {
   private removalListeners = new Set<(id: string) => void>();
   private proximityListeners = new Set<(ids: string[]) => void>();
   private forceMuteListeners = new Set<() => void>();
+  private playerJoinedListeners = new Set<(p: PlayerState) => void>();
   private chatListeners = new Set<(msg: ChatMessage) => void>();
   private emoteListeners = new Set<(e: EmoteEvent) => void>();
   private confettiListeners = new Set<(e: ConfettiEvent) => void>();
@@ -159,6 +160,7 @@ class SocketManager {
       useGameStore.getState().upsertPlayer(p);
       playJoin();
       for (const fn of this.listeners) fn(p);
+      for (const fn of this.playerJoinedListeners) fn(p);
     });
 
     socket.on('player_moved', (p: PlayerState) => {
@@ -485,6 +487,13 @@ class SocketManager {
     this.forceMuteListeners.add(fn);
     return () => {
       this.forceMuteListeners.delete(fn);
+    };
+  }
+
+  onPlayerJoined(fn: (p: PlayerState) => void): () => void {
+    this.playerJoinedListeners.add(fn);
+    return () => {
+      this.playerJoinedListeners.delete(fn);
     };
   }
 

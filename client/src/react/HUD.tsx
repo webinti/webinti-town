@@ -21,6 +21,7 @@ import { WorkstationPanel } from './components/WorkstationPanel';
 import { WorkstationInviteToast } from './components/WorkstationInviteToast';
 import { RaceHud } from './components/RaceHud';
 import { AvControls } from './components/AvControls';
+import { AdminJoinNotify } from './components/AdminJoinNotify';
 import { useSpeakerBubbles } from './hooks/useSpeakerBubbles';
 
 export function HUD() {
@@ -179,6 +180,7 @@ export function HUD() {
       <DmToasts />
       <WorkstationPanel />
       <WorkstationInviteToast />
+      <AdminJoinNotify />
       <RaceHud />
 
       {kickedReason && (

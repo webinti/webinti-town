@@ -103,6 +103,27 @@ export class DmStorePocketBase {
     await Promise.allSettled(Array.from(this.pendingWrites));
   }
 
+  /** Supprime les messages plus vieux que maxAgeMs (mémoire + PocketBase). */
+  async prune(maxAgeMs: number, now: number = Date.now()): Promise<void> {
+    const cutoff = now - maxAgeMs;
+    for (const [key, list] of this.conversations) {
+      const kept = list.filter((m) => m.ts >= cutoff);
+      if (kept.length === 0) this.conversations.delete(key);
+      else if (kept.length !== list.length) this.conversations.set(key, kept);
+    }
+    try {
+      const pb = await getPocketBase();
+      const old = await pb.collection('dm_messages').getFullList({
+        filter: `roomSlug = ${JSON.stringify(this.roomSlug)} && ts < ${cutoff}`,
+      });
+      for (const r of old) {
+        await pb.collection('dm_messages').delete(r.id).catch(() => { /* ignore */ });
+      }
+    } catch (err) {
+      console.warn('[dm-pb] prune failed for', this.roomSlug, err);
+    }
+  }
+
   async load(): Promise<void> {
     if (this.loadPromise) return this.loadPromise;
     this.loadPromise = (async () => {

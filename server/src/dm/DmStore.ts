@@ -80,6 +80,20 @@ export class DmStore {
     return msg;
   }
 
+  /** Supprime les messages plus vieux que maxAgeMs (TTL). Vide les conversations devenues vides. */
+  prune(maxAgeMs: number, now: number = Date.now()): void {
+    const cutoff = now - maxAgeMs;
+    let changed = false;
+    for (const [key, list] of this.conversations) {
+      const kept = list.filter((m) => m.ts >= cutoff);
+      if (kept.length === list.length) continue;
+      changed = true;
+      if (kept.length === 0) this.conversations.delete(key);
+      else this.conversations.set(key, kept);
+    }
+    if (changed) this.scheduleSave();
+  }
+
   /** Mark all messages in the (reader, withPlayer) conversation as read by `reader`. */
   markRead(reader: string, withPlayer: string): void {
     const key = pairKey(reader, withPlayer);

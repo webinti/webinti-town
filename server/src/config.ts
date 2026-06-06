@@ -18,6 +18,8 @@ export const config = {
   hostToken: process.env.HOST_TOKEN ?? '',
   // Seul ce compte (email connecté) devient hôte/admin. Plus de "premier arrivé".
   hostEmail: (process.env.HOST_EMAIL ?? 'agence.webinti@gmail.com').toLowerCase(),
+  // Durée de vie des messages (chat + DM) : au-delà, purge auto.
+  messageTtlMs: Number(process.env.MESSAGE_TTL_MS ?? 3 * 24 * 60 * 60 * 1000),
   // F11 — PocketBase backend (migration progressive depuis JSON)
   // Backend par store : 'json' (legacy) ou 'pocketbase'.
   // On peut switcher indépendamment pour migrer poste par poste.

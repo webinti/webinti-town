@@ -206,6 +206,17 @@ export class RoomManager {
     }
   }
 
+  /** Purge les messages (chat + DM) plus vieux que ttlMs, dans toutes les rooms. */
+  pruneOldMessages(ttlMs: number, now: number = Date.now()): void {
+    const cutoff = now - ttlMs;
+    for (const room of this.rooms.values()) {
+      if (room.chatHistory.length) {
+        room.chatHistory = room.chatHistory.filter((m) => m.timestamp >= cutoff);
+      }
+      void room.dmStore.prune(ttlMs, now);
+    }
+  }
+
   getInteractiveObject(slug: string, objectId: string): InteractiveObject | undefined {
     const room = this.rooms.get(slug);
     if (!room) return undefined;
