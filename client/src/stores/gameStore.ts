@@ -98,6 +98,8 @@ interface GameStore {
   setWorkstationsInitial: (list: WorkstationState[]) => void;
   nearbyWorkstationId: string | null;
   setNearbyWorkstationId: (id: string | null) => void;
+  claimError: { workstationId: string; reason: string; x: number; y: number } | null;
+  setClaimError: (e: { workstationId: string; reason: string; x: number; y: number } | null) => void;
   karts: Map<string, KartState>;
   setKartState: (k: KartState) => void;
   setKartsInitial: (list: KartState[]) => void;
@@ -399,6 +401,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ workstations: new Map(list.map((ws) => [ws.id, ws])) }),
   nearbyWorkstationId: null,
   setNearbyWorkstationId: (id) => set({ nearbyWorkstationId: id }),
+  claimError: null,
+  setClaimError: (e) => set({ claimError: e }),
   karts: new Map<string, KartState>(),
   setKartState: (k) =>
     set((s) => {
@@ -498,6 +502,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       deafened: false,
       workstations: new Map(),
       nearbyWorkstationId: null,
+      claimError: null,
       karts: new Map(),
       localKartId: null,
       nearbyKartId: null,

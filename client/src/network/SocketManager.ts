@@ -320,6 +320,27 @@ class SocketManager {
       for (const l of this.workstationStateListeners) l(payload);
     });
 
+    // Échec de revendication : on remonte la raison (feedback + diagnostic).
+    socket.on(
+      'workstation:claim_failed',
+      (payload: { workstationId?: string; reason?: string; x?: number; y?: number }) => {
+        if (!payload || typeof payload.workstationId !== 'string') return;
+        console.warn('[workstation:claim_failed]', payload);
+        useGameStore.getState().setClaimError({
+          workstationId: payload.workstationId,
+          reason: String(payload.reason ?? 'unknown'),
+          x: Number(payload.x ?? 0),
+          y: Number(payload.y ?? 0),
+        });
+        window.setTimeout(() => {
+          const cur = useGameStore.getState().claimError;
+          if (cur && cur.workstationId === payload.workstationId) {
+            useGameStore.getState().setClaimError(null);
+          }
+        }, 6000);
+      },
+    );
+
     socket.on('workstation:invite', (payload: WorkstationInvitePayload) => {
       if (!payload || typeof payload.workstationId !== 'string') return;
       useGameStore.getState().setPendingInvite({

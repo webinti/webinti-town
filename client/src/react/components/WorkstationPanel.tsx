@@ -3,12 +3,20 @@ import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
 import { WORKSTATIONS } from '../../workstations';
 
+const CLAIM_ERROR_TEXT: Record<string, string> = {
+  on_kart: 'Descends du kart d’abord 🛻',
+  already_claimed: 'Ce poste est déjà occupé.',
+  already_mine: 'Ce poste est déjà le tien.',
+  not_in_zone: 'Place-toi bien au centre du bureau, puis réessaie.',
+};
+
 export function WorkstationPanel() {
   const localPlayerId = useGameStore((s) => s.localPlayerId);
   const nearbyId      = useGameStore((s) => s.nearbyWorkstationId);
   const workstations  = useGameStore((s) => s.workstations);
   const players       = useGameStore((s) => s.players);
   const hostPlayerId  = useGameStore((s) => s.hostPlayerId);
+  const claimError    = useGameStore((s) => s.claimError);
 
   const [editing, setEditing]   = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -144,10 +152,15 @@ export function WorkstationPanel() {
       {isFree && (
         <button
           onClick={handleClaim}
-          className="mb-3 w-full rounded-lg bg-green-600 py-2 text-sm font-semibold hover:bg-green-500 active:scale-95"
+          className="mb-1 w-full rounded-lg bg-green-600 py-2 text-sm font-semibold hover:bg-green-500 active:scale-95"
         >
           Revendiquer cet espace
         </button>
+      )}
+      {claimError && claimError.workstationId === nearbyId && (
+        <p className="mb-3 rounded-md bg-red-500/15 px-2 py-1.5 text-xs text-red-300 ring-1 ring-red-500/30">
+          {CLAIM_ERROR_TEXT[claimError.reason] ?? `Impossible de revendiquer (${claimError.reason}).`}
+        </p>
       )}
       {isMine && (
         <button
