@@ -68,6 +68,13 @@ export function HUD() {
       } else if (k === 'g') {
         e.preventDefault();
         socketManager.toggleGhost();
+      } else if (k === 'k') {
+        // Panneau Admin — réservé à l'hôte.
+        const s = useGameStore.getState();
+        if (s.hostPlayerId && s.hostPlayerId === s.localPlayerId) {
+          e.preventDefault();
+          s.setAdminPanelOpen(!s.adminPanelOpen);
+        }
       } else if (k === 'h' || e.key === '?') {
         e.preventDefault();
         const s = useGameStore.getState();
