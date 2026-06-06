@@ -8,7 +8,24 @@ import type {
 import { useGameStore } from '../../stores/gameStore';
 import type { RemoteSnapshot } from '../../livekit/LiveKitManager';
 import { ScreenViewer } from './ScreenViewer';
-import type { Presence } from '../../types';
+import type { Presence, PlayerState } from '../../types';
+
+// Vrai si `remote` est à portée audible de `local` (mêmes règles que le volume) :
+// même poste/salle, ou < 8 tuiles en zone commune. Sert à n'afficher la tuile
+// (caméra + audio) que dans ce cas — au-delà, son ET webcam coupés.
+function inAudibleRange(
+  local: PlayerState | undefined,
+  remote: PlayerState | undefined,
+): boolean {
+  if (!local || !remote) return true; // pas d'info de position → on montre
+  const localWs = local.workstationId ?? null;
+  const remoteWs = remote.workstationId ?? null;
+  if (localWs !== null || remoteWs !== null) {
+    return localWs !== null && localWs === remoteWs;
+  }
+  const ZERO_PX = 8 * 32; // hors-portée au-delà de 8 tuiles (= silence)
+  return Math.hypot(local.x - remote.x, local.y - remote.y) < ZERO_PX;
+}
 
 interface VideoBarProps {
   localCamTrack: LocalVideoTrack | null;
@@ -52,11 +69,20 @@ function ScreenViewers({
 }
 
 export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }: VideoBarProps) {
-  const visibleRemotes = remotes.filter((r) => r.videoTrack || r.audioTrack || r.screenTrack);
+  const localPresence = useGameStore((s) => s.localPresence);
+  const players = useGameStore((s) => s.players);
+  const localPlayerId = useGameStore((s) => s.localPlayerId);
+  const local = localPlayerId ? players.get(localPlayerId) : undefined;
+
+  // Une tuile (caméra + audio) n'est affichée QUE si la personne est à portée
+  // audible (mêmes règles que le son : poste/conf ou < 8 tuiles). Au-delà, on
+  // coupe son ET webcam. Le partage d'écran, lui, reste visible (présentation).
   const remoteScreens = remotes.filter((r) => r.screenTrack);
+  const visibleRemotes = remotes.filter(
+    (r) => (r.videoTrack || r.audioTrack) && inAudibleRange(local, players.get(r.identity)),
+  );
   const hasAnything =
     localCamTrack || localScreenTrack || visibleRemotes.length > 0 || remoteScreens.length > 0;
-  const localPresence = useGameStore((s) => s.localPresence);
   if (!hasAnything) return null;
 
   return (
