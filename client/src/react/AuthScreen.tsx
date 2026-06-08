@@ -3,11 +3,27 @@ import { useAuthStore } from '../stores/authStore';
 
 type Mode = 'login' | 'signup';
 
+/** Garantit qu'une promesse se résout/rejette en < ms (anti-blocage réseau). */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Délai dépassé — réessaie.')), ms),
+    ),
+  ]);
+}
+
+function isDuplicateEmail(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /already in use|validation_not_unique|already.*exists|invalid or already/i.test(msg);
+}
+
 export function AuthScreen() {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -24,13 +40,19 @@ export function AuthScreen() {
         const pseudo = name.trim().slice(0, 20);
         if (!pseudo) throw new Error('Choisis un pseudo.');
         if (password.length < 8) throw new Error('Mot de passe : 8 caractères minimum.');
-        await signup(email.trim(), password, pseudo);
+        await withTimeout(signup(email.trim(), password, pseudo), 20000);
       } else {
-        await loginPassword(email.trim(), password);
+        await withTimeout(loginPassword(email.trim(), password), 20000);
       }
       // La réussite déclenche le changement d'auth → App affiche la suite.
     } catch (err) {
-      setError(messageFor(err, mode));
+      // Compte déjà existant lors d'une inscription → bascule vers la connexion.
+      if (mode === 'signup' && isDuplicateEmail(err)) {
+        setMode('login');
+        setError('Cet email a déjà un compte — connecte-toi avec ton mot de passe.');
+      } else {
+        setError(messageFor(err, mode));
+      }
     } finally {
       setBusy(false);
     }
@@ -96,14 +118,38 @@ export function AuthScreen() {
           placeholder="Email"
           className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 outline-none focus:border-indigo-400"
         />
-        <input
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Mot de passe"
-          className="mb-4 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 outline-none focus:border-indigo-400"
-        />
+        <div className="relative mb-4">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mot de passe"
+            className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 pr-10 outline-none focus:border-indigo-400"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((s) => !s)}
+            title={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:text-slate-200"
+          >
+            {showPassword ? (
+              // œil barré
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                <path d="M6.61 6.61A18.5 18.5 0 0 0 2 12s3 8 10 8a9.12 9.12 0 0 0 5.39-1.61" />
+                <line x1="2" y1="2" x2="22" y2="22" />
+              </svg>
+            ) : (
+              // œil
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            )}
+          </button>
+        </div>
 
         {error && <p className="mb-3 text-sm text-rose-400">{error}</p>}
 
@@ -112,7 +158,9 @@ export function AuthScreen() {
           disabled={busy}
           className="w-full rounded-lg bg-indigo-500 px-4 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:opacity-50"
         >
-          {busy ? '...' : mode === 'login' ? 'Se connecter' : "S'inscrire"}
+          {busy
+            ? mode === 'login' ? 'Connexion…' : 'Création…'
+            : mode === 'login' ? 'Se connecter' : 'Créer un compte'}
         </button>
 
         <p className="mt-4 text-center text-sm text-slate-400">
