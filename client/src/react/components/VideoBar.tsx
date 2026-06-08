@@ -6,6 +6,7 @@ import type {
   RemoteVideoTrack,
 } from 'livekit-client';
 import { useGameStore } from '../../stores/gameStore';
+import { socketManager } from '../../network/SocketManager';
 import type { RemoteSnapshot } from '../../livekit/LiveKitManager';
 import { ScreenViewer } from './ScreenViewer';
 import type { Presence, PlayerState } from '../../types';
@@ -313,6 +314,13 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
         <Initial name={remote.name} id={remote.identity} />
       )}
       <audio ref={audioRef} autoPlay className="hidden" />
+      <button
+        onClick={() => socketManager.knock(remote.identity)}
+        title={`Faire signe à ${remote.name} (toc toc)`}
+        className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-xs ring-1 ring-white/15 transition hover:bg-indigo-600/80"
+      >
+        👋
+      </button>
       <div className="absolute bottom-0 left-0 right-0 flex items-center gap-1 truncate bg-black/60 px-2 py-0.5 text-xs text-white">
         <span
           title={presenceDot(presence).title}

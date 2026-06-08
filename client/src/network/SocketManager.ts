@@ -73,7 +73,7 @@ interface WhiteboardTextDeletePayload {
   textId: string;
 }
 import { useGameStore } from '../stores/gameStore';
-import { playJoin, playLeave, playChat, playApplause, playDmNotif } from '../sounds/sounds';
+import { playJoin, playLeave, playChat, playApplause, playDmNotif, playKnock } from '../sounds/sounds';
 
 const recentEmotes: Array<{ playerId: string; t: number }> = [];
 
@@ -90,6 +90,7 @@ class SocketManager {
   private proximityListeners = new Set<(ids: string[]) => void>();
   private forceMuteListeners = new Set<() => void>();
   private playerJoinedListeners = new Set<(p: PlayerState) => void>();
+  private knockListeners = new Set<(p: { fromPlayerId: string; fromName: string }) => void>();
   private chatListeners = new Set<(msg: ChatMessage) => void>();
   private emoteListeners = new Set<(e: EmoteEvent) => void>();
   private confettiListeners = new Set<(e: ConfettiEvent) => void>();
@@ -377,6 +378,14 @@ class SocketManager {
       for (const l of this.forceMuteListeners) l();
     });
 
+    // « Toc toc » reçu : quelqu'un veut te parler → son + notif.
+    socket.on('knocked', (payload: { fromPlayerId?: string; fromName?: string }) => {
+      if (!payload || typeof payload.fromName !== 'string') return;
+      playKnock();
+      const data = { fromPlayerId: String(payload.fromPlayerId ?? ''), fromName: payload.fromName };
+      for (const l of this.knockListeners) l(data);
+    });
+
     socket.on('speaking_state', (payload: SpeakingStatePayload) => {
       if (!payload || typeof payload.playerId !== 'string') return;
       for (const l of this.speakingStateListeners) l(payload);
@@ -494,6 +503,18 @@ class SocketManager {
     this.playerJoinedListeners.add(fn);
     return () => {
       this.playerJoinedListeners.delete(fn);
+    };
+  }
+
+  /** Envoie un « toc toc » à un membre (signaler qu'on veut lui parler). */
+  knock(targetPlayerId: string): void {
+    this.socket?.emit('knock', { targetPlayerId });
+  }
+
+  onKnock(fn: (p: { fromPlayerId: string; fromName: string }) => void): () => void {
+    this.knockListeners.add(fn);
+    return () => {
+      this.knockListeners.delete(fn);
     };
   }
 

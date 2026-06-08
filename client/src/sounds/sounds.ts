@@ -171,6 +171,26 @@ export function playMeow(): void {
   }
 }
 
+// « Toc toc » : deux coups secs et graves (quelqu'un frappe pour te parler).
+export function playKnock(): void {
+  const c = ensureCtx();
+  if (!c) return;
+  const t0 = c.currentTime;
+  for (const dt of [0, 0.18]) {
+    const osc = c.createOscillator();
+    const env = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, t0 + dt);
+    osc.frequency.exponentialRampToValueAtTime(110, t0 + dt + 0.08);
+    env.gain.setValueAtTime(0, t0 + dt);
+    env.gain.linearRampToValueAtTime(0.3, t0 + dt + 0.005);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.1);
+    osc.connect(env).connect(c.destination);
+    osc.start(t0 + dt);
+    osc.stop(t0 + dt + 0.12);
+  }
+}
+
 export function playJoin(): void {
   sweep(440, 880, 0.18, 0.12);
 }

@@ -175,6 +175,15 @@ export function WorkstationPanel() {
           <p className="text-xs text-slate-400">
             Revendiqué par <span className="font-semibold text-slate-200">{claimerName}</span>
           </p>
+          {ws?.claimedBy && (
+            <button
+              onClick={() => socketManager.knock(ws.claimedBy!)}
+              className="mt-2 w-full rounded-lg bg-indigo-600/80 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 active:scale-95"
+              title="Lui envoyer un « toc toc » pour signaler que tu veux lui parler"
+            >
+              👋 Faire signe
+            </button>
+          )}
           {isHost && (
             <button
               onClick={handleForceRelease}
