@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { liveKitManager } from '../../livekit/LiveKitManager';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
@@ -32,6 +32,27 @@ interface Props {
 export function MobileBar({ screenShareEnabled, onToggleScreenShare, onLeave, onOpenAvatar }: Props) {
   const snap = useSyncExternalStore(subscribe, getSnapshot);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dragY, setDragY] = useState(0);          // décalage vertical du glisser-pour-fermer
+  const dragStart = useRef<number | null>(null);
+
+  const closeMenu = () => { setMenuOpen(false); setDragY(0); dragStart.current = null; };
+
+  // Glisser la poignée vers le bas pour fermer (comme une vraie bottom sheet).
+  const onDragDown = (e: React.PointerEvent) => {
+    dragStart.current = e.clientY;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onDragMove = (e: React.PointerEvent) => {
+    if (dragStart.current === null) return;
+    setDragY(Math.max(0, e.clientY - dragStart.current));
+  };
+  const onDragEnd = () => {
+    if (dragStart.current === null) return;
+    const shouldClose = dragY > 90;
+    dragStart.current = null;
+    if (shouldClose) closeMenu();
+    else setDragY(0);
+  };
 
   const chatOpen = useGameStore((s) => s.chatPanelOpen);
   const toggleChat = useGameStore((s) => s.toggleChatPanel);
@@ -44,7 +65,7 @@ export function MobileBar({ screenShareEnabled, onToggleScreenShare, onLeave, on
   for (const n of unreadDmMap.values()) unreadDm += n;
   const totalUnread = unread + unreadDm;
 
-  const closeAnd = (fn: () => void) => () => { setMenuOpen(false); fn(); };
+  const closeAnd = (fn: () => void) => () => { closeMenu(); fn(); };
 
   return (
     <>
@@ -84,24 +105,39 @@ export function MobileBar({ screenShareEnabled, onToggleScreenShare, onLeave, on
         </PillButton>
       </div>
 
-      {/* Panneau ☰ — remonte du bas */}
+      {/* Panneau ☰ — remonte du bas (bottom sheet) */}
       {menuOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="pointer-events-auto fixed inset-0 z-50 flex flex-col justify-end">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
           />
           <div
-            className="animate-fadein relative max-h-[80vh] overflow-y-auto rounded-t-2xl bg-slate-900/97 p-4 text-slate-100 shadow-2xl ring-1 ring-white/10 backdrop-blur"
-            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
+            className="relative max-h-[82vh] overflow-y-auto rounded-t-2xl bg-slate-900/97 p-4 text-slate-100 shadow-2xl ring-1 ring-white/10 backdrop-blur"
+            style={{
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)',
+              transform: `translateY(${dragY}px)`,
+              transition: dragStart.current === null ? 'transform 0.2s ease-out' : 'none',
+            }}
           >
-            {/* poignée + titre */}
+            {/* Poignée de glissement (draggable) — séparée de la croix pour ne
+                pas lui voler le clic via la capture du pointeur. */}
+            <div
+              className="-mt-2 cursor-grab touch-none select-none py-2"
+              onPointerDown={onDragDown}
+              onPointerMove={onDragMove}
+              onPointerUp={onDragEnd}
+              onPointerCancel={onDragEnd}
+            >
+              <div className="mx-auto h-1.5 w-10 rounded-full bg-white/25" />
+            </div>
+            {/* Titre + croix (non draggable) */}
             <div className="mb-3 flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-300">Menu</span>
               <button
-                onClick={() => setMenuOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-slate-200"
-                aria-label="Fermer"
+                onClick={closeMenu}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg text-slate-200 active:bg-white/20"
+                aria-label="Fermer le menu"
               >
                 ✕
               </button>

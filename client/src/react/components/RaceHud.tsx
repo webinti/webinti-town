@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { inCircuitZone } from '../../circuit';
+import { isTouchDevice } from '../../lib/isTouchDevice';
+
+// Sur tactile, le bas-gauche est occupé par le joystick → on remonte le bouton
+// « 🏆 Circuit » en haut-gauche.
+const TOUCH = isTouchDevice();
 
 // F12 — HUD de course : chrono live, toast de tour bouclé, et leaderboard 🏆.
 // La détection des passages est faite côté serveur ; ce composant ne fait
@@ -71,7 +76,10 @@ export function RaceHud() {
   return (
     <>
       {/* Bouton leaderboard — toujours dispo */}
-      <div className="pointer-events-auto absolute bottom-24 left-4 z-30">
+      <div
+        className={`pointer-events-auto absolute z-30 flex flex-col ${TOUCH ? 'right-4 items-end' : 'left-4 items-start'}`}
+        style={TOUCH ? { top: 'calc(env(safe-area-inset-top) + 0.75rem)' } : { bottom: '6rem' }}
+      >
         <button
           onClick={() => setBoard((b) => !b)}
           className="flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-sm font-semibold text-amber-300 ring-1 ring-white/10 backdrop-blur transition hover:bg-slate-800"

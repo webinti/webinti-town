@@ -2,6 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
 import { WORKSTATIONS } from '../../workstations';
+import { isTouchDevice } from '../../lib/isTouchDevice';
+
+// Sur tactile, le bas de l'écran est occupé par le joystick + la pastille de
+// contrôles → on remonte le panneau en haut-centre pour ne pas les recouvrir.
+const TOUCH = isTouchDevice();
 
 const CLAIM_ERROR_TEXT: Record<string, string> = {
   on_kart: 'Descends du kart d’abord 🛻',
@@ -89,7 +94,10 @@ export function WorkstationPanel() {
   };
 
   return (
-    <div className="pointer-events-auto fixed bottom-4 left-1/2 z-30 w-64 -translate-x-1/2 rounded-xl bg-slate-900/95 p-3 text-slate-100 ring-1 ring-white/10 shadow-2xl">
+    <div
+      className="pointer-events-auto fixed left-1/2 z-30 w-64 -translate-x-1/2 rounded-xl bg-slate-900/95 p-3 text-slate-100 ring-1 ring-white/10 shadow-2xl"
+      style={TOUCH ? { top: 'calc(env(safe-area-inset-top) + 0.75rem)' } : { bottom: '1rem' }}
+    >
       {/* En-tête */}
       <div className="mb-3 flex items-center justify-between">
         {isMine && editing ? (
