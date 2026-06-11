@@ -2,12 +2,12 @@ import { useRef, useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { setTouchMove, clearTouchMove, requestTouchInteract } from '../../phaser/touchInput';
 
-// Contrôles tactiles (tablette / mobile) : joystick virtuel de déplacement
-// (bas-gauche) + bouton d'action contextuel (bas-droite, équivalent touche E).
-// Affiché uniquement sur appareil tactile (voir HUD).
+// Contrôles de jeu tactiles (tablette / mobile) : petit joystick de déplacement
+// (bas-gauche, discret) + bouton d'action contextuel (bas-droite, = touche E).
+// La barre micro/cam/chat/menu est gérée séparément par MobileBar.
 
-const BASE = 132; // diamètre de la base du joystick (px)
-const KNOB = 58;  // diamètre du pouce
+const BASE = 104; // diamètre de la base du joystick (px) — volontairement compact
+const KNOB = 46;
 const MAX = (BASE - KNOB) / 2; // débattement max du pouce
 
 const OBJECT_ACTION: Record<string, { label: string; icon: string }> = {
@@ -62,19 +62,23 @@ export function TouchControls() {
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 select-none"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* Joystick — bas-gauche */}
+      {/* Joystick — bas-gauche, discret (s'éclaircit quand on l'utilise) */}
       <div
         ref={baseRef}
         onPointerDown={onDown}
         onPointerMove={track}
         onPointerUp={onUp}
         onPointerCancel={onUp}
-        className="pointer-events-auto absolute bottom-6 left-5 touch-none rounded-full bg-slate-900/40 ring-1 ring-white/25 backdrop-blur-sm"
+        className={`pointer-events-auto absolute bottom-5 left-4 touch-none rounded-full ring-1 transition-colors ${
+          dragging ? 'bg-white/10 ring-white/30' : 'bg-white/5 ring-white/15'
+        }`}
         style={{ width: BASE, height: BASE }}
         aria-label="Joystick de déplacement"
       >
         <div
-          className="absolute rounded-full bg-white/85 shadow-lg ring-1 ring-black/10"
+          className={`absolute rounded-full shadow-md ring-1 ring-black/10 ${
+            dragging ? 'bg-white/90' : 'bg-white/55'
+          }`}
           style={{
             width: KNOB,
             height: KNOB,
@@ -85,15 +89,15 @@ export function TouchControls() {
         />
       </div>
 
-      {/* Bouton d'action contextuel — bas-droite */}
+      {/* Bouton d'action contextuel — bas-droite, au-dessus de la barre de contrôles */}
       {action && (
         <button
           onPointerDown={(e) => { e.preventDefault(); requestTouchInteract(); }}
-          className="pointer-events-auto absolute bottom-10 right-5 flex h-20 w-20 flex-col items-center justify-center rounded-full bg-indigo-600/90 text-white shadow-2xl ring-2 ring-white/30 transition active:scale-95"
+          className="pointer-events-auto absolute bottom-24 right-4 flex h-16 w-16 flex-col items-center justify-center rounded-full bg-indigo-600/95 text-white shadow-xl ring-2 ring-white/30 transition active:scale-95"
           aria-label={action.label}
         >
-          <span className="text-2xl leading-none">{action.icon}</span>
-          <span className="mt-0.5 text-[11px] font-bold">{action.label}</span>
+          <span className="text-xl leading-none">{action.icon}</span>
+          <span className="mt-0.5 text-[10px] font-bold">{action.label}</span>
         </button>
       )}
     </div>

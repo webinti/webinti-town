@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { isTouchDevice } from '../lib/isTouchDevice';
 import { TouchControls } from './components/TouchControls';
+import { MobileBar } from './components/MobileBar';
 import { socketManager } from '../network/SocketManager';
 import { Minimap } from './Minimap';
 import { useLiveKit } from './hooks/useLiveKit';
@@ -138,7 +139,11 @@ export function HUD() {
   }, [kickedReason]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col">
+    <div
+      className="pointer-events-none absolute inset-0 flex flex-col"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
+    >
+      {!isTouch && (
       <div className="pointer-events-auto flex items-center justify-between gap-2 bg-gradient-to-b from-black/60 to-transparent px-3 py-3 text-slate-100 sm:px-5 sm:py-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
           <button
@@ -163,6 +168,7 @@ export function HUD() {
           Webinti Town · {currentRoomSlug}
         </div>
       </div>
+      )}
 
       <VideoBar
         localCamTrack={localCamTrack}
@@ -181,7 +187,7 @@ export function HUD() {
 
       <ChatPanel />
 
-      <div className="pointer-events-none absolute right-4 top-3 z-30 flex items-center gap-2">
+      <div className={`pointer-events-none absolute right-4 top-3 z-30 flex items-center gap-2 ${isTouch ? 'hidden' : ''}`}>
         {isHost && (
           <button
             onClick={() => {
@@ -227,11 +233,15 @@ export function HUD() {
       )}
 
       {isTouch ? (
-        /* Tactile : barre d'outils en haut-centre (scrollable), le bas est
-           réservé au joystick + bouton d'action. Le zoom se fait au pinch. */
-        <div className="pointer-events-none absolute left-1/2 bottom-[172px] z-30 flex max-w-[94vw] -translate-x-1/2 justify-center">
-          {controlCluster}
-        </div>
+        /* Tactile : chrome épuré façon WorkAdventure — joystick + bouton d'action
+           (TouchControls), et une pastille compacte chat/micro/cam/menu (MobileBar)
+           qui range tout le secondaire dans un panneau « ☰ ». Zoom au pinch. */
+        <MobileBar
+          screenShareEnabled={screenShareEnabled}
+          onToggleScreenShare={() => { void toggleScreenShare(); }}
+          onLeave={handleLeave}
+          onOpenAvatar={() => setAvatarEditOpen(true)}
+        />
       ) : (
         <div className="pointer-events-none flex items-end justify-between p-4">
           {controlCluster}
