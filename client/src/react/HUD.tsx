@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import { isTouchDevice } from '../lib/isTouchDevice';
+import { TouchControls } from './components/TouchControls';
 import { socketManager } from '../network/SocketManager';
 import { Minimap } from './Minimap';
 import { useLiveKit } from './hooks/useLiveKit';
@@ -34,6 +36,7 @@ export function HUD() {
   const isHost = !!localPlayerId && localPlayerId === hostPlayerId;
   const currentRoomSlug = useGameStore((s) => s.currentRoomSlug);
   const mapZoom = useGameStore((s) => s.mapZoom);
+  const isTouch = useMemo(() => isTouchDevice(), []);
   const [avatarEditOpen, setAvatarEditOpen] = useState(false);
   const {
     screenShareEnabled,
@@ -53,6 +56,31 @@ export function HUD() {
     socketManager.disconnect();
     useGameStore.getState().reset();
   };
+
+  // Barre d'outils principale (micro/cam/écran/chat/emotes/quitter). Réutilisée
+  // en bas sur desktop, et en bandeau scrollable en haut-centre sur tactile.
+  const controlCluster = (
+    <div className="pointer-events-auto flex items-center gap-2 overflow-x-auto rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">
+      <AvControls />
+      <ControlButton
+        active={screenShareEnabled}
+        onClick={() => {
+          void toggleScreenShare();
+        }}
+        label={screenShareEnabled ? 'Stop écran' : 'Écran'}
+      />
+      <ChatButton />
+      <div className="mx-1 h-6 w-px shrink-0 bg-white/10" />
+      <EmoteBar />
+      <div className="mx-1 h-6 w-px shrink-0 bg-white/10" />
+      <button
+        onClick={handleLeave}
+        className="shrink-0 rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-400"
+      >
+        Quitter
+      </button>
+    </div>
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -111,13 +139,13 @@ export function HUD() {
 
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col">
-      <div className="pointer-events-auto flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent px-5 py-4 text-slate-100">
-        <div className="flex items-center gap-3">
+      <div className="pointer-events-auto flex items-center justify-between gap-2 bg-gradient-to-b from-black/60 to-transparent px-3 py-3 text-slate-100 sm:px-5 sm:py-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => setAvatarEditOpen(true)}
             title="Modifier mon avatar"
-            className="rounded-full bg-indigo-500/30 px-3.5 py-1.5 text-sm font-semibold ring-1 ring-indigo-400/50 transition hover:bg-indigo-500/50 hover:ring-indigo-300"
+            className="max-w-[40vw] truncate rounded-full bg-indigo-500/30 px-3 py-1.5 text-sm font-semibold ring-1 ring-indigo-400/50 transition hover:bg-indigo-500/50 hover:ring-indigo-300"
           >
             {name || 'Anonyme'} <span className="ml-0.5 opacity-70">✎</span>
           </button>
@@ -127,11 +155,11 @@ export function HUD() {
               Hôte
             </div>
           )}
-          <div className="text-xs text-slate-300">
+          <div className="hidden text-xs text-slate-300 sm:block">
             {connected ? 'Connecté' : 'Déconnecté'} · {playerCount} joueur(s)
           </div>
         </div>
-        <div className="text-sm font-semibold tracking-wide text-slate-300">
+        <div className="hidden shrink-0 text-sm font-semibold tracking-wide text-slate-300 md:block">
           Webinti Town · {currentRoomSlug}
         </div>
       </div>
@@ -198,56 +226,47 @@ export function HUD() {
         </div>
       )}
 
-      <div className="pointer-events-none flex items-end justify-between p-4">
-        <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">
-          <AvControls />
-          <ControlButton
-            active={screenShareEnabled}
-            onClick={() => {
-              void toggleScreenShare();
-            }}
-            label={screenShareEnabled ? 'Stop écran' : 'Écran'}
-          />
-          <ChatButton />
-          <div className="mx-1 h-6 w-px bg-white/10" />
-          <EmoteBar />
-          <div className="mx-1 h-6 w-px bg-white/10" />
-          <button
-            onClick={handleLeave}
-            className="rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-400"
-          >
-            Quitter
-          </button>
+      {isTouch ? (
+        /* Tactile : barre d'outils en haut-centre (scrollable), le bas est
+           réservé au joystick + bouton d'action. Le zoom se fait au pinch. */
+        <div className="pointer-events-none absolute left-1/2 bottom-[172px] z-30 flex max-w-[94vw] -translate-x-1/2 justify-center">
+          {controlCluster}
         </div>
-        <div className="pointer-events-none flex flex-col items-end gap-2">
-          <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-slate-900/80 p-1 ring-1 ring-white/10 backdrop-blur">
-            <button
-              onClick={() => {
-                const s = useGameStore.getState();
-                s.setMapZoom(s.mapZoom - 0.25);
-              }}
-              title="Dézoomer (-)"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-lg font-bold text-slate-100 hover:bg-slate-600"
-            >
-              −
-            </button>
-            <span className="min-w-[3.5rem] text-center text-xs font-semibold text-slate-200">
-              {Math.round(mapZoom * 100)}%
-            </span>
-            <button
-              onClick={() => {
-                const s = useGameStore.getState();
-                s.setMapZoom(s.mapZoom + 0.25);
-              }}
-              title="Zoomer (+)"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-lg font-bold text-slate-100 hover:bg-slate-600"
-            >
-              +
-            </button>
+      ) : (
+        <div className="pointer-events-none flex items-end justify-between p-4">
+          {controlCluster}
+          <div className="pointer-events-none flex flex-col items-end gap-2">
+            <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-slate-900/80 p-1 ring-1 ring-white/10 backdrop-blur">
+              <button
+                onClick={() => {
+                  const s = useGameStore.getState();
+                  s.setMapZoom(s.mapZoom - 0.25);
+                }}
+                title="Dézoomer (-)"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-lg font-bold text-slate-100 hover:bg-slate-600"
+              >
+                −
+              </button>
+              <span className="min-w-[3.5rem] text-center text-xs font-semibold text-slate-200">
+                {Math.round(mapZoom * 100)}%
+              </span>
+              <button
+                onClick={() => {
+                  const s = useGameStore.getState();
+                  s.setMapZoom(s.mapZoom + 0.25);
+                }}
+                title="Zoomer (+)"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-lg font-bold text-slate-100 hover:bg-slate-600"
+              >
+                +
+              </button>
+            </div>
+            <Minimap />
           </div>
-          <Minimap />
         </div>
-      </div>
+      )}
+
+      {isTouch && <TouchControls />}
     </div>
   );
 }

@@ -27,6 +27,8 @@ export function createPhaserConfig(parent: HTMLElement): Phaser.Types.Core.GameC
       keyboard: {
         capture: [],
       },
+      // 3 pointeurs actifs → permet le pinch-to-zoom (2 doigts) sur tablette/mobile.
+      activePointers: 3,
     },
     scene: [BootScene, GameScene],
   };

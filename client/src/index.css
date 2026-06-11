@@ -6,6 +6,17 @@ html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  /* Pas de scroll élastique / pull-to-refresh qui interfèrerait avec le jeu.
+     (On NE met PAS touch-action:none ici : les panneaux scrollables — chat,
+     admin — doivent rester défilables au doigt.) */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Le canvas Phaser ne doit jamais recevoir les gestes par défaut du navigateur
+   (scroll/zoom) : le joystick et le pinch-to-zoom les gèrent eux-mêmes. */
+canvas {
+  touch-action: none;
 }
 
 @keyframes fadein {

@@ -14,6 +14,7 @@ import { CircuitOverlay } from '../CircuitOverlay';
 import { AmbientLayer } from '../AmbientLayer';
 import { MOUNT_DISTANCE, BOOST_DURATION_MS, BOOST_COOLDOWN_MS } from '../../karts';
 import { CollisionLayer, type CollisionRect } from '../collision/CollisionLayer';
+import { touchInput, consumeTouchInteract } from '../touchInput';
 
 // Fireplace anchor in pixel coords — tile (x, y) center is (x*32+16, y*32+16).
 // Tile (1, 30): against the west wall of the meeting room.
@@ -80,9 +81,10 @@ export class GameScene extends Phaser.Scene {
   private appliedZoom = 1;
   private appliedAppearance: Appearance | null = null;
   private eKey?: Phaser.Input.Keyboard.Key;
-  private lastEDown = false;
   private kartPrompt?: Phaser.GameObjects.Text;
   private zKey?: Phaser.Input.Keyboard.Key;
+  /** Distance entre les 2 doigts à la frame précédente (pinch-to-zoom), null si pas de pinch. */
+  private pinchPrevDist: number | null = null;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
   private screenGlows: Array<{ wsId: string; glow: Phaser.GameObjects.Graphics; near: boolean }> = [];
   private animatedDoors: Array<{ sprite: Phaser.GameObjects.Sprite; cx: number; cy: number; open: boolean }> = [];
@@ -281,29 +283,10 @@ export class GameScene extends Phaser.Scene {
     // Debug Shift+D
     this.shiftKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     this.dKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-    this.eKey?.on('down', () => {
-      const store = useGameStore.getState();
-      if (store.inputFocused) return;
-      if (!this.nearbyObjectId) return;
-      const obj = store.interactiveObjects.find((o) => o.id === this.nearbyObjectId);
-      if (obj && obj.type === 'whiteboard') {
-        store.setOpenWhiteboard(obj.id);
-        return;
-      }
-      if (obj && obj.type === 'note') {
-        store.setOpenNote(obj.id);
-        return;
-      }
-      if (obj && obj.type === 'link') {
-        store.setOpenLink(obj.id);
-        return;
-      }
-      if (obj && obj.type === 'kanban') {
-        store.setOpenKanban(obj.id);
-        return;
-      }
-      socketManager.interactObject(this.nearbyObjectId);
-    });
+    this.eKey?.on('down', () => this.handleInteract());
+
+    // Pinch-to-zoom (tablette/mobile) : il faut un 2e pointeur tactile actif.
+    this.input.addPointer(1);
 
     for (const obj of useGameStore.getState().interactiveObjects) {
       this.refreshObject(obj);
@@ -677,8 +660,50 @@ export class GameScene extends Phaser.Scene {
     if (rp) rp.setTyping(false);
   }
 
+  /**
+   * Interaction unifiée (touche E OU bouton d'action tactile).
+   * Priorité : objet interactif proche > monter/descendre d'un kart.
+   */
+  private handleInteract(): void {
+    const store = useGameStore.getState();
+    if (store.inputFocused) return;
+    // 1) Objet interactif prioritaire (tableau, note, lien, kanban, ou objet serveur).
+    if (this.nearbyObjectId) {
+      const obj = store.interactiveObjects.find((o) => o.id === this.nearbyObjectId);
+      if (obj && obj.type === 'whiteboard') { store.setOpenWhiteboard(obj.id); return; }
+      if (obj && obj.type === 'note')       { store.setOpenNote(obj.id);       return; }
+      if (obj && obj.type === 'link')       { store.setOpenLink(obj.id);       return; }
+      if (obj && obj.type === 'kanban')     { store.setOpenKanban(obj.id);     return; }
+      socketManager.interactObject(this.nearbyObjectId);
+      return;
+    }
+    // 2) Sinon : kart — descendre si dessus, sinon monter le plus proche.
+    if (store.localKartId !== null) {
+      socketManager.sendKartDismount();
+    } else if (store.nearbyKartId !== null) {
+      socketManager.sendKartMount(store.nearbyKartId);
+    }
+  }
+
   update(): void {
     if (!this.player) return;
+    // Pinch-to-zoom (2 doigts) — ajuste mapZoom proportionnellement à
+    // l'écartement des doigts. Pris en compte avant l'application du zoom.
+    {
+      const p1 = this.input.pointer1;
+      const p2 = this.input.pointer2;
+      if (p1?.isDown && p2?.isDown) {
+        const dist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+        if (this.pinchPrevDist && this.pinchPrevDist > 0) {
+          const s = useGameStore.getState();
+          s.setMapZoom(s.mapZoom * (dist / this.pinchPrevDist));
+        }
+        this.pinchPrevDist = dist;
+      } else {
+        this.pinchPrevDist = null;
+      }
+    }
+
     const desiredZoom = useGameStore.getState().mapZoom;
     if (desiredZoom !== this.appliedZoom) {
       this.appliedZoom = desiredZoom;
@@ -703,6 +728,21 @@ export class GameScene extends Phaser.Scene {
           right: !!(c?.right.isDown || w?.D.isDown),
           dance: !!this.zKey?.isDown,
         };
+
+    // Joystick tactile : on fusionne ses axes avec le clavier (8 directions,
+    // zone morte pour éviter les micro-déplacements parasites).
+    if (!focused && touchInput.active) {
+      const DEAD = 0.22;
+      if (touchInput.dx < -DEAD) input.left = true;
+      if (touchInput.dx > DEAD) input.right = true;
+      if (touchInput.dy < -DEAD) input.up = true;
+      if (touchInput.dy > DEAD) input.down = true;
+    }
+
+    // Bouton d'action tactile (équivalent E) — consommé une seule fois.
+    if (!focused && consumeTouchInteract()) {
+      this.handleInteract();
+    }
 
     // Téléportation vers une cible (ex: "Aller au poste" sur une invitation).
     // On snap directement le sprite à la position, on annule la vélocité, puis
@@ -786,24 +826,7 @@ export class GameScene extends Phaser.Scene {
       this.player.boosting = storeState.localBoosting;
     }
 
-    // F11 — E pour monter/descendre (edge-trigger).
-    // Priorité: les objets interactifs (nearbyObjectId) ont la priorité sur les karts.
-    // Si le joueur est près d'un objet interactif, E reste dédié à cet objet.
-    // Si aucun objet interactif n'est proche, E gère le montage/déscente du kart.
-    if (!focused) {
-      const eDown = this.eKey?.isDown ?? false;
-      if (eDown && !this.lastEDown && this.nearbyObjectId === null) {
-        const s = useGameStore.getState();
-        if (s.localKartId !== null) {
-          socketManager.sendKartDismount();
-        } else if (s.nearbyKartId !== null) {
-          socketManager.sendKartMount(s.nearbyKartId);
-        }
-      }
-      this.lastEDown = eDown;
-    } else {
-      this.lastEDown = false;
-    }
+    // (Monter/descendre via E ou bouton tactile : géré par handleInteract().)
 
     // F11 — boost lifecycle (Shift while on kart). State machine, broadcasts boost_start/_end.
     {
@@ -1217,6 +1240,14 @@ export class GameScene extends Phaser.Scene {
         v.icon.setScale(1);
       }
     }
-    this.nearbyObjectId = nearestId;
+    if (nearestId !== this.nearbyObjectId) {
+      this.nearbyObjectId = nearestId;
+      // Miroir vers le store pour le libellé du bouton d'action tactile.
+      const store = useGameStore.getState();
+      const type = nearestId
+        ? store.interactiveObjects.find((o) => o.id === nearestId)?.type ?? 'object'
+        : null;
+      store.setNearbyObjectType(type);
+    }
   }
 }

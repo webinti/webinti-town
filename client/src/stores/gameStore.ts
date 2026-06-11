@@ -104,6 +104,10 @@ interface GameStore {
   setWorkstationsInitial: (list: WorkstationState[]) => void;
   nearbyWorkstationId: string | null;
   setNearbyWorkstationId: (id: string | null) => void;
+  // Objet interactif le plus proche (tableau, note, lien, kanban…). Mis à jour
+  // par le GameScene, lu par le bouton d'action tactile pour son libellé.
+  nearbyObjectType: string | null;
+  setNearbyObjectType: (t: string | null) => void;
   claimError: { workstationId: string; reason: string; x: number; y: number } | null;
   setClaimError: (e: { workstationId: string; reason: string; x: number; y: number } | null) => void;
   karts: Map<string, KartState>;
@@ -411,6 +415,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ workstations: new Map(list.map((ws) => [ws.id, ws])) }),
   nearbyWorkstationId: null,
   setNearbyWorkstationId: (id) => set({ nearbyWorkstationId: id }),
+  nearbyObjectType: null,
+  setNearbyObjectType: (t) => set({ nearbyObjectType: t }),
   claimError: null,
   setClaimError: (e) => set({ claimError: e }),
   karts: new Map<string, KartState>(),
@@ -514,6 +520,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       camMirror: true,
       workstations: new Map(),
       nearbyWorkstationId: null,
+      nearbyObjectType: null,
       claimError: null,
       karts: new Map(),
       localKartId: null,
