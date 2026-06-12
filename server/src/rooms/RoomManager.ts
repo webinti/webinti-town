@@ -250,8 +250,6 @@ export class RoomManager {
     // Position de spawn souhaitée (dernière position connue, envoyée par le
     // client). Utilisée si valide, sinon on retombe sur le spawn par défaut.
     spawn?: { x: number; y: number },
-    // Email du compte connecté (PocketBase). Seul config.hostEmail devient hôte.
-    email?: string,
   ): PlayerState | undefined {
     const room = this.rooms.get(slug);
     if (!room) return undefined;
@@ -279,10 +277,9 @@ export class RoomManager {
       boosting: false,
     };
     room.players.set(playerId, player);
-    // Hôte = uniquement le compte config.hostEmail (plus de "premier arrivé").
-    if (email && email.toLowerCase() === config.hostEmail) {
-      room.hostPlayerId = playerId;
-    }
+    // Le statut hôte n'est PLUS dérivé ici : il est accordé par les handlers
+    // via promoteToHost() APRÈS vérification serveur du token PocketBase
+    // (config.hostEmail) ou du hostToken. On ne fait pas confiance au client.
     return player;
   }
 

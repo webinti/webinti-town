@@ -23,3 +23,7 @@ client/public/assets/*.zip
 # prod est un `git pull + build` sur le VPS, qui ne peut pas lancer prepare-map
 # (sources LimeZu absentes). Régénère-les sur le Mac via `npm run prepare-map`
 # après chaque édition de la map dans Tiled, puis commit.
+
+# Tiled tileset scratch files (chemins absolus machine-spécifiques vers ~/Downloads)
+client/public/maps/Room_Builder_32x32.tsx
+client/public/maps/Tv_Studio_Design_preview_32x32.tsx

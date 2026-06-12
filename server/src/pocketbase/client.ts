@@ -56,6 +56,38 @@ export async function getPocketBase(): Promise<PocketBase> {
   return client;
 }
 
+/**
+ * Vérifie CÔTÉ SERVEUR un token d'auth utilisateur PocketBase envoyé par le
+ * client, et retourne l'email vérifié (minuscule) si le token est valide, sinon
+ * null. C'est le SEUL moyen de prouver l'identité : on ne fait jamais confiance
+ * à un email envoyé en clair par le client (sinon n'importe qui se déclare hôte).
+ *
+ * On crée un client PB jetable porteur du token, on rejette d'abord localement
+ * un JWT expiré/malformé (rapide), puis `authRefresh()` re-valide la signature
+ * et l'existence du compte côté PocketBase. Un timeout évite de bloquer le join
+ * si PocketBase est lent/injoignable (→ null = pas d'hôte, fail-safe).
+ */
+export async function verifyUserToken(token: string | undefined): Promise<string | null> {
+  if (!token || typeof token !== 'string') return null;
+  const doVerify = async (): Promise<string | null> => {
+    try {
+      const pb = new PocketBase(config.pocketbaseUrl);
+      pb.autoCancellation(false);
+      pb.authStore.save(token, null);
+      if (!pb.authStore.isValid) return null; // JWT expiré/malformé (contrôle local)
+      await pb.collection('users').authRefresh();
+      const email = (pb.authStore.model as { email?: string } | null)?.email;
+      return typeof email === 'string' ? email.toLowerCase() : null;
+    } catch {
+      return null;
+    }
+  };
+  return Promise.race([
+    doVerify(),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+  ]);
+}
+
 /** Returns true if any store is configured to use PocketBase. */
 export function anyStoreUsesPocketBase(): boolean {
   return (

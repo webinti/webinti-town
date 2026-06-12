@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { RoomServiceClient, TrackSource } from 'livekit-server-sdk';
 import { roomManager } from '../rooms/RoomManager.js';
 import { config } from '../config.js';
+import { verifyUserToken } from '../pocketbase/client.js';
 import { computeProximity } from './proximity.js';
 import { saveBest } from '../race/leaderboardStore.js';
 import { CIRCUIT_ID } from '../circuit.js';
@@ -236,7 +237,7 @@ function parseAppearance(raw: unknown): Appearance {
 
 export function registerSocketHandlers(io: Server): void {
   io.on('connection', (socket: Socket) => {
-    socket.on('join_room', (payload: unknown) => {
+    socket.on('join_room', async (payload: unknown) => {
       if (typeof payload !== 'object' || payload === null) return;
       const p = payload as Record<string, unknown>;
       const roomSlug = typeof p.roomSlug === 'string' ? p.roomSlug : '';
@@ -262,9 +263,15 @@ export function registerSocketHandlers(io: Server): void {
       const spawn = typeof p.spawnX === 'number' && typeof p.spawnY === 'number'
         ? { x: p.spawnX, y: p.spawnY }
         : undefined;
-      const email = typeof p.email === 'string' ? p.email : undefined;
-      const player = roomManager.addPlayer(roomSlug, socket.id, name, appearance, clientKey, spawn, email);
+      const player = roomManager.addPlayer(roomSlug, socket.id, name, appearance, clientKey, spawn);
       if (!player) return;
+      // Statut hôte = vérifié côté serveur, JAMAIS sur un email client en clair.
+      // Voie 1 : token PocketBase prouvé via authRefresh → email == config.hostEmail.
+      // Voie 2 : hostToken (secret partagé via URL) en filet de secours.
+      const verifiedEmail = await verifyUserToken(typeof p.token === 'string' ? p.token : undefined);
+      if (verifiedEmail && verifiedEmail === config.hostEmail) {
+        roomManager.promoteToHost(roomSlug, player.playerId);
+      }
       const hostToken = typeof p.hostToken === 'string' ? p.hostToken : '';
       if (config.hostToken && hostToken === config.hostToken) {
         roomManager.promoteToHost(roomSlug, player.playerId);

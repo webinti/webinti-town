@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { useAuthStore } from '../stores/authStore';
 import { socketManager } from '../network/SocketManager';
+import { pb } from '../pocketbase';
 import type { Appearance } from '../types';
 import { DEFAULT_APPEARANCE } from '../types';
 import { AvatarPreview, AvatarControls, clampAppearance } from './avatar/AvatarCustomizer';
@@ -76,7 +77,8 @@ export function JoinScreen() {
     socketManager.joinRoom({
       roomSlug, playerName: name, appearance, hostToken,
       spawnX: pos?.x, spawnY: pos?.y,
-      email: user?.email,
+      // Token PocketBase (vérifié serveur) → prouve l'email pour le statut hôte.
+      token: pb.authStore.token || undefined,
     });
   };
 

@@ -173,8 +173,10 @@ export interface JoinRoomPayload {
   // un refresh, au lieu du spawn par défaut. Le serveur valide.
   spawnX?: number;
   spawnY?: number;
-  // Email du compte connecté (PocketBase). Seul l'email hôte devient admin.
-  email?: string;
+  // Token d'auth PocketBase du compte connecté. Le serveur le VÉRIFIE
+  // (authRefresh) pour prouver l'email → seul config.hostEmail devient hôte.
+  // On n'envoie jamais l'email en clair (usurpable).
+  token?: string;
 }
 
 export interface PlayerMovePayload {
