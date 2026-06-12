@@ -27,3 +27,7 @@ client/public/assets/*.zip
 # Tiled tileset scratch files (chemins absolus machine-spécifiques vers ~/Downloads)
 client/public/maps/Room_Builder_32x32.tsx
 client/public/maps/Tv_Studio_Design_preview_32x32.tsx
+
+# Caches de build / réglages locaux (régénérés, ne pas versionner — cassaient les déploiements)
+client/tsconfig.tsbuildinfo
+.claude/settings.local.json
