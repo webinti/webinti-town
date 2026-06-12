@@ -267,11 +267,16 @@ export function registerSocketHandlers(io: Server): void {
       if (!player) return;
       // Statut hôte = vérifié côté serveur, JAMAIS sur un email client en clair.
       // Voie 1 : token PocketBase prouvé via authRefresh → email == config.hostEmail.
-      // Voie 2 : hostToken (secret partagé via URL) en filet de secours.
-      const verifiedEmail = await verifyUserToken(typeof p.token === 'string' ? p.token : undefined);
-      if (verifiedEmail && verifiedEmail === config.hostEmail) {
+      //   NON-BLOQUANT : la vérif (≤ 4 s si PocketBase est down) ne retarde pas le
+      //   join ; le badge hôte arrive juste après, via un host_changed dédié.
+      // Voie 2 : hostToken (secret partagé via URL) en filet de secours, synchrone.
+      void verifyUserToken(typeof p.token === 'string' ? p.token : undefined).then((verifiedEmail) => {
+        if (!verifiedEmail || verifiedEmail !== config.hostEmail) return;
+        const r = roomManager.getRoom(roomSlug);
+        if (!r || !r.players.has(player.playerId)) return; // parti entre-temps
         roomManager.promoteToHost(roomSlug, player.playerId);
-      }
+        io.to(roomSlug).emit('host_changed', { hostPlayerId: player.playerId });
+      });
       const hostToken = typeof p.hostToken === 'string' ? p.hostToken : '';
       if (config.hostToken && hostToken === config.hostToken) {
         roomManager.promoteToHost(roomSlug, player.playerId);
