@@ -58,10 +58,12 @@ export function HUD() {
     useGameStore.getState().reset();
   };
 
-  // Barre d'outils principale (micro/cam/écran/chat/emotes/quitter). Réutilisée
-  // en bas sur desktop, et en bandeau scrollable en haut-centre sur tactile.
+  // Barre d'outils principale (micro/cam/écran/chat/emotes/quitter) — desktop
+  // uniquement (sur tactile, MobileBar la remplace). ⚠ Pas d'overflow-* ici :
+  // les menus de périphériques (AvControls) s'ouvrent AU-DESSUS de la barre en
+  // position absolue, un overflow les clipperait (régression déjà vécue).
   const controlCluster = (
-    <div className="pointer-events-auto flex items-center gap-2 overflow-x-auto rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">
+    <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">
       <AvControls />
       <ControlButton
         active={screenShareEnabled}
