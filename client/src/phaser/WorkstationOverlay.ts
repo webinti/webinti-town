@@ -12,6 +12,10 @@ const LINE_WIDTH   = 2;
 
 export class WorkstationOverlay {
   private readonly gfx: Phaser.GameObjects.Graphics;
+  // Signature des couleurs dessinées au dernier redraw : tant qu'elle ne change
+  // pas, on saute le clear()+redessin (les états de poste changent rarement,
+  // alors que update() est appelé 60×/s).
+  private lastSig = '';
 
   constructor(scene: Phaser.Scene) {
     // Depth entre le sol (0) et les sprites joueurs (9).
@@ -24,8 +28,18 @@ export class WorkstationOverlay {
    * @param localPlayerId Identifiant du joueur local (pour distinguer "mine").
    */
   update(workstations: Map<string, WorkstationState>, localPlayerId: string | null): void {
-    this.gfx.clear();
+    // Calcule la signature (couleur par poste) et compare avant de redessiner.
+    let sig = '';
+    for (const def of WORKSTATIONS) {
+      if (def.hidden) continue;
+      const state = workstations.get(def.id);
+      const c = !state || state.claimedBy === null ? 0 : state.claimedBy === localPlayerId ? 1 : 2;
+      sig += c;
+    }
+    if (sig === this.lastSig) return; // rien n'a changé → pas de redraw
+    this.lastSig = sig;
 
+    this.gfx.clear();
     for (const def of WORKSTATIONS) {
       // Zones invisibles (salle conf etc.) : pas de contour dessiné.
       if (def.hidden) continue;

@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
-import type { ChatAttachment, ChatMessage, ChatMessageType, DmMessage } from '../../types';
+import type { ChatAttachment, ChatMessage, ChatMessageType, DmMessage, PlayerState } from '../../types';
+
+// Égalité « pertinente pour le chat » : ne déclenche un re-render QUE si la liste
+// des joueurs (ids), leurs noms ou leur couleur de tenue changent — et PAS à
+// chaque déplacement (sinon le panneau, quand il est ouvert, se re-render ~20×/s
+// pour rien puisqu'il n'affiche aucune position).
+function sameChatPlayers(a: Map<string, PlayerState>, b: Map<string, PlayerState>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [id, pa] of a) {
+    const pb = b.get(id);
+    if (!pb || pb.name !== pa.name || pb.appearance.outfit !== pa.appearance.outfit) return false;
+  }
+  return true;
+}
 
 const SHIRT_HEX = [
   '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
@@ -35,7 +48,7 @@ export function ChatPanel() {
   const chat = useGameStore((s) => s.chat);
   const unread = useGameStore((s) => s.unreadChat);
   const localId = useGameStore((s) => s.localPlayerId);
-  const players = useGameStore((s) => s.players);
+  const players = useGameStore((s) => s.players, sameChatPlayers);
   const setOpen = useGameStore((s) => s.setChatPanelOpen);
   const setInputFocused = useGameStore((s) => s.setInputFocused);
   const currentRoomSlug = useGameStore((s) => s.currentRoomSlug);

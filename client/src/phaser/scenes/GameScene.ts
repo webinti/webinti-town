@@ -85,6 +85,8 @@ export class GameScene extends Phaser.Scene {
   private zKey?: Phaser.Input.Keyboard.Key;
   /** Distance entre les 2 doigts à la frame précédente (pinch-to-zoom), null si pas de pinch. */
   private pinchPrevDist: number | null = null;
+  /** true si la traînée de boost a été dessinée (pour ne clear() qu'une fois au repos). */
+  private trailWasDrawn = false;
   private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
   private screenGlows: Array<{ wsId: string; glow: Phaser.GameObjects.Graphics; near: boolean }> = [];
   private animatedDoors: Array<{ sprite: Phaser.GameObjects.Sprite; cx: number; cy: number; open: boolean }> = [];
@@ -855,20 +857,29 @@ export class GameScene extends Phaser.Scene {
       }
 
       // Trail orange — visible par tous (local + distants) qui boostent.
+      // On collecte d'abord les sources ; si personne ne boost ET qu'il ne reste
+      // aucun point de traînée, on saute tout le travail (clear + redraw) — cas
+      // ultra-majoritaire hors course.
       if (this.boostTrail) {
-        this.boostTrail.clear();
         const sources: Array<{ x: number; y: number }> = [];
         if (boosting && this.player) sources.push({ x: this.player.sprite.x, y: this.player.sprite.y });
         for (const rp of this.remotePlayers.values()) {
           if (rp.kartId !== null && rp.boosting) sources.push({ x: rp.sprite.x, y: rp.sprite.y });
         }
-        for (const src of sources) this.trailPoints.push({ x: src.x, y: src.y, t: now });
-        this.trailPoints = this.trailPoints.filter((p) => now - p.t < 200);
-        for (const p of this.trailPoints) {
-          const age = (now - p.t) / 200;
-          const alpha = 0.6 * (1 - age);
-          const radius = 5 - age * 3;
-          this.boostTrail.fillStyle(0xf97316, alpha).fillCircle(p.x, p.y, radius);
+        if (sources.length === 0 && this.trailPoints.length === 0) {
+          // Rien à dessiner : on s'assure juste que le graphique est vide une fois.
+          if (this.trailWasDrawn) { this.boostTrail.clear(); this.trailWasDrawn = false; }
+        } else {
+          this.boostTrail.clear();
+          this.trailWasDrawn = true;
+          for (const src of sources) this.trailPoints.push({ x: src.x, y: src.y, t: now });
+          this.trailPoints = this.trailPoints.filter((p) => now - p.t < 200);
+          for (const p of this.trailPoints) {
+            const age = (now - p.t) / 200;
+            const alpha = 0.6 * (1 - age);
+            const radius = 5 - age * 3;
+            this.boostTrail.fillStyle(0xf97316, alpha).fillCircle(p.x, p.y, radius);
+          }
         }
       }
     }
@@ -876,21 +887,23 @@ export class GameScene extends Phaser.Scene {
     // F11 — Prompt on-screen "E pour monter / E pour descendre"
     if (this.kartPrompt) {
       const s = useGameStore.getState();
+      let text: string | null = null;
+      let tx = 0;
+      let ty = 0;
       if (s.localKartId !== null) {
-        this.kartPrompt.setText('E pour descendre')
-          .setPosition(this.player!.sprite.x, this.player!.sprite.y - 42)
-          .setVisible(true);
+        text = 'E pour descendre';
+        tx = this.player!.sprite.x;
+        ty = this.player!.sprite.y - 42;
       } else if (s.nearbyKartId !== null) {
         const k = s.karts.get(s.nearbyKartId);
-        if (k) {
-          this.kartPrompt.setText('E pour monter')
-            .setPosition(k.x, k.y - 18)
-            .setVisible(true);
-        } else {
-          this.kartPrompt.setVisible(false);
-        }
-      } else {
+        if (k) { text = 'E pour monter'; tx = k.x; ty = k.y - 18; }
+      }
+      if (text === null) {
         this.kartPrompt.setVisible(false);
+      } else {
+        // setText recalcule la texture/métriques → ne l'appeler que si le texte change.
+        if (this.kartPrompt.text !== text) this.kartPrompt.setText(text);
+        this.kartPrompt.setPosition(tx, ty).setVisible(true);
       }
     }
 
@@ -900,22 +913,22 @@ export class GameScene extends Phaser.Scene {
       const py = this.player.sprite.y;
       const PROXIMITY_RADIUS = 48; // px
       let nearestId: string | null = null;
-      let nearestDist = Infinity;
+      let nearestDistSq = Infinity;
       for (const def of WORKSTATIONS) {
         // Centre du poste
         const cx = (def.minX + def.maxX) / 2;
         const cy = (def.minY + def.maxY) / 2;
         const dx = px - cx;
         const dy = py - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const distSq = dx * dx + dy * dy; // pas de sqrt : on ne compare que des distances
         // Ou être à l'intérieur : vérifier si px,py est dans la zone (+ buffer)
         const inZone =
           px >= def.minX - PROXIMITY_RADIUS &&
           px <= def.maxX + PROXIMITY_RADIUS &&
           py >= def.minY - PROXIMITY_RADIUS &&
           py <= def.maxY + PROXIMITY_RADIUS;
-        if (inZone && dist < nearestDist) {
-          nearestDist = dist;
+        if (inZone && distSq < nearestDistSq) {
+          nearestDistSq = distSq;
           nearestId = def.id;
         }
       }

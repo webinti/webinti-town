@@ -1,10 +1,16 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useGameStore } from './stores/gameStore';
 import { useAuthStore } from './stores/authStore';
 import { AuthScreen } from './react/AuthScreen';
 import { JoinScreen } from './react/JoinScreen';
-import { HUD } from './react/HUD';
-import { PhaserGame } from './phaser/PhaserGame';
+
+// Phaser (~800 kB) et le HUD (qui tire LiveKit, ~490 kB) ne servent qu'une fois
+// en jeu : on les charge en lazy pour que les écrans d'auth/join s'affichent
+// instantanément, sans payer ces libs au premier rendu.
+const PhaserGame = lazy(() =>
+  import('./phaser/PhaserGame').then((m) => ({ default: m.PhaserGame })),
+);
+const HUD = lazy(() => import('./react/HUD').then((m) => ({ default: m.HUD })));
 
 export default function App() {
   const ready = useAuthStore((s) => s.ready);
@@ -34,8 +40,16 @@ export default function App() {
   // 4. En jeu
   return (
     <div className="relative h-full w-full bg-slate-900">
-      <PhaserGame />
-      <HUD />
+      <Suspense
+        fallback={
+          <div className="flex h-full w-full items-center justify-center bg-slate-900 text-slate-400">
+            Chargement de la carte…
+          </div>
+        }
+      >
+        <PhaserGame />
+        <HUD />
+      </Suspense>
     </div>
   );
 }

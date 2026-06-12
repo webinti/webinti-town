@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type {
   LocalVideoTrack,
@@ -243,11 +243,14 @@ function LocalTile({ track, name, id, localPresence }: {
   );
 }
 
-function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
+const RemoteTile = memo(function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const localPlayerId = useGameStore((s) => s.localPlayerId);
-  const players = useGameStore((s) => s.players);
+  // On NE s'abonne PAS à toute la Map players (qui change ~20×/s à chaque
+  // déplacement de n'importe qui) : seulement à MON joueur et au joueur distant
+  // de cette tuile. La tuile ne se re-render donc que quand l'un des deux bouge
+  // (ce qui est exactement quand le volume de proximité doit changer).
+  const localPlayer = useGameStore((s) => (s.localPlayerId ? s.players.get(s.localPlayerId) : undefined));
   const remotePlayer = useGameStore((s) => s.players.get(remote.identity));
   const presence = remotePlayer?.presence;
   const deafened = useGameStore((s) => s.deafened);
@@ -283,8 +286,7 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
     }
     // base = volume "proximité/poste" (0..1), puis × volume master (slider).
     let base: number;
-    const local = localPlayerId ? players.get(localPlayerId) : undefined;
-    const remotePlayer = players.get(remote.identity);
+    const local = localPlayer;
     if (!local || !remotePlayer) {
       base = 1;
     } else {
@@ -304,7 +306,7 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
       }
     }
     el.volume = base * masterVolume;
-  }, [players, localPlayerId, remote.identity, remote.audioTrack, deafened, masterVolume]);
+  }, [localPlayer, remotePlayer, remote.audioTrack, deafened, masterVolume]);
 
   return (
     <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">
@@ -334,4 +336,4 @@ function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
       {remote.isMuted && <MicMutedBadge />}
     </div>
   );
-}
+});
