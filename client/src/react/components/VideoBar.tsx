@@ -9,7 +9,11 @@ import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
 import type { RemoteSnapshot } from '../../livekit/LiveKitManager';
 import { ScreenViewer } from './ScreenViewer';
+import { isTouchDevice } from '../../lib/isTouchDevice';
 import type { Presence, PlayerState } from '../../types';
+
+// Vue mosaïque : réservée au desktop (sur mobile l'écran est trop petit).
+const IS_TOUCH = isTouchDevice();
 
 // Vrai si `remote` est à portée audible de `local` (mêmes règles que le volume) :
 // même poste/salle, ou < 8 tuiles en zone commune. Sert à n'afficher la tuile
@@ -74,6 +78,8 @@ export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }
   const players = useGameStore((s) => s.players);
   const localPlayerId = useGameStore((s) => s.localPlayerId);
   const local = localPlayerId ? players.get(localPlayerId) : undefined;
+  // Vue mosaïque (desktop) : grands carreaux façon Meet quand on est 3+.
+  const [grid, setGrid] = useState(false);
 
   // Une tuile (caméra + audio) n'est affichée QUE si la personne est à portée
   // audible (mêmes règles que le son : poste/conf ou < 8 tuiles). Au-delà, on
@@ -82,10 +88,84 @@ export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }
   const visibleRemotes = remotes.filter(
     (r) => (r.videoTrack || r.audioTrack) && inAudibleRange(local, players.get(r.identity)),
   );
+
+  // ⚠ Hooks AVANT le early return (sinon « rendered more hooks » au 1er remote).
+  // Échap ferme la mosaïque.
+  useEffect(() => {
+    if (!grid) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setGrid(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [grid]);
+  // Retour auto à la barre si la conversation retombe sous 3 personnes.
+  useEffect(() => {
+    if (grid && visibleRemotes.length < 2) setGrid(false);
+  }, [grid, visibleRemotes.length]);
+
   const hasAnything =
     localCamTrack || localScreenTrack || visibleRemotes.length > 0 || remoteScreens.length > 0;
   if (!hasAnything) return null;
 
+  // ── Vue mosaïque ─────────────────────────────────────────────────────────
+  // Panneau central large qui laisse la barre de contrôles du bas accessible
+  // (micro/cam/quitter). Les tuiles sont les MÊMES composants que la barre
+  // (un seul attach audio). Échap ou « Réduire » pour revenir.
+  if (grid) {
+    const tileCount = 1 + visibleRemotes.length;
+    const gridCols = tileCount <= 4 ? 'grid-cols-2' : tileCount <= 9 ? 'grid-cols-3' : 'grid-cols-4';
+    return (
+      <>
+        <ScreenViewers
+          localScreenTrack={localScreenTrack}
+          localName={localName}
+          remoteScreens={remoteScreens}
+        />
+        <div className="pointer-events-auto fixed bottom-24 left-1/2 top-12 z-30 flex w-[min(96vw,1400px)] -translate-x-1/2 flex-col rounded-2xl bg-slate-950/95 shadow-2xl ring-1 ring-white/10 backdrop-blur">
+          <div className="flex items-center justify-between px-4 py-2">
+            <span className="text-sm font-semibold text-slate-200">
+              👥 {tileCount} en conversation
+            </span>
+            <button
+              onClick={() => setGrid(false)}
+              title="Réduire (Échap)"
+              className="flex h-8 items-center gap-1.5 rounded-full bg-white/10 px-3 text-sm font-medium text-slate-200 transition hover:bg-white/20"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M9 15l-6 6M3 15h6v6M15 9l6-6M15 3h6v6" />
+              </svg>
+              Réduire
+            </button>
+          </div>
+          <div className={`grid flex-1 ${gridCols} auto-rows-fr gap-3 overflow-y-auto p-3 pt-0`}>
+            {localCamTrack ? (
+              <LocalTile
+                large
+                track={localCamTrack}
+                name={localName}
+                id={localPlayerId ?? 'local'}
+                localPresence={localPresence}
+              />
+            ) : (
+              /* Sans caméra locale : carreau placeholder avec l'initiale. */
+              <div className="relative h-full min-h-[160px] w-full overflow-hidden rounded-xl bg-slate-900 ring-1 ring-white/10">
+                <Initial name={localName} id={localPlayerId ?? 'local'} />
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 text-xs text-white">
+                  {localName} (vous)
+                </div>
+              </div>
+            )}
+            {visibleRemotes.map((r) => (
+              <RemoteTile key={r.identity} remote={r} large />
+            ))}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ── Barre compacte (mode normal) ─────────────────────────────────────────
   return (
     <div className="pointer-events-none absolute left-1/2 top-14 z-20 flex -translate-x-1/2 flex-col items-center gap-2">
       <ScreenViewers
@@ -99,13 +179,29 @@ export function VideoBar({ localCamTrack, localScreenTrack, localName, remotes }
             <LocalTile
               track={localCamTrack}
               name={localName}
-              id={useGameStore.getState().localPlayerId ?? 'local'}
+              id={localPlayerId ?? 'local'}
               localPresence={localPresence}
             />
           )}
           {visibleRemotes.map((r) => (
             <RemoteTile key={r.identity} remote={r} />
           ))}
+          {/* Vue mosaïque dispo dès 3 personnes en conversation (desktop). */}
+          {!IS_TOUCH && visibleRemotes.length >= 2 && (
+            <button
+              onClick={() => setGrid(true)}
+              title="Vue mosaïque — grands carreaux (3+ participants)"
+              aria-label="Passer en vue mosaïque"
+              className="flex w-10 items-center justify-center self-stretch rounded-lg bg-slate-800/80 text-slate-300 ring-1 ring-white/10 transition hover:bg-indigo-600 hover:text-white"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -172,11 +268,13 @@ function MicMutedBadge() {
   );
 }
 
-function LocalTile({ track, name, id, localPresence }: {
+function LocalTile({ track, name, id, localPresence, large }: {
   track: LocalVideoTrack;
   name: string;
   id: string;
   localPresence: Presence | undefined;
+  /** true = grand carreau (vue mosaïque), sinon vignette de la barre. */
+  large?: boolean;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const camMirror = useGameStore((s) => s.camMirror);
@@ -216,7 +314,9 @@ function LocalTile({ track, name, id, localPresence }: {
     };
   }, [track, isLive]);
   return (
-    <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">
+    <div className={large
+      ? 'relative h-full min-h-[160px] w-full overflow-hidden rounded-xl bg-slate-900 ring-1 ring-white/10'
+      : 'relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10'}>
       {isLive ? (
         <video
           ref={ref}
@@ -243,7 +343,7 @@ function LocalTile({ track, name, id, localPresence }: {
   );
 }
 
-const RemoteTile = memo(function RemoteTile({ remote }: { remote: RemoteSnapshot }) {
+const RemoteTile = memo(function RemoteTile({ remote, large }: { remote: RemoteSnapshot; large?: boolean }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   // On NE s'abonne PAS à toute la Map players (qui change ~20×/s à chaque
@@ -309,7 +409,9 @@ const RemoteTile = memo(function RemoteTile({ remote }: { remote: RemoteSnapshot
   }, [localPlayer, remotePlayer, remote.audioTrack, deafened, masterVolume]);
 
   return (
-    <div className="relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10">
+    <div className={large
+      ? 'relative h-full min-h-[160px] w-full overflow-hidden rounded-xl bg-slate-900 ring-1 ring-white/10'
+      : 'relative h-[112px] w-[150px] overflow-hidden rounded-lg bg-slate-900 ring-1 ring-white/10'}>
       {remote.videoTrack ? (
         <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
       ) : (
