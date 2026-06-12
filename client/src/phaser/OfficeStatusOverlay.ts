@@ -33,10 +33,15 @@ export class OfficeStatusOverlay {
     }
   }
 
-  /** Appelé depuis GameScene.update() ; dirty-check interne (occupation rare). */
-  update(players: Map<string, PlayerState>): void {
+  /**
+   * Appelé depuis GameScene.update() ; dirty-check interne (occupation rare).
+   * On EXCLUT le joueur local du comptage : le badge sert à signaler la présence
+   * des AUTRES (inutile et déroutant de voir « Occupé » sur son propre bureau).
+   */
+  update(players: Map<string, PlayerState>, localPlayerId: string | null): void {
     const counts = new Map<string, number>();
     for (const p of players.values()) {
+      if (p.playerId === localPlayerId) continue;
       if (p.workstationId) counts.set(p.workstationId, (counts.get(p.workstationId) ?? 0) + 1);
     }
 

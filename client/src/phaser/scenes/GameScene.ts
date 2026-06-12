@@ -785,7 +785,8 @@ export class GameScene extends Phaser.Scene {
     const localId = storeState.localPlayerId;
     this.workstationOverlay?.update(storeState.workstations, localId);
     // E3 — badges « Occupé / En réunion » par zone (dirty-check interne).
-    this.officeStatus?.update(storeState.players);
+    // localId exclu : on ne s'affiche pas « Occupé » à soi-même sur son bureau.
+    this.officeStatus?.update(storeState.players, localId);
 
     // F12 — surligne le prochain portique quand on est en kart.
     this.circuitOverlay?.setNext(storeState.raceNextIndex, storeState.localKartId !== null);
