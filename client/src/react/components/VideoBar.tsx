@@ -319,7 +319,8 @@ const RemoteTile = memo(function RemoteTile({ remote }: { remote: RemoteSnapshot
       <button
         onClick={() => socketManager.knock(remote.identity)}
         title={`Faire signe à ${remote.name} (toc toc)`}
-        className="absolute left-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-xs ring-1 ring-white/15 transition hover:bg-indigo-600/80"
+        aria-label={`Faire signe à ${remote.name}`}
+        className="absolute left-1 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-sm ring-1 ring-white/15 transition hover:bg-indigo-600/80 active:scale-95"
       >
         👋
       </button>

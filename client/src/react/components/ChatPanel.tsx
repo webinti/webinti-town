@@ -239,7 +239,7 @@ export function ChatPanel() {
   const dmMessages = tab === 'dm' && activeDmTarget ? (dmConversations.get(activeDmTarget) ?? []) : [];
 
   return (
-    <div className="pointer-events-auto fixed right-4 top-20 flex h-[60vh] w-96 flex-col rounded-lg bg-slate-900/95 text-slate-100 shadow-2xl ring-1 ring-white/10 backdrop-blur">
+    <div className="pointer-events-auto fixed right-4 top-20 flex h-[60vh] w-[calc(100vw-2rem)] max-w-96 flex-col rounded-lg bg-slate-900/95 text-slate-100 shadow-2xl ring-1 ring-white/10 backdrop-blur sm:w-96">
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
         <div className="flex gap-1">
           <button
@@ -281,7 +281,7 @@ export function ChatPanel() {
       {tab === 'dm' ? (
         <div className="flex flex-1 overflow-hidden">
           {/* Colonne gauche : liste des contacts */}
-          <div className="w-32 shrink-0 overflow-y-auto border-r border-white/10 bg-slate-900/60">
+          <div className="w-24 shrink-0 overflow-y-auto border-r border-white/10 bg-slate-900/60 sm:w-32">
             {otherPlayers.length === 0 && offlineWithHistory.length === 0 && (
               <div className="px-2 py-4 text-center text-[11px] text-slate-500">
                 Personne dans la room

@@ -107,6 +107,8 @@ export function AuthScreen() {
             maxLength={20}
             onChange={(e) => setName(e.target.value)}
             placeholder="Pseudo"
+            autoComplete="nickname"
+            autoCapitalize="words"
             className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 outline-none focus:border-indigo-400"
           />
         )}
@@ -116,6 +118,11 @@ export function AuthScreen() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email"
+          autoComplete="email"
+          inputMode="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           className="mb-3 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 outline-none focus:border-indigo-400"
         />
         <div className="relative mb-4">
@@ -125,6 +132,10 @@ export function AuthScreen() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Mot de passe"
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 pr-10 outline-none focus:border-indigo-400"
           />
           <button

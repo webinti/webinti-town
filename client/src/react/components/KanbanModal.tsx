@@ -115,7 +115,7 @@ export function KanbanModal() {
             ✕
           </button>
         </div>
-        <div className="flex flex-1 gap-3 overflow-auto p-4">
+        <div className="flex flex-1 flex-col gap-3 overflow-auto p-4 sm:flex-row">
           {COLUMN_ORDER.map((col) => (
             <div
               key={col}
@@ -142,7 +142,7 @@ export function KanbanModal() {
                 // Drop at end of target column.
                 socketManager.kanbanMove(card.id, col, byColumn[col].length);
               }}
-              className={`flex w-1/3 min-w-[260px] flex-col gap-2 rounded-lg p-3 ring-1 ${COLUMN_BG[col]} ${hoverColumn === col ? 'ring-2 ring-indigo-400' : ''}`}
+              className={`flex w-full flex-col gap-2 rounded-lg p-3 ring-1 sm:w-1/3 sm:min-w-[260px] ${COLUMN_BG[col]} ${hoverColumn === col ? 'ring-2 ring-indigo-400' : ''}`}
             >
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold uppercase tracking-wide">{COLUMN_LABELS[col]}</h3>
