@@ -15,6 +15,8 @@ import { AmbientLayer } from '../AmbientLayer';
 import { MOUNT_DISTANCE, BOOST_DURATION_MS, BOOST_COOLDOWN_MS } from '../../karts';
 import { CollisionLayer, type CollisionRect } from '../collision/CollisionLayer';
 import { touchInput, consumeTouchInteract } from '../touchInput';
+import { DayNightOverlay } from '../DayNightOverlay';
+import { OfficeStatusOverlay } from '../OfficeStatusOverlay';
 
 // Fireplace anchor in pixel coords — tile (x, y) center is (x*32+16, y*32+16).
 // Tile (1, 30): against the west wall of the meeting room.
@@ -68,6 +70,8 @@ export class GameScene extends Phaser.Scene {
   private unsubUpdate?: () => void;
   private unsubRemove?: () => void;
   private unsubStore?: () => void;
+  private dayNight?: DayNightOverlay;
+  private officeStatus?: OfficeStatusOverlay;
   private unsubEmote?: () => void;
   private unsubConfetti?: () => void;
   private fKey?: Phaser.Input.Keyboard.Key;
@@ -264,6 +268,10 @@ export class GameScene extends Phaser.Scene {
     this.kartOverlay = new KartOverlay(this);
     this.circuitOverlay = new CircuitOverlay(this);
     this.ambient = new AmbientLayer(this);
+    // E1 — cycle jour/nuit (teinte selon l'heure locale). E3 — badges de statut
+    // « Occupé / En réunion » au-dessus des bureaux (calcul client par zone).
+    this.dayNight = new DayNightOverlay(this, worldW, worldH);
+    this.officeStatus = new OfficeStatusOverlay(this);
 
     this.boostGfx = this.add.graphics().setDepth(11);
     this.boostTrail = this.add.graphics().setDepth(7);
@@ -311,7 +319,21 @@ export class GameScene extends Phaser.Scene {
       for (const obj of s.interactiveObjects) this.refreshObject(obj);
     });
 
+    // Mode éco (batterie) : met le rendu Phaser en veille quand l'onglet passe
+    // en arrière-plan — cas très fréquent en télétravail (l'onglet reste ouvert
+    // toute la journée). Le canvas WebGL cesse de tourner pour rien ; on réveille
+    // au retour. Le réseau (socket) continue côté React, l'état se resynchronise.
+    const onVisibility = () => {
+      if (document.hidden) this.game.loop.sleep();
+      else this.game.loop.wake();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      this.game.loop.wake();
+      this.dayNight?.destroy();
+      this.officeStatus?.destroy();
       this.unsubUpdate?.();
       this.unsubRemove?.();
       this.unsubStore?.();
@@ -762,6 +784,8 @@ export class GameScene extends Phaser.Scene {
     const storeState = useGameStore.getState();
     const localId = storeState.localPlayerId;
     this.workstationOverlay?.update(storeState.workstations, localId);
+    // E3 — badges « Occupé / En réunion » par zone (dirty-check interne).
+    this.officeStatus?.update(storeState.players);
 
     // F12 — surligne le prochain portique quand on est en kart.
     this.circuitOverlay?.setNext(storeState.raceNextIndex, storeState.localKartId !== null);
