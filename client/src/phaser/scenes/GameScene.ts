@@ -208,20 +208,6 @@ export class GameScene extends Phaser.Scene {
       'wheel',
       (
         _pointer: Phaser.Input.Pointer,
-        _over: unknown,
-        _dx: number,
-        dy: number,
-      ) => {
-        const cur = useGameStore.getState().mapZoom;
-        const step = dy < 0 ? 0.1 : -0.1;
-        useGameStore.getState().setMapZoom(cur + step);
-      },
-    );
-
-    this.input.on(
-      'wheel',
-      (
-        _pointer: Phaser.Input.Pointer,
         _objects: unknown,
         _dx: number,
         dy: number,

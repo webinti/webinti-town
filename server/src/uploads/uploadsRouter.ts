@@ -43,6 +43,17 @@ function checkRateLimit(clientKey: string): boolean {
   return true;
 }
 
+// Purge périodique des clés inactives : sans ça, la Map accumule une entrée par
+// clientKey vu (rotation d'utilisateurs sur des mois → fuite mémoire lente).
+// Toutes les 10 min, on retire les clés dont tous les stamps sont hors fenêtre.
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, stamps] of rateLimitWindows) {
+    while (stamps.length > 0 && now - stamps[0]! > RATE_WINDOW_MS) stamps.shift();
+    if (stamps.length === 0) rateLimitWindows.delete(key);
+  }
+}, 10 * 60_000).unref();
+
 // ─── Multer (in-memory, limit 5 MB) ────────────────────────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),
