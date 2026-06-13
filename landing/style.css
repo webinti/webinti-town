@@ -59,9 +59,9 @@ header{position:sticky;top:0;z-index:100;background:rgba(252,248,240,.87);backdr
 .show h3{font-size:clamp(1.55rem,3vw,2.2rem);margin:14px 0 14px}
 .show p.lead{font-size:1.06rem}
 .show ul{list-style:none;margin-top:18px;display:flex;flex-direction:column;gap:11px}
-.show li{display:flex;gap:11px;font-size:1.01rem;color:var(--soft);font-weight:500}
-.show li b{color:var(--ink)}
-.show li::before{content:"✓";color:var(--green);font-weight:900;flex:0 0 auto}
+.show li{position:relative;padding-left:26px;font-size:1.01rem;color:var(--soft);font-weight:500}
+.show li b{color:var(--ink);font-weight:700}
+.show li::before{content:"✓";position:absolute;left:0;top:0;color:var(--green);font-weight:900}
 .shot{border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 30px 60px -28px rgba(33,26,46,.35);position:relative}
 .shot img{width:100%;object-fit:cover}
 .show.rev .media{order:-1}

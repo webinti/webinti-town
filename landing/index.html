@@ -35,31 +35,16 @@
 .frame-bar .url{margin:0 auto;font-family:var(--pixel);font-size:.8rem;color:#9d94b5;background:#241c35;border-radius:8px;padding:3px 16px}
 .mapbox{position:relative;overflow:hidden}
 .mapbox>img{width:100%;display:block}
-.wk{position:absolute;width:2.6%;z-index:4;will-change:transform}
-/* proportions réelles du sprite : 1 frame = 32×64 → ratio 1/2 (sinon perso écrasé) */
-.wk .sp{width:100%;aspect-ratio:1/2;background-size:200% 100%;animation:fr .46s steps(1) infinite}
-@keyframes fr{50%{background-position:-100% 0}}
-.wk .nm{position:absolute;bottom:103%;left:50%;transform:translateX(-50%);background:rgba(23,18,33,.85);color:#fff;font-size:.66rem;font-weight:700;padding:1px 8px;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:5px}
-.wk .nm i{width:6px;height:6px;border-radius:50%;background:#52d06c;font-style:normal}
-/* Tous les sprites regardent à DROITE ; le retournement (retour) est synchronisé
-   sur la durée du trajet. Chemins calés sur les zones DÉGAGÉES de la map :
-   w1 = allée de l'open-space (entre les 2 rangées de bureaux)
-   w2 = couloir gris horizontal · w3 = hall beige devant les bureaux privés */
-.w1{animation:path1 18s linear infinite}
-.w1 .sp{animation:fr .46s steps(1) infinite,flipR 18s linear infinite}
-.w2{animation:path2 22s linear infinite}
-.w2 .sp{animation:fr .5s steps(1) infinite,flipL 22s linear infinite}
-.w3{animation:path3 15s linear infinite}
-.w3 .sp{animation:fr .42s steps(1) infinite,flipR 15s linear infinite}
-@keyframes path1{0%{left:27%;top:31%}48%{left:60%;top:31%}52%{left:60%;top:31%}100%{left:27%;top:31%}}
-@keyframes path2{0%{left:46%;top:50%}48%{left:5%;top:50%}52%{left:5%;top:50%}100%{left:46%;top:50%}}
-@keyframes path3{0%{left:50%;top:53%}48%{left:71%;top:53%}52%{left:71%;top:53%}100%{left:50%;top:53%}}
-@keyframes flipR{0%,48%{transform:scaleX(1)}52%,100%{transform:scaleX(-1)}}
-@keyframes flipL{0%,48%{transform:scaleX(-1)}52%,100%{transform:scaleX(1)}}
-/* duo en discussion — dans le salon, devant la cheminée */
-.pair{position:absolute;left:76%;top:53%;width:6.2%;z-index:4;display:flex;gap:16%}
-.pair .st{width:42%;aspect-ratio:1/2;background-size:200% 100%}
-.blb{position:absolute;left:77%;top:41%;z-index:5;background:#fff;border:1.5px solid rgba(33,26,46,.25);border-radius:12px;padding:6px 12px;font-size:.78rem;font-weight:700;box-shadow:0 8px 20px -8px rgba(33,26,46,.3);animation:bob 4s ease-in-out infinite}
+/* Avatars STATIQUES, ancrés par les PIEDS (translate -50%,-100%) : left/top =
+   le point au sol où le perso se tient. Plus gros (4.4%) pour la visibilité. */
+.av{position:absolute;width:4.4%;z-index:4;transform:translate(-50%,-100%)}
+.av .sp{width:100%;aspect-ratio:1/2;background-size:100% 100%;animation:idle 3s ease-in-out infinite}
+.av.d2 .sp{animation-delay:-1.4s}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-4%)}}
+.av .nm{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:3px;background:rgba(23,18,33,.85);color:#fff;font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.av .nm i{width:6px;height:6px;border-radius:50%;background:#52d06c;font-style:normal}
+.av .sh{position:absolute;left:50%;bottom:-3%;width:74%;height:7%;background:radial-gradient(ellipse,rgba(0,0,0,.3),transparent 70%);transform:translateX(-50%);z-index:-1}
+.blb{position:absolute;left:28%;top:22%;z-index:5;background:#fff;border:1.5px solid rgba(33,26,46,.25);border-radius:12px;padding:6px 12px;font-size:.78rem;font-weight:700;box-shadow:0 8px 20px -8px rgba(33,26,46,.3);animation:bob 4s ease-in-out infinite}
 .blb::after{content:"";position:absolute;left:18px;bottom:-8px;width:12px;height:12px;background:#fff;border-right:1.5px solid rgba(33,26,46,.25);border-bottom:1.5px solid rgba(33,26,46,.25);transform:rotate(45deg)}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 .trust{padding:26px 0 0;display:flex;justify-content:center;gap:34px;flex-wrap:wrap;font-weight:600;font-size:.95rem;color:var(--soft)}
@@ -101,13 +86,10 @@
       <div class="frame-bar"><span class="d"></span><span class="d"></span><span class="d"></span><span class="url">live.webinti.com</span></div>
       <div class="mapbox">
         <img class="pixelated" src="assets/map-hero.png" alt="La map de Webinti Town">
-        <div class="wk w1"><div class="nm"><i></i>Léa</div><div class="sp pixelated" style="background-image:url(assets/walk-0.png)"></div></div>
-        <div class="wk w2"><div class="nm"><i></i>Marc</div><div class="sp pixelated" style="background-image:url(assets/walk-2.png);animation-duration:.5s"></div></div>
-        <div class="wk w3"><div class="nm"><i></i>Sofia</div><div class="sp pixelated" style="background-image:url(assets/walk-1.png);animation-duration:.42s"></div></div>
-        <div class="pair">
-          <div class="st pixelated" style="background-image:url(assets/walk-3.png)"></div>
-          <div class="st pixelated" style="background-image:url(assets/walk-1.png);transform:scaleX(-1)"></div>
-        </div>
+        <!-- statiques, pieds posés sur du sol valide -->
+        <div class="av" style="left:24%;top:38%"><div class="sh"></div><div class="nm"><i></i>Léa</div><div class="sp pixelated" style="background-image:url(assets/idle-0.png)"></div></div>
+        <div class="av d2" style="left:13%;top:84%"><div class="sh"></div><div class="nm"><i></i>Marc</div><div class="sp pixelated" style="background-image:url(assets/idle-1.png)"></div></div>
+        <div class="av" style="left:88%;top:82%"><div class="sh"></div><div class="nm"><i></i>Sofia</div><div class="sp pixelated" style="background-image:url(assets/idle-2.png)"></div></div>
         <div class="blb">👋 « Tu as 2 min ? »</div>
       </div>
     </div>
