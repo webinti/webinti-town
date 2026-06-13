@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Webinti Town — Le bureau virtuel de ton équipe, à la française</title>
+<meta name="description" content="Webinti Town : le bureau virtuel 2D où ton équipe se retrouve, parle et collabore comme au bureau. Alternative française à Gather.town — données en Europe (RGPD), moitié du prix, et le premier monde où ton IA a son propre poste." />
+<meta property="og:title" content="Webinti Town — le bureau virtuel à la française" />
+<meta property="og:description" content="Comme au bureau, en mieux. Alternative française à Gather.town, RGPD, IA-native." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBF5EA;
+  --paper-2:#F3E9D6;
+  --ink:#1D1726;
+  --ink-soft:#433a52;
+  --coral:#FF6A45;
+  --coral-deep:#E8431C;
+  --blue:#3B7DF6;
+  --green:#5BA845;
+  --gold:#F5B53D;
+  --night:#191427;
+  --night-2:#241b3a;
+  --line:#1D1726;
+  --shadow:6px 6px 0 var(--ink);
+  --shadow-sm:4px 4px 0 var(--ink);
+  --r:18px;
+  --maxw:1200px;
+  --serif:"Fraunces",Georgia,serif;
+  --sans:"Hanken Grotesk",-apple-system,sans-serif;
+  --pixel:"Pixelify Sans",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--sans);
+  background:var(--paper);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+  line-height:1.55;
+}
+img{display:block;max-width:100%}
+.pixelated{image-rendering:pixelated;image-rendering:crisp-edges}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* grain overlay */
+body::before{
+  content:"";position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- type ---------- */
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.02;letter-spacing:-.02em}
+.kicker{
+  font-family:var(--pixel);font-size:.82rem;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--coral-deep);display:inline-flex;align-items:center;gap:.5em;
+}
+.kicker::before{content:"";width:26px;height:3px;background:var(--coral);display:inline-block}
+.lead{font-size:1.18rem;color:var(--ink-soft);max-width:46ch}
+
+/* ---------- buttons ---------- */
+.btn{
+  font-family:var(--sans);font-weight:700;font-size:1rem;
+  display:inline-flex;align-items:center;gap:.55em;
+  padding:14px 26px;border:2.5px solid var(--ink);border-radius:999px;
+  background:var(--coral);color:var(--paper);cursor:pointer;
+  box-shadow:var(--shadow);transition:transform .12s ease,box-shadow .12s ease;
+  white-space:nowrap;
+}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--ink)}
+.btn:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--ink)}
+.btn--ghost{background:var(--paper);color:var(--ink)}
+.btn--blue{background:var(--blue)}
+.btn--lg{padding:18px 34px;font-size:1.12rem}
+.btn--sm{padding:9px 18px;font-size:.92rem;box-shadow:var(--shadow-sm)}
+
+/* ---------- nav ---------- */
+header.nav{position:sticky;top:0;z-index:100;background:rgba(251,245,234,.82);backdrop-filter:blur(10px);border-bottom:2.5px solid var(--ink)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:68px;gap:20px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--pixel);font-weight:700;font-size:1.18rem;letter-spacing:.02em}
+.brand .logo{width:34px;height:34px;background:var(--ink);border-radius:9px;display:grid;place-items:center;box-shadow:3px 3px 0 var(--coral)}
+.brand .logo span{font-family:var(--pixel);color:var(--gold);font-size:1.2rem;line-height:1}
+.nav-links{display:flex;align-items:center;gap:28px;font-weight:600;font-size:.96rem}
+.nav-links a{position:relative;padding:4px 0;color:var(--ink-soft);transition:color .15s}
+.nav-links a:hover{color:var(--ink)}
+.nav-links a::after{content:"";position:absolute;left:0;bottom:-2px;width:0;height:2.5px;background:var(--coral);transition:width .2s}
+.nav-links a:hover::after{width:100%}
+.nav-cta{display:flex;align-items:center;gap:12px}
+.burger{display:none}
+
+/* ---------- hero ---------- */
+.hero{position:relative;padding:64px 0 40px;overflow:hidden}
+.hero-sky{
+  position:absolute;inset:0;z-index:-2;
+  background:
+    radial-gradient(120% 80% at 80% -10%, rgba(245,181,61,.30), transparent 55%),
+    radial-gradient(120% 90% at 10% 0%, rgba(255,106,69,.22), transparent 50%),
+    linear-gradient(180deg,#FDF0DC 0%,var(--paper) 60%);
+}
+/* dotted grid */
+.hero-sky::after{content:"";position:absolute;inset:0;opacity:.4;
+  background-image:radial-gradient(var(--ink) 1px,transparent 1px);background-size:26px 26px;
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 30%,#000 60%,transparent);
+          mask-image:linear-gradient(180deg,transparent,#000 30%,#000 60%,transparent);opacity:.06}
+.hero-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:48px;align-items:center}
+.hero h1{font-size:clamp(2.6rem,5.6vw,4.5rem)}
+.hero h1 .ital{font-style:italic;color:var(--coral-deep)}
+.hero h1 .underline{position:relative;white-space:nowrap}
+.hero h1 .underline svg{position:absolute;left:0;right:0;bottom:-.18em;width:100%;height:.32em}
+.hero .lead{margin:24px 0 30px;font-size:1.24rem}
+.hero-cta{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.hero-note{margin-top:18px;font-size:.92rem;color:var(--ink-soft);display:flex;align-items:center;gap:8px;font-weight:500}
+.hero-note b{color:var(--ink)}
+
+/* app window */
+.window{
+  border:3px solid var(--ink);border-radius:16px;background:#0e1320;
+  box-shadow:12px 12px 0 var(--ink);overflow:hidden;position:relative;
+}
+.window-bar{height:38px;background:var(--ink);display:flex;align-items:center;gap:7px;padding:0 14px}
+.window-bar .dot{width:11px;height:11px;border-radius:50%}
+.window-bar .dot:nth-child(1){background:#FF6A45}
+.window-bar .dot:nth-child(2){background:#F5B53D}
+.window-bar .dot:nth-child(3){background:#5BA845}
+.window-bar .url{margin-left:14px;font-family:var(--pixel);font-size:.78rem;color:#8b93a7;letter-spacing:.04em}
+.window-map{position:relative;aspect-ratio:1450/818;background:#cfcfce}
+.window-map img{width:100%;height:100%;object-fit:cover}
+/* floating tags on hero map */
+.tag{position:absolute;display:flex;align-items:center;gap:7px;background:var(--paper);
+  border:2.5px solid var(--ink);border-radius:30px;padding:5px 12px 5px 6px;font-weight:700;font-size:.82rem;
+  box-shadow:var(--shadow-sm);animation:bob 4s ease-in-out infinite}
+.tag .av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-family:var(--pixel);font-size:.85rem;border:2px solid var(--ink)}
+.tag .pulse{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(91,168,69,.6);animation:pulse 2s infinite}
+.tag.t1{top:12%;left:6%;animation-delay:.2s}
+.tag.t2{top:30%;right:5%;animation-delay:.9s}
+.tag.t3{bottom:16%;left:10%;animation-delay:1.5s}
+.bubble{position:absolute;bottom:24%;right:8%;background:var(--coral);color:#fff;border:2.5px solid var(--ink);
+  border-radius:16px;padding:8px 14px;font-weight:700;font-size:.86rem;box-shadow:var(--shadow-sm);animation:bob 5s ease-in-out infinite}
+.bubble::after{content:"";position:absolute;left:18px;bottom:-12px;border:7px solid transparent;border-top-color:var(--ink)}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(91,168,69,.6)}70%{box-shadow:0 0 0 10px rgba(91,168,69,0)}100%{box-shadow:0 0 0 0 rgba(91,168,69,0)}}
+
+/* fireflies */
+.firefly{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--gold);
+  box-shadow:0 0 10px 2px rgba(245,181,61,.8);pointer-events:none;z-index:-1;animation:float 9s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translate(0,0);opacity:0}10%,90%{opacity:1}50%{transform:translate(30px,-40px)}}
+
+/* ---------- trust strip ---------- */
+.trust{border-top:2.5px solid var(--ink);border-bottom:2.5px solid var(--ink);background:var(--ink);color:var(--paper);overflow:hidden}
+.marquee{display:flex;gap:48px;padding:14px 0;white-space:nowrap;font-family:var(--pixel);font-weight:600;letter-spacing:.06em;animation:scroll 28s linear infinite}
+.marquee span{display:inline-flex;align-items:center;gap:14px;font-size:1.02rem}
+.marquee b{color:var(--gold)}
+.marquee .sep{color:var(--coral)}
+@keyframes scroll{to{transform:translateX(-50%)}}
+
+/* ---------- sections ---------- */
+section{position:relative}
+.sec{padding:96px 0}
+.sec-head{max-width:720px;margin-bottom:54px}
+.sec-head h2{font-size:clamp(2rem,4.2vw,3.2rem);margin:18px 0 16px}
+.sec-head.center{margin-left:auto;margin-right:auto;text-align:center}
+.sec-head.center .kicker{justify-content:center}
+
+/* problem / compare cards */
+.versus{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.vs-card{border:3px solid var(--ink);border-radius:var(--r);padding:30px;box-shadow:var(--shadow)}
+.vs-card.old{background:var(--paper-2)}
+.vs-card.new{background:var(--ink);color:var(--paper)}
+.vs-card h3{font-size:1.3rem;margin-bottom:20px;display:flex;align-items:center;gap:10px;font-family:var(--sans);font-weight:800;letter-spacing:0}
+.vs-list{list-style:none;display:flex;flex-direction:column;gap:14px}
+.vs-list li{display:flex;gap:12px;align-items:flex-start;font-size:1.02rem;font-weight:500}
+.vs-list .ic{flex:0 0 24px;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:.9rem;font-weight:800;margin-top:1px}
+.old .ic{background:#d8c7a8;color:var(--ink-soft)}
+.new .ic{background:var(--coral);color:#fff}
+
+/* features */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.feat{border:3px solid var(--ink);border-radius:var(--r);background:var(--paper);padding:26px;
+  box-shadow:var(--shadow-sm);transition:transform .15s ease,box-shadow .15s ease;position:relative;overflow:hidden}
+.feat:hover{transform:translate(-3px,-3px);box-shadow:8px 8px 0 var(--ink)}
+.feat .ficon{width:50px;height:50px;border-radius:12px;border:2.5px solid var(--ink);display:grid;place-items:center;font-size:1.5rem;margin-bottom:16px;box-shadow:3px 3px 0 var(--ink)}
+.feat h3{font-size:1.22rem;margin-bottom:8px;font-family:var(--sans);font-weight:800;letter-spacing:-.01em}
+.feat p{color:var(--ink-soft);font-size:.98rem}
+.feat.big{grid-column:span 2;display:flex;gap:26px;align-items:center}
+.feat.big .ftxt{flex:1}
+.feat.big .fimg{flex:0 0 44%;border:2.5px solid var(--ink);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.feat.big .fimg img{width:100%;aspect-ratio:1.6;object-fit:cover}
+.feat .tagpill{position:absolute;top:18px;right:18px;font-family:var(--pixel);font-size:.66rem;background:var(--gold);border:2px solid var(--ink);border-radius:20px;padding:2px 9px;font-weight:700;letter-spacing:.05em}
+.c-blue{background:var(--blue);color:#fff}.c-green{background:var(--green);color:#fff}
+.c-coral{background:var(--coral);color:#fff}.c-gold{background:var(--gold);color:var(--ink)}
+.c-paper{background:var(--paper)}
+
+/* ---------- AI section (night) ---------- */
+.ai{background:var(--night);color:var(--paper);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);position:relative;overflow:hidden}
+.ai::before{content:"";position:absolute;inset:0;
+  background:radial-gradient(80% 60% at 75% 20%,rgba(59,125,246,.25),transparent 60%),
+            radial-gradient(70% 60% at 15% 90%,rgba(255,106,69,.18),transparent 60%);}
+.ai .wrap{position:relative}
+.ai-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:54px;align-items:center}
+.ai .kicker{color:var(--gold)}
+.ai .kicker::before{background:var(--gold)}
+.ai h2{font-size:clamp(2.1rem,4.4vw,3.4rem);margin:16px 0 18px;color:var(--paper)}
+.ai h2 em{font-style:italic;color:#7fa9ff}
+.ai .lead{color:#c4bdd6;font-size:1.18rem;max-width:50ch}
+.ai-list{list-style:none;margin:26px 0 32px;display:flex;flex-direction:column;gap:16px}
+.ai-list li{display:flex;gap:14px;align-items:flex-start}
+.ai-list .ic{flex:0 0 30px;width:30px;height:30px;border-radius:9px;background:rgba(127,169,255,.16);border:2px solid #7fa9ff;display:grid;place-items:center;color:#7fa9ff;font-weight:800}
+.ai-list b{color:#fff}
+.ai-list small{color:#9b93b3;display:block;font-size:.92rem;margin-top:2px}
+/* terminal */
+.term{border:3px solid #000;border-radius:14px;background:#0a0e1a;box-shadow:12px 12px 0 rgba(0,0,0,.5);overflow:hidden}
+.term-bar{height:36px;background:#12182a;display:flex;align-items:center;gap:7px;padding:0 13px;border-bottom:1px solid #232a40}
+.term-bar .dot{width:10px;height:10px;border-radius:50%}
+.term-bar .dot:nth-child(1){background:#FF6A45}.term-bar .dot:nth-child(2){background:#F5B53D}.term-bar .dot:nth-child(3){background:#5BA845}
+.term-bar .name{margin-left:10px;font-family:var(--pixel);font-size:.76rem;color:#6b7390;letter-spacing:.04em}
+.term-body{padding:20px;font-family:var(--pixel);font-size:.92rem;line-height:1.9;min-height:230px;color:#cdd5ec}
+.term-body .pr{color:#5BA845}.term-body .ag{color:#7fa9ff}.term-body .di{color:#6b7390}
+.term-body .ok{color:var(--gold)}
+.cursor{display:inline-block;width:9px;height:1.05em;background:var(--gold);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.ai-desk{display:inline-flex;align-items:center;gap:10px;margin-top:18px;background:rgba(255,255,255,.05);border:2px solid #2c3350;border-radius:14px;padding:10px 14px}
+.ai-desk img{width:40px;height:auto}
+
+/* ---------- comparison table ---------- */
+.cmp{border:3px solid var(--ink);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.cmp table{width:100%;border-collapse:collapse;font-size:1rem}
+.cmp th,.cmp td{padding:16px 18px;text-align:left;border-bottom:2px solid rgba(29,23,38,.12)}
+.cmp thead th{background:var(--ink);color:var(--paper);font-family:var(--sans);font-weight:800;font-size:.95rem}
+.cmp thead th.us{background:var(--coral)}
+.cmp tbody tr:last-child td{border-bottom:none}
+.cmp td:first-child{font-weight:700}
+.cmp .us{background:rgba(255,106,69,.07);font-weight:700}
+.cmp .y{color:var(--green);font-weight:800}.cmp .n{color:#bd5a45;font-weight:700}
+.cmp tbody tr:nth-child(even){background:rgba(29,23,38,.025)}
+
+/* ---------- steps ---------- */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;counter-reset:s}
+.step{border:3px solid var(--ink);border-radius:var(--r);padding:30px;background:var(--paper);box-shadow:var(--shadow-sm);position:relative}
+.step::before{counter-increment:s;content:"0" counter(s);font-family:var(--pixel);font-size:2.4rem;color:var(--coral);display:block;margin-bottom:10px;font-weight:700;-webkit-text-stroke:2px var(--ink)}
+.step h3{font-size:1.3rem;margin-bottom:8px;font-family:var(--sans);font-weight:800}
+.step p{color:var(--ink-soft)}
+
+/* ---------- pricing ---------- */
+.prices{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;align-items:stretch}
+.price{border:3px solid var(--ink);border-radius:var(--r);padding:32px;background:var(--paper);box-shadow:var(--shadow);display:flex;flex-direction:column}
+.price.feat-plan{background:var(--ink);color:var(--paper);transform:translateY(-10px)}
+.price .pname{font-family:var(--pixel);font-weight:700;letter-spacing:.04em;font-size:1.05rem;text-transform:uppercase}
+.price.feat-plan .pname{color:var(--gold)}
+.price .amt{font-family:var(--serif);font-size:3rem;font-weight:600;margin:14px 0 2px;line-height:1}
+.price .amt small{font-size:1rem;font-family:var(--sans);font-weight:600;color:var(--ink-soft)}
+.price.feat-plan .amt small{color:#b7aecb}
+.price .pdesc{color:var(--ink-soft);font-size:.95rem;margin-bottom:18px;min-height:42px}
+.price.feat-plan .pdesc{color:#c4bdd6}
+.price ul{list-style:none;display:flex;flex-direction:column;gap:11px;margin:6px 0 26px;flex:1}
+.price li{display:flex;gap:10px;font-size:.97rem;font-weight:500}
+.price li::before{content:"✓";color:var(--green);font-weight:900}
+.price.feat-plan li::before{color:var(--gold)}
+.price .ribbon{align-self:flex-start;font-family:var(--pixel);font-size:.68rem;background:var(--coral);color:#fff;border:2px solid var(--ink);padding:3px 10px;border-radius:20px;margin-bottom:14px;font-weight:700;letter-spacing:.06em}
+.price .btn{width:100%;justify-content:center}
+
+/* ---------- faq ---------- */
+.faq{max-width:780px;margin:0 auto}
+.qa{border:3px solid var(--ink);border-radius:14px;margin-bottom:14px;background:var(--paper);box-shadow:var(--shadow-sm);overflow:hidden}
+.qa summary{padding:20px 24px;font-weight:800;font-size:1.08rem;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;font-family:var(--sans)}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary::after{content:"+";font-family:var(--pixel);font-size:1.6rem;color:var(--coral);transition:transform .2s}
+.qa[open] summary::after{transform:rotate(45deg)}
+.qa .ans{padding:0 24px 22px;color:var(--ink-soft);font-size:1rem}
+
+/* ---------- final cta ---------- */
+.final{background:var(--coral);border-top:3px solid var(--ink);color:#fff;text-align:center;position:relative;overflow:hidden}
+.final::after{content:"";position:absolute;inset:0;opacity:.08;background-image:radial-gradient(#1D1726 1.5px,transparent 1.5px);background-size:22px 22px}
+.final .wrap{position:relative;padding:90px 24px}
+.final h2{font-size:clamp(2.2rem,5vw,3.6rem);color:#fff;margin-bottom:18px}
+.final p{font-size:1.2rem;max-width:46ch;margin:0 auto 32px;color:#fff;opacity:.95;font-weight:500}
+.final .btn{background:var(--ink);color:#fff;border-color:var(--ink);box-shadow:6px 6px 0 rgba(0,0,0,.35)}
+.final .btn--ghost{background:#fff;color:var(--ink)}
+.final small{display:block;margin-top:18px;font-weight:600;opacity:.9}
+
+/* ---------- footer ---------- */
+footer{background:var(--ink);color:var(--paper);padding:60px 0 30px}
+.foot-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:34px;margin-bottom:40px}
+.foot-grid h4{font-family:var(--pixel);font-size:.9rem;letter-spacing:.08em;color:var(--gold);margin-bottom:16px;text-transform:uppercase}
+.foot-grid a{display:block;color:#b7aecb;margin-bottom:9px;font-size:.96rem;transition:color .15s}
+.foot-grid a:hover{color:#fff}
+.foot-brand p{color:#b7aecb;margin:14px 0;max-width:30ch;font-size:.96rem}
+.foot-bottom{border-top:1px solid #352c4a;padding-top:24px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:#8a82a0;font-size:.88rem}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* responsive */
+@media(max-width:920px){
+  .hero-grid,.ai-grid{grid-template-columns:1fr;gap:40px}
+  .feat-grid,.steps,.prices{grid-template-columns:1fr 1fr}
+  .feat.big{grid-column:span 2;flex-direction:column}
+  .feat.big .fimg{flex:none;width:100%}
+  .versus{grid-template-columns:1fr}
+  .nav-links{display:none}
+  .price.feat-plan{transform:none}
+  .foot-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:560px){
+  .feat-grid,.steps,.prices{grid-template-columns:1fr}
+  .feat.big{grid-column:span 1}
+  .hero .lead{font-size:1.08rem}
+  .sec{padding:70px 0}
+  .cmp{overflow-x:auto}
+  .cmp table{min-width:540px}
+  .foot-grid{grid-template-columns:1fr}
+  .nav-cta .btn--ghost{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#">
+      <span class="logo"><span>W</span></span>
+      WEBINTI&nbsp;TOWN
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Fonctionnalités</a>
+      <a href="#ai">Bureau&nbsp;IA</a>
+      <a href="#compare">vs&nbsp;Gather</a>
+      <a href="#pricing">Tarifs</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="#pricing" class="btn btn--ghost btn--sm">Tarifs</a>
+      <a href="https://live.webinti.com" class="btn btn--sm">Essayer la démo →</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-sky"></div>
+  <span class="firefly" style="top:20%;left:15%"></span>
+  <span class="firefly" style="top:40%;left:60%;animation-delay:3s"></span>
+  <span class="firefly" style="top:65%;left:30%;animation-delay:6s"></span>
+  <span class="firefly" style="top:30%;left:85%;animation-delay:1.5s"></span>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="kicker reveal">🇫🇷 Le bureau virtuel à la française</span>
+      <h1 class="reveal" style="transition-delay:.05s">
+        Ton équipe,<br>réunie dans une
+        <span class="underline">vraie ville
+          <svg viewBox="0 0 300 16" preserveAspectRatio="none"><path d="M2 11 C 70 4, 150 4, 298 9" stroke="#FF6A45" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+        </span>.
+      </h1>
+      <p class="lead reveal" style="transition-delay:.1s">
+        Webinti&nbsp;Town, c'est un bureau en pixel-art où l'on se déplace, on s'approche, on se parle —
+        <b>comme au bureau, sans les visios sans fin</b>. L'alternative française à Gather.town.
+      </p>
+      <div class="hero-cta reveal" style="transition-delay:.15s">
+        <a href="https://live.webinti.com" class="btn btn--lg">▶ Essayer la démo live</a>
+        <a href="#pricing" class="btn btn--ghost btn--lg">Voir les tarifs</a>
+      </div>
+      <p class="hero-note reveal" style="transition-delay:.2s">
+        ✦ Sans installation · <b>données en Europe (RGPD)</b> · gratuit jusqu'à 8 personnes
+      </p>
+    </div>
+
+    <div class="hero-visual reveal" style="transition-delay:.12s">
+      <div class="window">
+        <div class="window-bar">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="url">live.webinti.com</span>
+        </div>
+        <div class="window-map">
+          <img class="pixelated" src="assets/map-hero.png" alt="Bureau virtuel Webinti Town en pixel-art" />
+          <div class="tag t1"><span class="av" style="background:#3B7DF6">L</span><span class="pulse"></span> Léa</div>
+          <div class="tag t2"><span class="av" style="background:#5BA845">M</span><span class="pulse"></span> Marc</div>
+          <div class="tag t3"><span class="av" style="background:#F5B53D">T</span><span class="pulse"></span> Toi</div>
+          <div class="bubble">👋 « Tu as 2 min ? »</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST MARQUEE -->
+<div class="trust">
+  <div class="marquee">
+    <span><b>🇫🇷</b> Français natif <span class="sep">✦</span></span>
+    <span><b>🇪🇺</b> Données en Europe — RGPD <span class="sep">✦</span></span>
+    <span><b>💸</b> Moitié du prix de Gather <span class="sep">✦</span></span>
+    <span><b>🤖</b> Le 1ᵉʳ bureau où ton IA bosse <span class="sep">✦</span></span>
+    <span><b>🎮</b> Audio de proximité + mini-jeux <span class="sep">✦</span></span>
+    <span><b>🏠</b> Auto-hébergeable <span class="sep">✦</span></span>
+    <!-- duplicate for seamless loop -->
+    <span><b>🇫🇷</b> Français natif <span class="sep">✦</span></span>
+    <span><b>🇪🇺</b> Données en Europe — RGPD <span class="sep">✦</span></span>
+    <span><b>💸</b> Moitié du prix de Gather <span class="sep">✦</span></span>
+    <span><b>🤖</b> Le 1ᵉʳ bureau où ton IA bosse <span class="sep">✦</span></span>
+    <span><b>🎮</b> Audio de proximité + mini-jeux <span class="sep">✦</span></span>
+    <span><b>🏠</b> Auto-hébergeable <span class="sep">✦</span></span>
+  </div>
+</div>
+
+<!-- PROBLEM / VERSUS -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="kicker">Le télétravail, autrement</span>
+      <h2>Et si bosser à distance redevenait <span style="font-style:italic;color:var(--coral-deep)">vivant</span> ?</h2>
+      <p class="lead">Les outils classiques transforment chaque échange en réunion programmée. Webinti remet la spontanéité du bureau.</p>
+    </div>
+    <div class="versus">
+      <div class="vs-card old reveal">
+        <h3>😮‍💨 Le quotidien d'aujourd'hui</h3>
+        <ul class="vs-list">
+          <li><span class="ic">✕</span> « Encore un lien Zoom » pour 3 phrases</li>
+          <li><span class="ic">✕</span> Attendre 2&nbsp;h une réponse Slack</li>
+          <li><span class="ic">✕</span> Fatigue de la caméra obligatoire</li>
+          <li><span class="ic">✕</span> Aucune idée de qui est dispo, là, maintenant</li>
+          <li><span class="ic">✕</span> Zéro vie d'équipe, zéro hasard de couloir</li>
+        </ul>
+      </div>
+      <div class="vs-card new reveal" style="transition-delay:.1s">
+        <h3>✨ Avec Webinti Town</h3>
+        <ul class="vs-list">
+          <li><span class="ic">✓</span> Tu t'approches, tu parles — aucun lien</li>
+          <li><span class="ic">✓</span> Tu vois qui est libre <b>en temps réel</b></li>
+          <li><span class="ic">✓</span> Présent sans forcément être à l'écran</li>
+          <li><span class="ic">✓</span> Des bureaux, une salle de conf, une machine à café</li>
+          <li><span class="ic">✓</span> Des pauses, un circuit de kart, une vraie ambiance</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="sec" id="features" style="background:var(--paper-2);border-top:3px solid var(--ink);border-bottom:3px solid var(--ink)">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="kicker">Tout y est, déjà</span>
+      <h2>Un vrai bureau, en plus complet</h2>
+      <p class="lead" style="margin:0 auto">De l'audio de proximité au tableau blanc : tout ce que fait Gather, plus ce qu'il ne fait pas.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat big reveal">
+        <div class="ftxt">
+          <div class="ficon c-blue">🔊</div>
+          <h3>Audio &amp; vidéo de proximité</h3>
+          <p>Le son monte quand on se rapproche, baisse quand on s'éloigne — exactement comme dans la vraie vie. Entre dans un bureau revendiqué ou la salle de conf : la conversation devient privée, automatiquement.</p>
+        </div>
+        <div class="fimg"><img class="pixelated" src="assets/map-conf.png" alt="Salle de conférence"></div>
+      </div>
+      <div class="feat reveal" style="transition-delay:.05s">
+        <div class="ficon c-coral">🪑</div>
+        <h3>Bureaux à revendiquer</h3>
+        <p>Chacun pose ses affaires sur son poste. On voit qui est où, qui est en réunion, qui est dispo.</p>
+      </div>
+      <div class="feat reveal">
+        <span class="tagpill">NOUVEAU</span>
+        <div class="ficon c-gold">🎞️</div>
+        <h3>Vue mosaïque</h3>
+        <p>À 3 personnes et plus, bascule en grands carreaux façon visio classique. Le meilleur des deux mondes.</p>
+      </div>
+      <div class="feat reveal" style="transition-delay:.05s">
+        <div class="ficon c-green">🖥️</div>
+        <h3>Partage d'écran &amp; tableau blanc</h3>
+        <p>Présente, dessine, brainstorme. Un tableau blanc collaboratif et un kanban d'idées intégrés.</p>
+      </div>
+      <div class="feat reveal">
+        <div class="ficon c-blue">💬</div>
+        <h3>Chat, DM &amp; « toc toc »</h3>
+        <p>Messages d'équipe et privés. Quelqu'un est concentré ? Fais-lui « toc toc » pour signaler que tu veux parler.</p>
+      </div>
+      <div class="feat reveal" style="transition-delay:.05s">
+        <div class="ficon c-coral">🧑‍🎨</div>
+        <h3>Avatars personnalisables</h3>
+        <p>Des milliers de combinaisons (corps, tenue, coiffure). Chacun se crée son perso en pixel-art.</p>
+      </div>
+      <div class="feat big reveal">
+        <div class="ftxt">
+          <span class="tagpill" style="background:var(--green);color:#fff">FUN</span>
+          <div class="ficon c-green">🏎️</div>
+          <h3>Cohésion d'équipe &amp; mini-jeux</h3>
+          <p>Un vrai circuit de karting chronométré avec classement, un cycle jour/nuit qui suit l'heure réelle, des papillons, un chat qui se balade… Une map qui donne envie d'y rester.</p>
+        </div>
+        <div class="fimg"><img class="pixelated" src="assets/map-circuit.png" alt="Circuit de karting" style="object-fit:contain;background:#5BA845"></div>
+      </div>
+      <div class="feat reveal">
+        <span class="tagpill">NOUVEAU</span>
+        <div class="ficon c-gold">📱</div>
+        <h3>Tablette &amp; mobile</h3>
+        <p>Joystick tactile, pinch-zoom, interface épurée. Utilisable depuis n'importe quel appareil.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI SECTION -->
+<section class="sec ai" id="ai">
+  <div class="wrap">
+    <div class="ai-grid">
+      <div class="reveal">
+        <span class="kicker">L'angle 2026 — exclusif</span>
+        <h2>Le premier bureau où <em>ton IA</em> a son propre poste.</h2>
+        <p class="lead">Branche ton agent — OpenClaw, Hermes, ou le tien — dans un <b>bureau IA</b> dédié. Il devient un collègue : un ordinateur virtuel dans la ville, avec qui ton équipe parle, à qui elle délègue, et qui agit.</p>
+        <ul class="ai-list">
+          <li><span class="ic">▸</span><div><b>Un poste = un agent.</b><small>Approche-toi du bureau IA et discute avec lui en vocal ou par écrit, comme avec un humain.</small></div></li>
+          <li><span class="ic">▸</span><div><b>Un ordinateur virtuel.</b><small>L'agent voit un écran partagé, exécute des tâches, te rend un résultat — sans quitter le monde.</small></div></li>
+          <li><span class="ic">▸</span><div><b>Réservé aux admins.</b><small>Tu connectes tes propres clés et ton propre agent. Tes données, ton modèle, ton contrôle.</small></div></li>
+        </ul>
+        <a href="#pricing" class="btn btn--blue">Découvrir le Bureau IA →</a>
+        <div class="ai-desk">
+          <img class="pixelated" src="assets/avatar-2.png" alt="Avatar agent IA">
+          <div style="font-family:var(--pixel);font-size:.8rem;color:#9b93b3">Agent « Hermes » · <span style="color:#5BA845">● en ligne</span></div>
+        </div>
+      </div>
+      <div class="reveal" style="transition-delay:.1s">
+        <div class="term">
+          <div class="term-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="name">bureau-ia@webinti-town</span>
+          </div>
+          <div class="term-body" id="term"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section class="sec" id="compare">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="kicker">Le match</span>
+      <h2>Webinti vs. les autres</h2>
+      <p class="lead" style="margin:0 auto">Aussi complet que Gather, plus souverain, plus fun — et moins cher.</p>
+    </div>
+    <div class="cmp reveal">
+      <table>
+        <thead>
+          <tr><th>&nbsp;</th><th class="us">Webinti Town</th><th>Gather.town</th><th>WorkAdventure</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Audio/vidéo de proximité</td><td class="us"><span class="y">✓</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
+          <tr><td>Interface &amp; support en français</td><td class="us"><span class="y">✓ natif</span></td><td><span class="n">✕</span></td><td><span class="y">partiel</span></td></tr>
+          <tr><td>Données hébergées en Europe (RGPD)</td><td class="us"><span class="y">✓</span></td><td><span class="n">✕ US</span></td><td><span class="y">✓</span></td></tr>
+          <tr><td>Auto-hébergement possible</td><td class="us"><span class="y">✓</span></td><td><span class="n">✕</span></td><td><span class="y">✓</span></td></tr>
+          <tr><td>Agent IA intégré au monde</td><td class="us"><span class="y">✓ exclusif</span></td><td><span class="n">✕</span></td><td><span class="n">✕</span></td></tr>
+          <tr><td>Mini-jeux &amp; cycle jour/nuit</td><td class="us"><span class="y">✓</span></td><td><span class="n">✕</span></td><td><span class="n">✕</span></td></tr>
+          <tr><td>Prix indicatif / utilisateur</td><td class="us">≈ 3–4 €</td><td>≈ 7 $</td><td>sur devis</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- STEPS -->
+<section class="sec" style="background:var(--ink);color:var(--paper);border-top:3px solid var(--ink)">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="kicker" style="color:var(--gold)">En 2 minutes, chrono</span>
+      <h2 style="color:var(--paper)">Ouvre ta ville, c'est tout</h2>
+    </div>
+    <div class="steps">
+      <div class="step reveal"><h3>Crée ta ville</h3><p>Un nom, un clic. Ton espace est prêt — pas d'installation, pas de carte bancaire.</p></div>
+      <div class="step reveal" style="transition-delay:.08s"><h3>Invite ton équipe</h3><p>Un lien à partager. Chacun se crée son avatar et entre directement dans le navigateur.</p></div>
+      <div class="step reveal" style="transition-delay:.16s"><h3>Travaillez ensemble</h3><p>Approchez-vous, parlez, partagez un écran. Personnalise la map, branche ton IA, et c'est parti.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="sec" id="pricing">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="kicker">Tarifs simples</span>
+      <h2>Un prix juste, pensé PME</h2>
+      <p class="lead" style="margin:0 auto">Pas de coût caché. Forfait clair, ou par personne — au choix. −20&nbsp;% en annuel.</p>
+    </div>
+    <div class="prices">
+      <div class="price reveal">
+        <div class="pname">Découverte</div>
+        <div class="amt">0&nbsp;€</div>
+        <p class="pdesc">Pour tester en vrai, sans limite de temps.</p>
+        <ul>
+          <li>Jusqu'à 8 personnes</li>
+          <li>Audio/vidéo de proximité</li>
+          <li>Bureaux, chat, écran partagé</li>
+          <li>Map par défaut</li>
+        </ul>
+        <a href="https://live.webinti.com" class="btn btn--ghost">Commencer gratuitement</a>
+      </div>
+      <div class="price feat-plan reveal" style="transition-delay:.08s">
+        <span class="ribbon">★ Le plus choisi</span>
+        <div class="pname">Pro</div>
+        <div class="amt">29&nbsp;€<small> /mois · jusqu'à 25 pers.</small></div>
+        <p class="pdesc">Pour les équipes qui s'installent pour de bon.</p>
+        <ul>
+          <li>Tout Découverte, sans limite d'usage</li>
+          <li>Map personnalisée à ta marque</li>
+          <li>Tableau blanc + kanban + mini-jeux</li>
+          <li>Vue mosaïque &amp; enregistrement</li>
+          <li>Support en français</li>
+        </ul>
+        <a href="https://live.webinti.com" class="btn">Choisir Pro</a>
+      </div>
+      <div class="price reveal" style="transition-delay:.16s">
+        <div class="pname">Entreprise</div>
+        <div class="amt">Sur&nbsp;devis</div>
+        <p class="pdesc">Souveraineté, IA et sur-mesure.</p>
+        <ul>
+          <li>Auto-hébergement / serveur dédié</li>
+          <li><b>Bureau IA</b> (OpenClaw / Hermes)</li>
+          <li>Domaine perso &amp; marque blanche</li>
+          <li>SSO, map sur-mesure, SLA</li>
+        </ul>
+        <a href="mailto:agence.webinti@gmail.com" class="btn btn--ghost">Nous contacter</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec" style="background:var(--paper-2);border-top:3px solid var(--ink)">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <span class="kicker">Questions fréquentes</span>
+      <h2>Tout ce que tu te demandes</h2>
+    </div>
+    <div class="faq">
+      <details class="qa reveal"><summary>Mes données sont-elles en sécurité et en Europe ?</summary><div class="ans">Oui. Toute l'infrastructure (serveur, base de données, flux audio/vidéo) est hébergée en Europe et conforme RGPD. En offre Entreprise, tu peux même tout auto-héberger sur ton propre serveur : tes données ne sortent jamais de chez toi.</div></details>
+      <details class="qa reveal"><summary>En quoi c'est différent de Gather.town ?</summary><div class="ans">Même principe (un bureau virtuel avec audio de proximité), mais : interface et support 100 % français, données en Europe au lieu des États-Unis, prix environ deux fois inférieur, des mini-jeux pour la cohésion, et surtout le <b>Bureau IA</b> — brancher ton propre agent dans le monde, ce que personne d'autre ne propose.</div></details>
+      <details class="qa reveal"><summary>C'est quoi le « Bureau IA » exactement ?</summary><div class="ans">Un poste spécial dans la ville où tu connectes ton agent IA (OpenClaw, Hermes, ou un autre via tes clés). Il agit comme un collègue-ordinateur : ton équipe s'en approche, lui parle, lui délègue des tâches, et il rend un résultat — sans quitter l'univers. Réservé aux administrateurs, avec tes propres modèles et ton contrôle total.</div></details>
+      <details class="qa reveal"><summary>Faut-il installer quelque chose ?</summary><div class="ans">Non. Tout se passe dans le navigateur, sur ordinateur, tablette ou mobile. Tes invités cliquent un lien, choisissent un avatar, et entrent. C'est tout.</div></details>
+      <details class="qa reveal"><summary>Combien de personnes en même temps ?</summary><div class="ans">L'offre gratuite va jusqu'à 8 personnes. Les offres Pro et Entreprise montent bien plus haut — on dimensionne l'infrastructure selon ta taille (le facteur clé étant le nombre de caméras simultanées).</div></details>
+      <details class="qa reveal"><summary>Peut-on personnaliser la map et la marque ?</summary><div class="ans">Oui. Dès l'offre Pro tu personnalises la map à tes couleurs. En Entreprise, c'est du sur-mesure complet : ta map, ton logo, ton domaine (marque blanche), ton SSO.</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final">
+  <div class="wrap">
+    <h2 class="reveal">Ramène la vie dans ton équipe.</h2>
+    <p class="reveal" style="transition-delay:.05s">Ouvre ta ville en 2 minutes, invite ton équipe, et retrouve le plaisir de bosser ensemble.</p>
+    <div class="hero-cta reveal" style="justify-content:center;transition-delay:.1s">
+      <a href="https://live.webinti.com" class="btn btn--lg">▶ Essayer la démo live</a>
+      <a href="mailto:agence.webinti@gmail.com" class="btn btn--ghost btn--lg">Parler à l'équipe</a>
+    </div>
+    <small class="reveal">Sans carte bancaire · données en Europe · made in France 🇫🇷</small>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="#" style="color:var(--paper)">
+          <span class="logo"><span>W</span></span> WEBINTI&nbsp;TOWN
+        </a>
+        <p>Le bureau virtuel de ton équipe, à la française. Une création de l'agence Webinti.</p>
+        <a href="https://live.webinti.com" class="btn btn--sm" style="display:inline-flex">Essayer →</a>
+      </div>
+      <div>
+        <h4>Produit</h4>
+        <a href="#features">Fonctionnalités</a>
+        <a href="#ai">Bureau IA</a>
+        <a href="#compare">vs Gather</a>
+        <a href="#pricing">Tarifs</a>
+      </div>
+      <div>
+        <h4>Ressources</h4>
+        <a href="https://live.webinti.com">Démo live</a>
+        <a href="mailto:agence.webinti@gmail.com">Contact</a>
+        <a href="#">Sécurité &amp; RGPD</a>
+        <a href="#">Statut</a>
+      </div>
+      <div>
+        <h4>Webinti</h4>
+        <a href="https://webinti.com">L'agence</a>
+        <a href="mailto:agence.webinti@gmail.com">Nous écrire</a>
+        <a href="#">Mentions légales</a>
+        <a href="#">Confidentialité</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Webinti Town — Tous droits réservés.</span>
+      <span>Conçu avec ✦ en France · Données en Europe 🇪🇺</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// scroll reveal
+const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+// AI terminal typing
+const lines=[
+  {c:'pr',t:'$ '},{c:'ag',t:'webinti connect --agent hermes',n:1},
+  {c:'di',t:'→ Agent connecté au Bureau IA · poste #07',n:1},
+  {c:'pr',t:'léa@webinti ',d:1},{c:'',t:'« Hermes, résume la réunion d\'hier »',n:1},
+  {c:'ag',t:'⟳ lecture des notes…',n:1},
+  {c:'ok',t:'✓ 3 décisions, 5 tâches assignées → envoyé sur le tableau.',n:1},
+  {c:'pr',t:'marc@webinti ',d:1},{c:'',t:'« prépare la démo client de 14h »',n:1},
+  {c:'ag',t:'⟳ génération du support + écran partagé…',n:1},
+  {c:'ok',t:'✓ Prêt. Je vous attends en salle de conf.',n:1},
+  {c:'pr',t:'$ ',d:1},{c:'cur',t:''}
+];
+const term=document.getElementById('term');
+let li=0,ci=0;
+function type(){
+  if(li>=lines.length)return;
+  const l=lines[li];
+  if(l.c==='cur'){term.insertAdjacentHTML('beforeend','<span class="cursor"></span>');return;}
+  let span=term.querySelector('.typing');
+  if(!span){span=document.createElement('span');span.className='typing '+l.c;if(l.d)term.appendChild(document.createElement('br'));term.appendChild(span);}
+  if(ci<l.t.length){span.textContent+=l.t[ci++];setTimeout(type,18+Math.random()*30);}
+  else{span.classList.remove('typing');if(l.n)term.appendChild(document.createElement('br'));li++;ci=0;setTimeout(type,l.c==='ag'||l.c==='ok'?420:140);}
+}
+const aiObs=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){type();aiObs.disconnect();}})},{threshold:.3});
+aiObs.observe(document.getElementById('ai'));
+</script>
+</body>
+</html>
