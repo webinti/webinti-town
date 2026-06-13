@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fonctionnalités | Webinti Town</title>
+<meta name="description" content="Toutes les fonctionnalités de Webinti Town, illustrées par la map réelle : audio de proximité, bureaux à revendiquer, salle de conférence, vision admin, jour et nuit, karting, mobile." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
+    <nav class="nav-links">
+      <a href="fonctionnalites.html" class="on">Fonctionnalités</a>
+      <a href="usages.html">Usages</a>
+      <a href="index.html#admin">Vision admin</a>
+      <a href="index.html#pricing">Tarifs</a>
+    </nav>
+    <a href="https://live.webinti.com" class="btn btn--accent btn--sm">Entrer dans la ville →</a>
+  </div>
+</header>
+
+<section class="phero">
+  <div class="wrap">
+    <span class="kicker rv">Le grand tour</span>
+    <h1 class="rv">Toutes les fonctionnalités, <em>en images réelles</em>.</h1>
+    <p class="lead rv">Tous les visuels de cette page sont extraits de la map. C'est exactement ce que ton équipe verra.</p>
+  </div>
+</section>
+
+<section class="sec" style="padding-top:30px">
+  <div class="wrap">
+
+    <div class="show" id="proximite">
+      <div class="rv">
+        <span class="kicker">Le cœur du produit</span>
+        <h3>Audio &amp; vidéo de proximité</h3>
+        <p class="lead">Déplace ton avatar : dès que tu t'approches d'un collègue, sa voix et sa caméra apparaissent. Tu t'éloignes ? Elles s'estompent. Aucun lien, aucun bouton « rejoindre ».</p>
+        <ul>
+          <li><b>Volume naturel</b> qui suit la distance (plein < 4 cases, silence > 8)</li>
+          <li><b>Webcam coupée automatiquement</b> hors de portée, pour la discrétion</li>
+          <li><b>Réglages fins</b> : choix du micro/caméra, volume général, miroir</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-openspace.png" alt="Open-space avec postes de travail"><span class="cap">L'open-space</span></div></div>
+    </div>
+
+    <div class="show rev" id="bureaux">
+      <div class="rv">
+        <span class="kicker">Ton espace</span>
+        <h3>Bureaux à revendiquer</h3>
+        <p class="lead">Comme au bureau, chacun a sa place. Revendique un poste : il devient le tien, avec ton nom, et les conversations y sont privées.</p>
+        <ul>
+          <li><b>Renomme ton poste</b> (« Studio design », « Support client »…)</li>
+          <li><b>Invite</b> des collègues dans ta bulle privée</li>
+          <li><b>« Toc toc »</b> : signale-toi sans interrompre quelqu'un d'occupé</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-bureaux.png" alt="Bureaux privés"><span class="cap">Les bureaux privés</span></div></div>
+    </div>
+
+    <div class="show" id="conf">
+      <div class="rv">
+        <span class="kicker">Les réunions</span>
+        <h3>Salle de conférence</h3>
+        <p class="lead">Entrez dans la salle : tout le monde s'entend, et personne dehors n'entend rien. La réunion commence quand les gens arrivent, pas quand le lien se lance.</p>
+        <ul>
+          <li><b>Audio de groupe isolé</b> automatique</li>
+          <li><b>Partage d'écran</b> et <b>vue mosaïque</b> à 3 et plus</li>
+          <li><b>Enregistrement</b> des réunions (réservé à l'hôte)</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-conf.png" alt="Salle de conférence"><span class="cap">La salle de conférence</span></div></div>
+    </div>
+
+    <div class="show rev" id="admin">
+      <div class="rv">
+        <span class="kicker">Pour les managers</span>
+        <h3>Vision admin de la présence</h3>
+        <p class="lead">Qui est connecté, avec quel statut, et <b style="color:var(--ink)">depuis combien de temps</b>, en direct. Tu reçois aussi une notification à chaque arrivée.</p>
+        <ul>
+          <li><b>Durée de présence</b> par personne, à la seconde</li>
+          <li><b>Modération</b> : couper un micro, libérer un poste, retirer un membre</li>
+          <li><b>Rôle hôte sécurisé</b> : vérifié côté serveur, impossible à usurper</li>
+        </ul>
+      </div>
+      <div class="media rv">
+        <div class="panel">
+          <div class="panel-bar"><span class="d"></span><span class="d"></span><span class="d"></span><span class="t">admin · webinti-town</span><span class="live">EN DIRECT</span></div>
+          <div class="panel-head"><b>Membres connectés</b><span>4 en ligne</span></div>
+          <div id="members"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="show" id="nuit">
+      <div class="rv">
+        <span class="kicker">Signature</span>
+        <h3>Une ville qui vit, jour et nuit</h3>
+        <p class="lead">La map suit l'heure réelle : lumière chaude à l'aube, plein jour, crépuscule, nuit. Une cheminée qui crépite, un chat qui miaule, des papillons, des collègues PNJ…</p>
+        <ul>
+          <li><b>Cycle jour/nuit</b> calé sur l'heure locale de chacun</li>
+          <li><b>Ambiance sonore</b> : feu de cheminée spatialisé, miaulements</li>
+          <li><b>Mode éco</b> : le rendu se met en veille quand l'onglet est caché</li>
+        </ul>
+      </div>
+      <div class="media rv">
+        <div class="shot dn" id="dn">
+          <img class="pixelated" src="assets/f-lounge.png" alt="Le salon de jour">
+          <img class="pixelated night" src="assets/f-nuit.png" alt="Le salon de nuit">
+          <button class="tgl" id="dnTgl">🌙 Voir de nuit</button>
+          <span class="cap">Le salon</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="show rev" id="pause">
+      <div class="rv">
+        <span class="kicker">La vie d'équipe</span>
+        <h3>Coin pause &amp; discussions de couloir</h3>
+        <p class="lead">Machines à café fumantes, distributeurs, mur d'écrans. C'est là que naissent les meilleures idées, autour d'un café.</p>
+        <ul>
+          <li><b>Café virtuel</b> : le point de rendez-vous informel</li>
+          <li><b>Chat &amp; messages privés</b> intégrés (avec pièces jointes)</li>
+          <li><b>Emotes &amp; confettis</b> pour fêter les wins</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-pause.png" alt="Coin pause avec machines à café"><span class="cap">Le coin pause</span></div></div>
+    </div>
+
+    <div class="show" id="gym">
+      <div class="rv">
+        <span class="kicker">Cohésion</span>
+        <h3>Karting, sport &amp; mini-jeux</h3>
+        <p class="lead">Un circuit de karting chronométré : départ lancé, chicane et classement des meilleurs tours. Et une salle de sport avec tapis animés pour l'ambiance.</p>
+        <ul>
+          <li><b>Chrono officiel</b> validé par le serveur (pas de triche)</li>
+          <li><b>Leaderboard persistant</b> : le record d'équipe à battre</li>
+          <li><b>Boost</b> et duels entre collègues 🏁</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-circuit.png" alt="Circuit de karting" style="aspect-ratio:1.35;object-fit:cover"><span class="cap">Le circuit de karting</span></div></div>
+    </div>
+
+    <div class="show rev" id="accueil">
+      <div class="rv">
+        <span class="kicker">Premier contact</span>
+        <h3>Accueil &amp; onboarding</h3>
+        <p class="lead">Une secrétaire accueille chaque visiteur d'un « Bienvenue ! 👋 ». Les nouveaux choisissent leur avatar et entrent en 30 secondes, sans installation.</p>
+        <ul>
+          <li><b>Avatar en 30 s</b> : corps, tenue et coiffure</li>
+          <li><b>Compte sécurisé</b> (email ou Google)</li>
+          <li><b>On reprend où on s'était arrêté</b> : position mémorisée</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-accueil.png" alt="L'accueil et sa secrétaire"><span class="cap">L'accueil</span></div></div>
+    </div>
+
+    <div class="show" id="avatars">
+      <div class="rv">
+        <span class="kicker">Identité</span>
+        <h3>Des avatars à ton image</h3>
+        <p class="lead">Chaque membre compose son personnage pixel-art : corps, tenue, coiffure, couleurs. Reconnaissable en un coup d'œil sur la map comme dans le chat.</p>
+        <ul>
+          <li><b>Des milliers de combinaisons</b> possibles</li>
+          <li><b>Modifiable en jeu</b> à tout moment</li>
+          <li><b>Statuts visibles</b> : dispo, absent, ne pas déranger, inactif</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot" style="background:#fff;display:grid;place-items:center;padding:34px 18px"><img class="pixelated" src="assets/f-avatars.png" alt="Galerie d'avatars" style="width:86%"></div></div>
+    </div>
+
+    <div class="show rev" id="mobile">
+      <div class="rv">
+        <span class="kicker">Partout</span>
+        <h3>Ordinateur, tablette &amp; mobile</h3>
+        <p class="lead">Tout passe par le navigateur, il n'y a rien à installer. Sur mobile : joystick tactile, bouton d'action contextuel, pinch-zoom et interface épurée.</p>
+        <ul>
+          <li><b>Joystick virtuel</b> + actions tactiles</li>
+          <li><b>Pinch-to-zoom</b> à deux doigts</li>
+          <li><b>Interface compacte</b> : tout le secondaire dans un menu</li>
+        </ul>
+      </div>
+      <div class="media rv">
+        <div class="phone"><img class="pixelated" src="assets/f-lounge.png" alt="Webinti Town sur mobile"><div class="joy"></div></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2 class="rv">Le mieux, c'est de l'essayer.</h2>
+    <p class="rv">Deux minutes suffisent pour entrer dans la ville et tout essayer.</p>
+    <div class="cta-row rv">
+      <a href="https://live.webinti.com" class="btn btn--lg">▶ Entrer dans la démo</a>
+      <a href="usages.html" class="btn btn--ghost btn--lg">Découvrir les usages</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fg">
+      <div class="fb">
+        <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
+        <p>Le bureau virtuel de ton équipe, à la française. Une création de l'agence Webinti.</p>
+      </div>
+      <div><h4>Produit</h4><a href="fonctionnalites.html">Fonctionnalités</a><a href="usages.html">Usages</a><a href="index.html#compare">vs Gather</a><a href="index.html#pricing">Tarifs</a></div>
+      <div><h4>Ressources</h4><a href="https://live.webinti.com">Démo live</a><a href="mailto:agence.webinti@gmail.com">Contact</a></div>
+      <div><h4>Webinti</h4><a href="https://webinti.com">L'agence</a><a href="mailto:agence.webinti@gmail.com">Nous écrire</a><a href="#">Mentions légales</a></div>
+    </div>
+    <div class="fbot"><span>© 2026 Webinti Town</span><span>Conçu en France · Données en Europe 🇪🇺</span></div>
+  </div>
+</footer>
+
+<script src="site.js"></script>
+<script>
+const dn=document.getElementById('dn'),tg=document.getElementById('dnTgl');
+tg.addEventListener('click',()=>{dn.classList.toggle('is-night');tg.textContent=dn.classList.contains('is-night')?'☀️ Voir de jour':'🌙 Voir de nuit';});
+const MEMBERS=[
+  {n:'Léa Moreau',c:'#3B7DF6',s:'available',sub:'Open R&D · Poste 13',t:11520},
+  {n:'Marc Petit',c:'#4F9D3F',s:'dnd',sub:'Salle de conférence',t:7860},
+  {n:'Sofia Diallo',c:'#F0AC2E',s:'available',sub:'Bureau rouge 2',t:2730},
+  {n:'Yann Bonnet',c:'#FF5C38',s:'away',sub:'Machine à café',t:540},
+];
+const PD={available:'#4F9D3F',dnd:'#e0442a',away:'#F0AC2E'},PL={available:'Disponible',dnd:'Ne pas déranger',away:'Absent'};
+const fmt=s=>{const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h>0?`${h} h ${String(m).padStart(2,'0')}`:`${m} min`};
+const memEl=document.getElementById('members');
+memEl.innerHTML=MEMBERS.map((m,i)=>`<div class="member"><div class="av" style="background:${m.c}">${m.n[0]}</div><div class="who"><div class="nm"><span class="pd" style="background:${PD[m.s]}"></span>${m.n}</div><div class="sub">${PL[m.s]} · ${m.sub}</div></div><div class="dur"><div class="d2" data-i="${i}">${fmt(m.t)}</div><div class="dl">présent·e</div></div></div>`).join('');
+setInterval(()=>MEMBERS.forEach((m,i)=>{m.t++;const el=memEl.querySelector(`.d2[data-i="${i}"]`);if(el)el.textContent=fmt(m.t);}),1000);
+</script>
+</body>
+</html>

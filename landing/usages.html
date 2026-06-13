@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Usages | Webinti Town</title>
+<meta name="description" content="Équipes hybrides, événements, formation, coworking, onboarding, agences. Tout ce que vous pouvez faire avec Webinti Town, le bureau virtuel à la française." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
+    <nav class="nav-links">
+      <a href="fonctionnalites.html">Fonctionnalités</a>
+      <a href="usages.html" class="on">Usages</a>
+      <a href="index.html#admin">Vision admin</a>
+      <a href="index.html#pricing">Tarifs</a>
+    </nav>
+    <a href="https://live.webinti.com" class="btn btn--accent btn--sm">Entrer dans la ville →</a>
+  </div>
+</header>
+
+<section class="phero">
+  <div class="wrap">
+    <span class="kicker rv">À chacun sa ville</span>
+    <h1 class="rv">Un lieu, <em>mille usages</em>.</h1>
+    <p class="lead rv">Bureau d'équipe au quotidien, séminaire annuel, salle de classe ou espace membre : la même ville s'adapte à tous les contextes.</p>
+  </div>
+</section>
+
+<section class="sec" style="padding-top:30px">
+  <div class="wrap">
+
+    <div class="show" id="equipes">
+      <div class="rv">
+        <span class="kicker">PME &amp; startups</span>
+        <h3>Le bureau quotidien des équipes hybrides</h3>
+        <p class="lead">Ton équipe est éclatée entre la maison, le bureau et le bout du monde ? Donne-lui un lieu commun, ouvert toute la journée. Pas besoin de réunion pour se croiser.</p>
+        <ul>
+          <li><b>Daily debout</b> à la machine à café, en 5 minutes</li>
+          <li><b>Co-working silencieux</b> : présents côte à côte, chacun à son poste</li>
+          <li><b>Question rapide ?</b> Tu t'approches et tu demandes. Fini les visios de 30 minutes</li>
+          <li><b>Vision manager</b> : qui est là, depuis quand, qui est concentré</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-openspace.png" alt="L'open-space"><span class="cap">L'open-space</span></div></div>
+    </div>
+
+    <div class="show rev" id="events">
+      <div class="rv">
+        <span class="kicker">Événements</span>
+        <h3>Team building, afterworks &amp; séminaires</h3>
+        <p class="lead">Une soirée d'équipe qui ne soit pas un Zoom de plus : tournoi de karting chronométré, chasse au trésor sur la map, quiz en salle de conf, et des conversations qui se forment naturellement.</p>
+        <ul>
+          <li><b>Tournoi de karting</b> avec classement officiel des meilleurs tours</li>
+          <li><b>Afterwork</b> au salon, autour de la cheminée</li>
+          <li><b>Séminaire</b> : plénière en salle de conf + ateliers par bureaux</li>
+          <li><b>Onboarding ludique</b> des nouvelles recrues</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-circuit.png" alt="Le circuit de karting" style="aspect-ratio:1.35;object-fit:cover"><span class="cap">Le circuit de karting</span></div></div>
+    </div>
+
+    <div class="show" id="formation">
+      <div class="rv">
+        <span class="kicker">Éducation</span>
+        <h3>Formation, écoles &amp; bootcamps</h3>
+        <p class="lead">Un campus virtuel où les élèves lèvent la main en s'approchant du formateur. Cours magistral en salle de conf, travaux pratiques par îlots, permanences au bureau du prof.</p>
+        <ul>
+          <li><b>Cours en grand groupe</b> : salle de conf + partage d'écran + enregistrement</li>
+          <li><b>TP en sous-groupes</b> : un îlot de bureaux par équipe, audio isolé</li>
+          <li><b>Permanences</b> : le formateur à son bureau, on vient le voir</li>
+          <li><b>Assiduité</b> : temps de présence visible côté admin</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-conf.png" alt="La salle de conférence"><span class="cap">La salle de conférence</span></div></div>
+    </div>
+
+    <div class="show rev" id="coworking">
+      <div class="rv">
+        <span class="kicker">Communautés</span>
+        <h3>Coworkings, collectifs &amp; associations</h3>
+        <p class="lead">Offre à tes membres un lieu permanent où se retrouver : un café virtuel où l'on passe une tête, des bureaux à réserver, des événements réguliers qui fidélisent.</p>
+        <ul>
+          <li><b>Espace membre</b> ouvert 24/7, le sentiment d'appartenance en plus</li>
+          <li><b>Networking naturel</b> : les rencontres se font en marchant</li>
+          <li><b>Permanences &amp; ateliers</b> hebdomadaires</li>
+          <li><b>Marque blanche</b> : ta ville, ton logo, ton domaine</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-pause.png" alt="Le coin pause"><span class="cap">Le coin pause</span></div></div>
+    </div>
+
+    <div class="show" id="recrutement">
+      <div class="rv">
+        <span class="kicker">RH</span>
+        <h3>Recrutement &amp; onboarding</h3>
+        <p class="lead">Fais visiter « les locaux » aux candidats, organise des entretiens moins guindés, et offre aux nouveaux un premier jour où ils rencontrent vraiment l'équipe.</p>
+        <ul>
+          <li><b>Entretiens</b> dans un bureau privé, plus humain qu'un lien Teams</li>
+          <li><b>Journée d'intégration</b> : visite guidée, parrain assis à côté</li>
+          <li><b>Accueil par la secrétaire</b> : « Bienvenue ! 👋 » dès l'arrivée</li>
+          <li><b>Sessions portes ouvertes</b> pour les candidats</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-accueil.png" alt="L'accueil"><span class="cap">L'accueil</span></div></div>
+    </div>
+
+    <div class="show rev" id="agences">
+      <div class="rv">
+        <span class="kicker">Agences &amp; studios</span>
+        <h3>Recevoir ses clients comme au bureau</h3>
+        <p class="lead">Invite tes clients dans tes locaux virtuels : une salle de réunion à ton image, des restitutions plus vivantes, et un « waouh » garanti dès l'accueil.</p>
+        <ul>
+          <li><b>Salle client</b> : présentations, ateliers, points hebdo</li>
+          <li><b>Map à ta marque</b> : tes couleurs, ton logo sur les murs</li>
+          <li><b>Bureaux d'équipe</b> + espaces projets séparés</li>
+          <li><b>Image moderne</b> : ton agence n'est pas comme les autres</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-bureaux.png" alt="Les bureaux privés"><span class="cap">Les bureaux privés</span></div></div>
+    </div>
+
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2 class="rv">Quelle sera ta ville ?</h2>
+    <p class="rv">Commence gratuitement ou parle-nous de ton cas d'usage.</p>
+    <div class="cta-row rv">
+      <a href="https://live.webinti.com" class="btn btn--lg">▶ Entrer dans la démo</a>
+      <a href="mailto:agence.webinti@gmail.com" class="btn btn--ghost btn--lg">Parler à l'équipe</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fg">
+      <div class="fb">
+        <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
+        <p>Le bureau virtuel de ton équipe, à la française. Une création de l'agence Webinti.</p>
+      </div>
+      <div><h4>Produit</h4><a href="fonctionnalites.html">Fonctionnalités</a><a href="usages.html">Usages</a><a href="index.html#compare">vs Gather</a><a href="index.html#pricing">Tarifs</a></div>
+      <div><h4>Ressources</h4><a href="https://live.webinti.com">Démo live</a><a href="mailto:agence.webinti@gmail.com">Contact</a></div>
+      <div><h4>Webinti</h4><a href="https://webinti.com">L'agence</a><a href="mailto:agence.webinti@gmail.com">Nous écrire</a><a href="#">Mentions légales</a></div>
+    </div>
+    <div class="fbot"><span>© 2026 Webinti Town</span><span>Conçu en France · Données en Europe 🇪🇺</span></div>
+  </div>
+</footer>
+
+<script src="site.js"></script>
+</body>
+</html>
