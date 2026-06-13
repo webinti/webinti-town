@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Webinti Town | Le bureau virtuel de ton équipe</title>
-<meta name="description" content="Un bureau virtuel en pixel-art où ton équipe se déplace, se croise et se parle comme au bureau. Alternative française à Gather.town, données hébergées en Europe." />
-<meta property="og:title" content="Webinti Town | Le bureau virtuel de ton équipe" />
+<title>Webinti Town | Le bureau virtuel de votre équipe</title>
+<meta name="description" content="Un bureau virtuel en pixel-art où votre équipe se déplace, se croise et se parle comme au bureau. Alternative française à Gather.town, données hébergées en Europe." />
+<meta property="og:title" content="Webinti Town | Le bureau virtuel de votre équipe" />
 <meta property="og:description" content="Le bureau virtuel à la française : RGPD, support FR, une ville vivante." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,13 +37,15 @@
 .mapbox>img{width:100%;display:block}
 /* Avatars STATIQUES, ancrés par les PIEDS (translate -50%,-100%) : left/top =
    le point au sol où le perso se tient. Plus gros (4.4%) pour la visibilité. */
-.av{position:absolute;width:4.4%;z-index:4;transform:translate(-50%,-100%)}
-.av .sp{width:100%;aspect-ratio:1/2;background-size:100% 100%;animation:idle 3s ease-in-out infinite}
-.av.d2 .sp{animation-delay:-1.4s}
+/* .mate = avatar du hero (renommé pour ne PAS entrer en collision avec les
+   avatars .av du panneau admin, qui héritaient sinon de position:absolute). */
+.mate{position:absolute;width:4.4%;z-index:4;transform:translate(-50%,-100%)}
+.mate .sp{width:100%;aspect-ratio:1/2;background-size:100% 100%;animation:idle 3s ease-in-out infinite}
+.mate.d2 .sp{animation-delay:-1.4s}
 @keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-4%)}}
-.av .nm{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:3px;background:rgba(23,18,33,.85);color:#fff;font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:5px}
-.av .nm i{width:6px;height:6px;border-radius:50%;background:#52d06c;font-style:normal}
-.av .sh{position:absolute;left:50%;bottom:-3%;width:74%;height:7%;background:radial-gradient(ellipse,rgba(0,0,0,.3),transparent 70%);transform:translateX(-50%);z-index:-1}
+.mate .nm{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:3px;background:rgba(23,18,33,.85);color:#fff;font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.mate .nm i{width:6px;height:6px;border-radius:50%;background:#52d06c;font-style:normal}
+.mate .sh{position:absolute;left:50%;bottom:-3%;width:74%;height:7%;background:radial-gradient(ellipse,rgba(0,0,0,.3),transparent 70%);transform:translateX(-50%);z-index:-1}
 .blb{position:absolute;left:28%;top:22%;z-index:5;background:#fff;border:1.5px solid rgba(33,26,46,.25);border-radius:12px;padding:6px 12px;font-size:.78rem;font-weight:700;box-shadow:0 8px 20px -8px rgba(33,26,46,.3);animation:bob 4s ease-in-out infinite}
 .blb::after{content:"";position:absolute;left:18px;bottom:-8px;width:12px;height:12px;background:#fff;border-right:1.5px solid rgba(33,26,46,.25);border-bottom:1.5px solid rgba(33,26,46,.25);transform:rotate(45deg)}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
@@ -72,8 +74,8 @@
 <section class="hero">
   <div class="wrap">
     <span class="kicker rv">🇫🇷 Le bureau virtuel à la française</span>
-    <h1 class="rv">Ton équipe, réunie dans un bureau <em>vivant</em>.</h1>
-    <p class="lead rv">Déplace ton avatar, approche-toi d'un collègue et parle-lui, comme au bureau. <b style="color:var(--ink)">Ce que tu vois ci-dessous, c'est la vraie application.</b></p>
+    <h1 class="rv">Votre équipe, réunie dans un bureau <em>vivant</em>.</h1>
+    <p class="lead rv">Déplacez votre avatar, approchez-vous d'un collègue et parlez-lui, comme au bureau. <b style="color:var(--ink)">Ce que vous voyez ci-dessous, c'est la vraie application.</b></p>
     <div class="cta-row rv">
       <a href="https://live.webinti.com" class="btn btn--accent btn--lg">▶ Entrer dans la démo</a>
       <a href="#pricing" class="btn btn--ghost btn--lg">Voir les tarifs</a>
@@ -87,10 +89,10 @@
       <div class="mapbox">
         <img class="pixelated" src="assets/map-hero.png" alt="La map de Webinti Town">
         <!-- statiques, pieds posés sur du sol valide -->
-        <div class="av" style="left:24%;top:38%"><div class="sh"></div><div class="nm"><i></i>Léa</div><div class="sp pixelated" style="background-image:url(assets/idle-0.png)"></div></div>
-        <div class="av d2" style="left:13%;top:84%"><div class="sh"></div><div class="nm"><i></i>Marc</div><div class="sp pixelated" style="background-image:url(assets/idle-1.png)"></div></div>
-        <div class="av" style="left:88%;top:82%"><div class="sh"></div><div class="nm"><i></i>Sofia</div><div class="sp pixelated" style="background-image:url(assets/idle-2.png)"></div></div>
-        <div class="blb">👋 « Tu as 2 min ? »</div>
+        <div class="mate" style="left:24%;top:38%"><div class="sh"></div><div class="nm"><i></i>Léa</div><div class="sp pixelated" style="background-image:url(assets/idle-0.png)"></div></div>
+        <div class="mate d2" style="left:13%;top:84%"><div class="sh"></div><div class="nm"><i></i>Marc</div><div class="sp pixelated" style="background-image:url(assets/idle-1.png)"></div></div>
+        <div class="mate" style="left:88%;top:82%"><div class="sh"></div><div class="nm"><i></i>Sofia</div><div class="sp pixelated" style="background-image:url(assets/idle-2.png)"></div></div>
+        <div class="blb">👋 « Vous avez 2 min ? »</div>
       </div>
     </div>
   </div>
@@ -109,18 +111,19 @@
     <div class="sec-head rv">
       <span class="kicker">La visite</span>
       <h2>Comme au bureau, en mieux</h2>
-      <p class="lead">Trois choses que tes outils actuels ne savent pas faire.</p>
+      <p class="lead">Trois choses que vos outils actuels ne savent pas faire.</p>
     </div>
 
     <div class="show">
       <div class="rv">
         <span class="kicker">Spontané</span>
-        <h3>Tu t'approches, tu parles. C'est tout.</h3>
-        <p class="lead">Le son et la vidéo montent quand tu te rapproches et baissent quand tu t'éloignes. Pas de lien à créer, pas de réunion à planifier.</p>
+        <h3>Vous vous approchez, vous parlez, comme dans la vraie vie.</h3>
+        <p class="lead">Le son et la vidéo montent quand vous vous rapprochez et baissent quand vous vous éloignez. Pas de lien à créer, pas de réunion à planifier.</p>
         <ul>
           <li><b>Conversations privées automatiques</b> dans les bureaux et la salle de conf</li>
-          <li><b>Partage d'écran</b> en un clic, vue mosaïque à 3+</li>
-          <li>On voit qui est dispo <b>en temps réel</b></li>
+          <li><b>Partage d'écran</b> en un clic</li>
+          <li><b>Vue mosaïque</b> dès qu'une conversation réunit plus de 3 participants</li>
+          <li>Vous voyez qui est disponible <b>en temps réel</b></li>
         </ul>
       </div>
       <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-openspace.png" alt="L'open-space de Webinti Town"><span class="cap">L'open-space</span></div></div>
@@ -142,7 +145,7 @@
           <div class="panel-bar"><span class="d"></span><span class="d"></span><span class="d"></span><span class="t">admin · webinti-town</span><span class="live">EN DIRECT</span></div>
           <div class="panel-head"><b>Membres connectés</b><span>4 en ligne</span></div>
           <div id="members"></div>
-          <div class="panel-toast" id="toast">👋 <b>&nbsp;Hugo</b>&nbsp;vient de se connecter</div>
+          <div class="panel-toast" id="toast">👋 <b>Hugo</b>&nbsp;vient de se connecter</div>
         </div>
       </div>
     </div>
@@ -224,7 +227,7 @@
         <tr><td>Données en Europe / France (RGPD)</td><td class="us"><span class="y">✓</span></td><td><span class="n">✕ US</span></td><td><span class="y">✓</span></td></tr>
         <tr><td>Vision admin du temps de présence</td><td class="us"><span class="y">✓</span></td><td><span class="n">✕</span></td><td><span class="n">✕</span></td></tr>
         <tr><td>Cycle jour/nuit &amp; mini-jeux</td><td class="us"><span class="y">✓</span></td><td><span class="n">✕</span></td><td><span class="n">✕</span></td></tr>
-        <tr><td>Forfait clair (pas de par-utilisateur)</td><td class="us"><span class="y">✓</span></td><td><span class="n">✕</span></td><td><span class="n">✕</span></td></tr>
+        <tr><td>Forfait mensuel fixe, pas par utilisateur</td><td class="us"><span class="y">✓</span></td><td><span class="n">✕</span></td><td><span class="n">✕</span></td></tr>
       </tbody>
     </table></div>
   </div>
@@ -236,26 +239,26 @@
     <div class="sec-head rv">
       <span class="kicker">Tarifs simples</span>
       <h2>Un forfait clair, pensé PME</h2>
-      <p class="lead">Pas de coût caché, pas de par-utilisateur compliqué.</p>
+      <p class="lead">Un montant fixe par mois. Sans frais cachés, sans facturation à l'utilisateur.</p>
     </div>
     <div class="prices">
       <div class="price rv">
         <div class="pn">Gratuit</div><div class="amt">0&nbsp;€</div>
         <p class="pd2">Pour tester en vrai, sans limite de temps.</p>
-        <ul><li>Jusqu'à <b>&nbsp;3 personnes</b></li><li>Sur live.webinti.com</li><li>Audio/vidéo de proximité</li><li>Bureaux, chat, écran, mini-jeux</li></ul>
+        <ul><li>Jusqu'à <b>3 personnes</b></li><li>Sur live.webinti.com</li><li>Audio/vidéo de proximité</li><li>Bureaux, chat, écran, mini-jeux</li></ul>
         <a href="https://live.webinti.com" class="btn btn--ghost">Commencer gratuitement</a>
       </div>
       <div class="price hot rv">
         <span class="rb">★ LE PLUS CHOISI</span>
         <div class="pn">Équipe</div><div class="amt">90&nbsp;€<small> /mois</small></div>
         <p class="pd2">Pour les équipes qui s'installent pour de bon.</p>
-        <ul><li>Jusqu'à <b>&nbsp;25 personnes</b></li><li><b>&nbsp;Room dédiée</b> possible</li><li>Map personnalisée à ta marque</li><li>Vision admin &amp; enregistrement</li><li>Support en français</li></ul>
+        <ul><li>Jusqu'à <b>25 personnes</b></li><li><b>Room dédiée</b> possible</li><li>Map personnalisée à votre marque</li><li>Vision admin &amp; enregistrement</li><li>Support en français</li></ul>
         <a href="mailto:agence.webinti@gmail.com?subject=Offre%20Équipe%20·%20Webinti%20Town" class="btn">Choisir Équipe</a>
       </div>
       <div class="price rv">
         <div class="pn">Entreprise</div><div class="amt">350&nbsp;€<small> /mois</small></div>
         <p class="pd2">Souveraineté totale &amp; sur-mesure.</p>
-        <ul><li>Jusqu'à <b>&nbsp;100 personnes</b></li><li><b>&nbsp;Auto-hébergé</b>, configuration du serveur offerte</li><li>Données <b>&nbsp;100 % en France</b></li><li>Domaine perso &amp; marque blanche</li></ul>
+        <ul><li>Jusqu'à <b>100 personnes</b></li><li><b>Auto-hébergé</b>, configuration du serveur offerte</li><li>Données <b>100 % en France</b></li><li>Domaine perso &amp; marque blanche</li></ul>
         <a href="mailto:agence.webinti@gmail.com?subject=Offre%20Entreprise%20·%20Webinti%20Town" class="btn btn--ghost">Nous contacter</a>
       </div>
     </div>
@@ -265,14 +268,14 @@
 <!-- FAQ -->
 <section class="sec">
   <div class="wrap">
-    <div class="sec-head rv"><span class="kicker">FAQ</span><h2>Tout ce que tu te demandes</h2></div>
+    <div class="sec-head rv"><span class="kicker">FAQ</span><h2>Les questions fréquentes</h2></div>
     <div class="faq">
-      <details class="qa rv"><summary>Mes données sont-elles en sécurité et en Europe ?</summary><div class="ans">Oui. Toute l'infrastructure est hébergée en Europe et conforme RGPD. En offre Entreprise, c'est 100 % en France et auto-hébergé sur ton serveur (configuration offerte) : tes données ne sortent jamais de chez toi.</div></details>
+      <details class="qa rv"><summary>Mes données sont-elles en sécurité et en Europe ?</summary><div class="ans">Oui. Toute l'infrastructure est hébergée en Europe et conforme RGPD. En offre Entreprise, c'est 100 % en France et auto-hébergé sur votre serveur (configuration offerte) : vos données ne sortent jamais de chez vous.</div></details>
       <details class="qa rv"><summary>En quoi c'est différent de Gather.town ?</summary><div class="ans">Le principe est le même : un bureau virtuel avec audio de proximité. La différence : interface et support 100 % français, données en Europe ou en France, un forfait clair au lieu d'un prix par utilisateur, la vision admin de la présence et une ville vivante.</div></details>
-      <details class="qa rv"><summary>Faut-il installer quelque chose ?</summary><div class="ans">Non. Tout se passe dans le navigateur, sur ordinateur, tablette ou mobile. Tes invités cliquent un lien, choisissent un avatar, et entrent.</div></details>
+      <details class="qa rv"><summary>Faut-il installer quelque chose ?</summary><div class="ans">Non. Tout se passe dans le navigateur, sur ordinateur, tablette ou mobile. Vos invités cliquent un lien, choisissent un avatar, et entrent.</div></details>
       <details class="qa rv"><summary>Combien de personnes en même temps ?</summary><div class="ans">Gratuit jusqu'à 3, Équipe jusqu'à 25 (room dédiée possible), Entreprise jusqu'à 100 en auto-hébergé. Au-delà, on dimensionne ensemble.</div></details>
-      <details class="qa rv"><summary>C'est quoi une « room dédiée » ?</summary><div class="ans">Dès l'offre Équipe, on peut t'isoler un espace dédié : ta ville, ta map, tes réglages, séparés des autres clients. En Entreprise, c'est ton propre serveur.</div></details>
-      <details class="qa rv"><summary>Peut-on personnaliser la map et la marque ?</summary><div class="ans">Oui. Dès l'offre Équipe, la map est personnalisée à tes couleurs. En Entreprise : map sur-mesure complète, ton logo, ton domaine (marque blanche).</div></details>
+      <details class="qa rv"><summary>C'est quoi une « room dédiée » ?</summary><div class="ans">Dès l'offre Équipe, on peut vous isoler un espace dédié : votre ville, votre map, vos réglages, séparés des autres clients. En Entreprise, c'est votre propre serveur.</div></details>
+      <details class="qa rv"><summary>Peut-on personnaliser la map et la marque ?</summary><div class="ans">Oui. Dès l'offre Équipe, la map est personnalisée à vos couleurs. En Entreprise : map sur-mesure complète, votre logo, votre domaine (marque blanche).</div></details>
     </div>
   </div>
 </section>
@@ -280,8 +283,8 @@
 <!-- FINAL -->
 <section class="final">
   <div class="wrap">
-    <h2 class="rv">Ramène la vie dans ton équipe.</h2>
-    <p class="rv">Ouvre ta ville en 2 minutes, invite ton équipe, et retrouve le plaisir de bosser ensemble.</p>
+    <h2 class="rv">Ramenez la vie dans votre équipe.</h2>
+    <p class="rv">Ouvrez votre ville en 2 minutes, invitez votre équipe, et retrouvez le plaisir de travailler ensemble.</p>
     <div class="cta-row rv">
       <a href="https://live.webinti.com" class="btn btn--lg">▶ Entrer dans la démo</a>
       <a href="mailto:agence.webinti@gmail.com" class="btn btn--ghost btn--lg">Parler à l'équipe</a>
@@ -295,7 +298,7 @@
     <div class="fg">
       <div class="fb">
         <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
-        <p>Le bureau virtuel de ton équipe, à la française. Une création de l'agence Webinti.</p>
+        <p>Le bureau virtuel de votre équipe, à la française. Une création de l'agence Webinti.</p>
       </div>
       <div><h4>Produit</h4><a href="fonctionnalites.html">Fonctionnalités</a><a href="usages.html">Usages</a><a href="index.html#compare">vs Gather</a><a href="index.html#pricing">Tarifs</a></div>
       <div><h4>Ressources</h4><a href="https://live.webinti.com">Démo live</a><a href="mailto:agence.webinti@gmail.com">Contact</a></div>

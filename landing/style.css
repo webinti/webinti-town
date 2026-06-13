@@ -109,7 +109,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(252,248,240,.87);backdr
 .member .nm .pd{width:8px;height:8px;border-radius:50%}
 .member .sub{font-size:.78rem;color:var(--soft)}
 .member .dur{text-align:right}
-.member .dur .d2{font-family:var(--pixel);color:var(--accent-d);font-size:.95rem}
+.member .dur .d2{font-family:var(--sans);font-weight:800;color:var(--accent-d);font-size:1rem}
 .member .dur .dl{font-size:.62rem;color:var(--soft);text-transform:uppercase;letter-spacing:.08em}
 .panel-toast{margin:12px 20px 18px;background:rgba(79,157,63,.1);border:1px solid rgba(79,157,63,.35);border-radius:10px;padding:9px 13px;font-size:.85rem;color:#2f6d24;display:flex;gap:8px;align-items:center;opacity:0;transform:translateY(6px);transition:.4s}
 .panel-toast.show{opacity:1;transform:none}
@@ -164,8 +164,10 @@ header{position:sticky;top:0;z-index:100;background:rgba(252,248,240,.87);backdr
 .price .pd2{color:var(--soft);font-size:.94rem;margin-bottom:16px;min-height:40px}
 .price.hot .pd2{color:#c6bfd8}
 .price ul{list-style:none;display:flex;flex-direction:column;gap:10px;margin:4px 0 24px;flex:1}
-.price li{display:flex;gap:10px;font-size:.96rem;font-weight:500}
-.price li::before{content:"✓";color:var(--green);font-weight:900}
+/* PAS de flex : sinon gras et texte normal se séparent en 2 colonnes. */
+.price li{position:relative;padding-left:24px;font-size:.96rem;font-weight:500}
+.price li b{font-weight:700}
+.price li::before{content:"✓";position:absolute;left:0;top:0;color:var(--green);font-weight:900}
 .price.hot li::before{color:var(--accent-l)}
 .price .rb{align-self:flex-start;font-family:var(--pixel);font-size:.64rem;background:var(--accent);color:#fff;padding:3px 10px;border-radius:20px;margin-bottom:12px;letter-spacing:.06em}
 .price .btn{width:100%;justify-content:center}
