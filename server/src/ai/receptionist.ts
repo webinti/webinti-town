@@ -1,7 +1,7 @@
 import { config } from '../config.js';
 
 /**
- * Agent IA d'accueil — « Inès », l'hôtesse de Webinti Town.
+ * Agent IA d'accueil — « Marie », l'hôtesse de Webinti Town.
  *
  * C'est un personnage non-joueur (PNJ) posé à la réception. Quand un joueur
  * proche écrit dans le chat local, le serveur lui fait générer une réponse via
@@ -15,13 +15,13 @@ import { config } from '../config.js';
 
 export const RECEPTIONIST = {
   id: 'ai-secretaire',
-  name: 'Inès · Accueil',
+  name: 'Marie · Accueil',
   // Position de la secrétaire sur la map (cf. AmbientLayer GREETERS).
   x: 48,
   y: 560,
 } as const;
 
-const SYSTEM_PROMPT = `Tu es Inès, l'hôtesse d'accueil de Webinti Town, un bureau virtuel en pixel-art où les équipes se retrouvent comme dans un vrai bureau. Tu te tiens à la réception, près de l'entrée.
+const SYSTEM_PROMPT = `Tu es Marie, l'hôtesse d'accueil de Webinti Town, un bureau virtuel en pixel-art où les équipes se retrouvent comme dans un vrai bureau. Tu te tiens à la réception, près de l'entrée.
 
 Ton rôle : accueillir les visiteurs, les orienter dans les lieux et expliquer simplement comment ça marche. Tu es chaleureuse, naturelle et efficace.
 

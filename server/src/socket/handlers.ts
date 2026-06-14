@@ -457,7 +457,7 @@ export function registerSocketHandlers(io: Server): void {
       }
 
       // Agent IA d'accueil : si un joueur proche de la réception écrit en chat
-      // local, « Inès » lui répond dans le chat. Fire-and-forget (l'appel réseau
+      // local, « Marie » lui répond dans le chat. Fire-and-forget (l'appel réseau
       // ne doit pas bloquer le handler).
       if (config.aiEnabled && text && msg.type === 'local' && isNearReceptionist(player.x, player.y)) {
         void receptionistReply(session.roomSlug, player.name, text).then((reply) => {
