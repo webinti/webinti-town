@@ -1,4 +1,7 @@
 import { config } from '../config.js';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Agent IA d'accueil — « Marie », l'hôtesse de Webinti Town.
@@ -44,6 +47,45 @@ Les lieux de Webinti Town :
 - Le circuit de karting, à l'est : un mini-jeu chronométré avec classement, pour les pauses et le team-building.
 
 Comment ça marche, en bref : on se déplace avec son avatar ; quand on s'approche de quelqu'un, l'audio et la vidéo s'activent automatiquement, comme dans la vraie vie. On peut partager son écran, utiliser le tableau blanc, le tableau de tâches et s'envoyer des messages privés.`;
+
+/* ───────── Consignes & connaissances éditables (panneau admin) ─────────
+   L'hôte peut donner à Marie des infos/FAQ/règles spécifiques depuis l'app.
+   Persisté dans data/marie.json, chargé au démarrage, appliqué à chaud. */
+
+const DATA_DIR = (() => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  return join(here, '..', '..', 'data');
+})();
+const CONFIG_PATH = join(DATA_DIR, 'marie.json');
+const MAX_KNOWLEDGE = 6000;
+
+let knowledge = '';
+(function loadKnowledge() {
+  try {
+    if (existsSync(CONFIG_PATH)) {
+      const raw = JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) as { knowledge?: unknown };
+      if (typeof raw.knowledge === 'string') knowledge = raw.knowledge;
+    }
+  } catch (err) {
+    console.error('[ai] lecture de marie.json échouée :', err);
+  }
+})();
+
+export function getMarieKnowledge(): string {
+  return knowledge;
+}
+
+/** Met à jour les consignes de Marie (appliqué immédiatement + persisté). */
+export function setMarieKnowledge(text: string): string {
+  knowledge = (text ?? '').slice(0, MAX_KNOWLEDGE);
+  try {
+    mkdirSync(DATA_DIR, { recursive: true });
+    writeFileSync(CONFIG_PATH, JSON.stringify({ knowledge }, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[ai] écriture de marie.json échouée :', err);
+  }
+  return knowledge;
+}
 
 interface Turn {
   role: 'user' | 'assistant';
@@ -92,6 +134,7 @@ export async function receptionistReply(
   roomSlug: string,
   userName: string,
   userText: string,
+  liveContext = '',
 ): Promise<string | null> {
   if (!config.aiEnabled) return null;
 
@@ -100,6 +143,14 @@ export async function receptionistReply(
 
   mem.turns.push({ role: 'user', content: `${userName}: ${userText}` });
   if (mem.turns.length > MAX_TURNS) mem.turns.splice(0, mem.turns.length - MAX_TURNS);
+
+  // Prompt système = base + consignes éditables de l'hôte + contexte temps réel.
+  const systemPrompt =
+    SYSTEM_PROMPT +
+    (knowledge
+      ? `\n\n# Consignes et connaissances spécifiques (à privilégier)\n${knowledge}`
+      : '') +
+    (liveContext ? `\n\n# Contexte en temps réel\n${liveContext}` : '');
 
   mem.busy = true;
   try {
@@ -116,7 +167,7 @@ export async function receptionistReply(
         model: config.aiModel,
         max_tokens: 220,
         temperature: 0.6,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...mem.turns],
+        messages: [{ role: 'system', content: systemPrompt }, ...mem.turns],
       }),
       signal: AbortSignal.timeout(15000),
     });

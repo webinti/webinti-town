@@ -23,7 +23,13 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSTATIONS } from '../workstations.js';
-import { RECEPTIONIST, isNearReceptionist, receptionistReply } from '../ai/receptionist.js';
+import {
+  RECEPTIONIST,
+  isNearReceptionist,
+  receptionistReply,
+  getMarieKnowledge,
+  setMarieKnowledge,
+} from '../ai/receptionist.js';
 
 const UPLOADS_ROOT_HANDLER = (() => {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -460,7 +466,14 @@ export function registerSocketHandlers(io: Server): void {
       // local, « Marie » lui répond dans le chat. Fire-and-forget (l'appel réseau
       // ne doit pas bloquer le handler).
       if (config.aiEnabled && text && msg.type === 'local' && isNearReceptionist(player.x, player.y)) {
-        void receptionistReply(session.roomSlug, player.name, text).then((reply) => {
+        // Contexte temps réel : qui est connecté maintenant (Marie peut répondre
+        // précisément à « on est combien / qui est là »).
+        const present = [...room.players.values()].map((pl) => pl.name);
+        const liveContext =
+          `Personnes actuellement connectées : ${present.length} ` +
+          `(${present.join(', ') || 'aucune autre'}). ` +
+          `Ce nombre est affiché en haut de l'écran sous la forme « Connecté · N joueur(s) ».`;
+        void receptionistReply(session.roomSlug, player.name, text, liveContext).then((reply) => {
           if (!reply) return;
           const liveRoom = roomManager.getRoom(session.roomSlug);
           if (!liveRoom) return;
@@ -1124,6 +1137,28 @@ export function registerSocketHandlers(io: Server): void {
       const target = room.players.get(targetPlayerId);
       if (!me || !target) return;
       io.to(target.socketId).emit('knocked', { fromPlayerId: me.playerId, fromName: me.name });
+    });
+
+    // ── Agent d'accueil « Marie » : consignes éditables (hôte seulement) ──
+    socket.on('ai:get_config', () => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      const room = roomManager.getRoom(session.roomSlug);
+      if (!room || room.hostPlayerId !== session.playerId) return;
+      socket.emit('ai:config', { knowledge: getMarieKnowledge() });
+    });
+
+    socket.on('ai:set_config', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      const room = roomManager.getRoom(session.roomSlug);
+      if (!room || room.hostPlayerId !== session.playerId) return;
+      const knowledge =
+        payload && typeof payload === 'object'
+          ? (payload as Record<string, unknown>).knowledge
+          : undefined;
+      const saved = setMarieKnowledge(typeof knowledge === 'string' ? knowledge : '');
+      socket.emit('ai:config', { knowledge: saved, saved: true });
     });
 
     socket.on('admin_kick', (payload: unknown) => {

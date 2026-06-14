@@ -33,6 +33,20 @@ export function AdminPanel() {
   const players = useGameStore((s) => s.players);
   const isHost = !!localPlayerId && localPlayerId === hostPlayerId;
 
+  // Consignes de l'agent d'accueil « Marie » (éditables par l'hôte).
+  const [aiKnowledge, setAiKnowledge] = useState('');
+  const [aiStatus, setAiStatus] = useState<'idle' | 'loaded' | 'saving' | 'saved'>('idle');
+
+  useEffect(() => {
+    if (!open || !isHost) return;
+    const off = socketManager.onAiConfig((p) => {
+      setAiKnowledge(p.knowledge);
+      setAiStatus(p.saved ? 'saved' : 'loaded');
+    });
+    socketManager.aiGetConfig();
+    return off;
+  }, [open, isHost]);
+
   // Horloge qui avance pour rafraîchir les durées de connexion (toutes les 15 s).
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -73,6 +87,11 @@ export function AdminPanel() {
     socketManager.adminCloseRoom();
   };
 
+  const handleSaveAi = () => {
+    setAiStatus('saving');
+    socketManager.aiSetConfig(aiKnowledge);
+  };
+
   return (
     <div
       className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/60"
@@ -104,6 +123,40 @@ export function AdminPanel() {
           >
             Fermer la salle
           </button>
+        </div>
+
+        <div className="mb-4 rounded-lg bg-slate-800/60 p-3 ring-1 ring-white/5">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h3 className="text-sm font-semibold">🛎️ Assistant d'accueil · Marie</h3>
+            {aiStatus === 'saved' && <span className="text-xs text-emerald-400">Enregistré ✓</span>}
+            {aiStatus === 'saving' && <span className="text-xs text-slate-400">Enregistrement…</span>}
+          </div>
+          <p className="mb-2 text-[11px] leading-snug text-slate-400">
+            Infos et FAQ que Marie utilisera en priorité pour répondre. Une consigne par ligne,
+            p. ex. : « Horaires : 9h–18h. Pour une démo : contact@webinti.com. Le wifi invité est
+            Webinti-Guest. »
+          </p>
+          <textarea
+            value={aiKnowledge}
+            onChange={(e) => {
+              setAiKnowledge(e.target.value);
+              setAiStatus('loaded');
+            }}
+            rows={6}
+            maxLength={6000}
+            placeholder="Ce que Marie doit savoir et comment répondre…"
+            className="w-full resize-y rounded-md bg-slate-900 p-2 text-xs text-slate-100 ring-1 ring-white/10 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-[10px] text-slate-500">{aiKnowledge.length}/6000</span>
+            <button
+              onClick={handleSaveAi}
+              disabled={aiStatus === 'saving'}
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold hover:bg-indigo-500 disabled:opacity-50"
+            >
+              Enregistrer
+            </button>
+          </div>
         </div>
 
         <div className="overflow-y-auto pr-1">

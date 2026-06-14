@@ -27,6 +27,11 @@ interface TypingStatePayload {
   t: number;
 }
 
+interface AiConfigPayload {
+  knowledge: string;
+  saved?: boolean;
+}
+
 interface WorkstationStatePayload {
   id: string;
   claimedBy: string | null;
@@ -95,6 +100,7 @@ class SocketManager {
   private emoteListeners = new Set<(e: EmoteEvent) => void>();
   private confettiListeners = new Set<(e: ConfettiEvent) => void>();
   private objectListeners = new Set<(obj: InteractiveObject) => void>();
+  private aiConfigListeners = new Set<(p: AiConfigPayload) => void>();
   private whiteboardStrokeListeners = new Set<(p: WhiteboardStrokePayload) => void>();
   private whiteboardTextListeners = new Set<(p: WhiteboardTextPayload) => void>();
   private whiteboardClearListeners = new Set<(p: WhiteboardClearPayload) => void>();
@@ -266,6 +272,11 @@ class SocketManager {
         typeof payload.t !== 'number'
       ) return;
       for (const fn of this.typingStateListeners) fn(payload);
+    });
+
+    socket.on('ai:config', (payload: AiConfigPayload) => {
+      if (!payload || typeof payload.knowledge !== 'string') return;
+      for (const fn of this.aiConfigListeners) fn(payload);
     });
 
     socket.on('whiteboard_text_update', (payload: WhiteboardTextUpdatePayload) => {
@@ -452,6 +463,22 @@ class SocketManager {
 
   adminTransferHost(targetPlayerId: string): void {
     this.socket?.emit('admin_transfer_host', { targetPlayerId });
+  }
+
+  /** Agent d'accueil « Marie » : récupère / met à jour ses consignes (hôte). */
+  aiGetConfig(): void {
+    this.socket?.emit('ai:get_config');
+  }
+
+  aiSetConfig(knowledge: string): void {
+    this.socket?.emit('ai:set_config', { knowledge });
+  }
+
+  onAiConfig(fn: (p: AiConfigPayload) => void): () => void {
+    this.aiConfigListeners.add(fn);
+    return () => {
+      this.aiConfigListeners.delete(fn);
+    };
   }
 
   onPlayerGhost(fn: (p: { playerId: string; isGhost: boolean }) => void): () => void {
