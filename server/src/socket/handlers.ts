@@ -23,6 +23,7 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSTATIONS } from '../workstations.js';
+import { RECEPTIONIST, isNearReceptionist, receptionistReply } from '../ai/receptionist.js';
 
 const UPLOADS_ROOT_HANDLER = (() => {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -453,6 +454,32 @@ export function registerSocketHandlers(io: Server): void {
         }
       } else {
         io.to(session.roomSlug).emit('chat_message', msg);
+      }
+
+      // Agent IA d'accueil : si un joueur proche de la réception écrit en chat
+      // local, « Inès » lui répond dans le chat. Fire-and-forget (l'appel réseau
+      // ne doit pas bloquer le handler).
+      if (config.aiEnabled && text && msg.type === 'local' && isNearReceptionist(player.x, player.y)) {
+        void receptionistReply(session.roomSlug, player.name, text).then((reply) => {
+          if (!reply) return;
+          const liveRoom = roomManager.getRoom(session.roomSlug);
+          if (!liveRoom) return;
+          const aiMsg: ChatMessage = {
+            id: randomUUID(),
+            playerId: RECEPTIONIST.id,
+            playerName: RECEPTIONIST.name,
+            text: reply,
+            type: 'local',
+            timestamp: Date.now(),
+          };
+          roomManager.pushChat(session.roomSlug, aiMsg);
+          const rSq = config.proximityRadiusPx * config.proximityRadiusPx;
+          for (const other of liveRoom.players.values()) {
+            const dx = other.x - RECEPTIONIST.x;
+            const dy = other.y - RECEPTIONIST.y;
+            if (dx * dx + dy * dy <= rSq) io.to(other.socketId).emit('chat_message', aiMsg);
+          }
+        });
       }
     });
 

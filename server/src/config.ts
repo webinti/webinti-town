@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+// Agent IA d'accueil : clé du moteur de réponses (OpenRouter par défaut).
+// AI_API_KEY a priorité ; OPENROUTER_API_KEY accepté en repli (nom usuel).
+const aiApiKey = process.env.AI_API_KEY ?? process.env.OPENROUTER_API_KEY ?? '';
+
 export const config = {
   port: Number(process.env.PORT ?? 3001),
   clientOrigin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
@@ -29,4 +33,10 @@ export const config = {
   kanbanBackend: (process.env.KANBAN_BACKEND ?? 'json') as 'json' | 'pocketbase',
   dmBackend: (process.env.DM_BACKEND ?? 'json') as 'json' | 'pocketbase',
   workstationBackend: (process.env.WORKSTATION_BACKEND ?? 'json') as 'json' | 'pocketbase',
+  // Agent IA d'accueil (la secrétaire). Moteur compatible OpenAI via OpenRouter
+  // par défaut ; surchargeable pour brancher un Hermes / endpoint maison.
+  aiBaseUrl: process.env.AI_BASE_URL ?? 'https://openrouter.ai/api/v1',
+  aiApiKey,
+  aiModel: process.env.AI_MODEL ?? 'openai/gpt-4o-mini',
+  aiEnabled: aiApiKey.length > 0,
 };
