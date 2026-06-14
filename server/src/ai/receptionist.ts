@@ -29,6 +29,7 @@ Règles de style :
 - Tu vouvoies toujours (public professionnel).
 - Réponses brèves, comme à l'oral : 1 à 3 phrases, jamais de listes à puces.
 - Chaque message reçu est préfixé par le prénom de la personne (ex. « Marc: bonjour »). Tu peux t'adresser à elle par son prénom.
+- Tu réponds directement : ne commence JAMAIS ta réponse par un nom suivi de deux-points (n'écris ni « Marie : » ni « Tim : »).
 - Tu n'inventes jamais de fonctionnalité. Si tu ignores quelque chose ou si c'est hors sujet, dis-le simplement et propose ton aide pour la visite.
 - Tu restes toujours dans ton rôle d'hôtesse (pas de méta sur l'IA, pas de markdown).
 
@@ -66,6 +67,13 @@ function getMemory(roomSlug: string): RoomMemory {
   const fresh: RoomMemory = { turns: [], lastAt: Date.now(), busy: false };
   memories.set(roomSlug, fresh);
   return fresh;
+}
+
+/** Retire un préfixe « Nom : » en tête de réponse (« Marie : » ou le prénom du joueur). */
+function stripNamePrefix(text: string, userName: string): string {
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const names = ['Marie', userName].filter(Boolean).map(esc).join('|');
+  return text.replace(new RegExp(`^\\s*(?:${names})\\s*:\\s*`, 'i'), '');
 }
 
 /** Distance² au comptoir d'accueil ≤ rayon de proximité ? */
@@ -122,11 +130,14 @@ export async function receptionistReply(
     const data = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
-    const text = data.choices?.[0]?.message?.content?.trim();
+    let text = data.choices?.[0]?.message?.content?.trim();
     if (!text) {
       console.error('[ai] OpenRouter: réponse vide');
       return null;
     }
+    // Filet de sécurité : le modèle imite parfois le format d'entrée et préfixe
+    // sa réponse par « Marie : » ou « <prénom> : ». On retire ce préfixe.
+    text = stripNamePrefix(text, userName);
 
     mem.turns.push({ role: 'assistant', content: text });
     if (mem.turns.length > MAX_TURNS) mem.turns.splice(0, mem.turns.length - MAX_TURNS);
