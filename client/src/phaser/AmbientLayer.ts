@@ -14,7 +14,15 @@ const STEAM_SPOTS: Array<{ x: number; y: number }> = [
   { x: 768, y: 740 }, // machine à café droite
 ];
 const GREETERS = [
-  { x: 48, y: 560, text: 'Bienvenue ! 👋', radius: 130 }, // secrétaire (bulle au-dessus d'elle)
+  // Secrétaire IA « Marie » : la bulle invite à lui parler dans le chat de
+  // proximité. Rayon < proximité IA (160px) pour que l'indice n'apparaisse que
+  // là où elle répond réellement.
+  {
+    x: 48,
+    y: 560,
+    text: 'Bonjour, je suis Marie 👋\nParlez-moi dans le chat « Proximité » 💬',
+    radius: 150,
+  },
 ];
 const BUTTERFLY_ZONE = { x0: 60, y0: 30, x1: 1860, y1: 300 };
 const N_BUTTERFLIES = 7;
@@ -223,9 +231,10 @@ export class AmbientLayer {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '13px',
         color: '#ffffff',
-        backgroundColor: '#1e293bdd',
-        padding: { x: 8, y: 5 },
+        backgroundColor: '#1e293be6',
+        padding: { x: 9, y: 6 },
         align: 'center',
+        lineSpacing: 3,
       }).setOrigin(0.5, 1).setDepth(16).setAlpha(0).setScale(0.9);
       this.objs.push(bubble);
       this.greeters.push({ bubble, x: g.x, y: g.y, radius: g.radius, shown: false });
