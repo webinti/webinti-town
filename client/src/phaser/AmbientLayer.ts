@@ -22,6 +22,7 @@ const GREETERS = [
     y: 560,
     text: 'Bonjour, je suis Marie 👋\nParlez-moi dans le chat « Proximité » 💬',
     radius: 150,
+    originX: 0, // ancrée à gauche : Marie est contre le mur, la bulle s'étend vers la pièce
   },
 ];
 const BUTTERFLY_ZONE = { x0: 60, y0: 30, x1: 1860, y1: 300 };
@@ -233,9 +234,9 @@ export class AmbientLayer {
         color: '#ffffff',
         backgroundColor: '#1e293be6',
         padding: { x: 9, y: 6 },
-        align: 'center',
+        align: 'left',
         lineSpacing: 3,
-      }).setOrigin(0.5, 1).setDepth(16).setAlpha(0).setScale(0.9);
+      }).setOrigin(g.originX ?? 0.5, 1).setDepth(16).setAlpha(0).setScale(0.9);
       this.objs.push(bubble);
       this.greeters.push({ bubble, x: g.x, y: g.y, radius: g.radius, shown: false });
     }
