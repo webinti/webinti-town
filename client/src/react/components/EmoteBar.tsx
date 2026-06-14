@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { socketManager } from '../../network/SocketManager';
-import { useGameStore } from '../../stores/gameStore';
 import type { EmoteType } from '../../types';
+import { gameShortcutsBlocked } from '../../utils/inputGuard';
 
 const EMOTES: Array<{ type: EmoteType; emoji: string; key: string }> = [
   { type: 'wave', emoji: '\u{1F44B}', key: '1' },
@@ -15,9 +15,7 @@ const EMOTES: Array<{ type: EmoteType; emoji: string; key: string }> = [
 export function EmoteBar() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (useGameStore.getState().inputFocused) return;
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+      if (gameShortcutsBlocked()) return;
       const m = EMOTES.find((x) => x.key === e.key);
       if (!m) return;
       e.preventDefault();

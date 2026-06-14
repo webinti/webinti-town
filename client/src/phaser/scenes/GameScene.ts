@@ -3,6 +3,7 @@ import { Player } from '../entities/Player';
 import { RemotePlayer } from '../entities/RemotePlayer';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
+import { gameShortcutsBlocked, isTypingInField } from '../../utils/inputGuard';
 import { stepMapZoom } from '../../mapZoom';
 import { setFireVolume } from '../../sounds/sounds';
 import type { Appearance, EmoteType, InteractiveObject, PlayerState } from '../../types';
@@ -201,8 +202,8 @@ export class GameScene extends Phaser.Scene {
     // Mode debug collision : B superpose les rectangles solides en rouge.
     // Réservé à l'hôte. (C est déjà pris par le chat dans le HUD.)
     this.input.keyboard?.on('keydown-B', () => {
+      if (gameShortcutsBlocked()) return;
       const s = useGameStore.getState();
-      if (s.inputFocused) return;
       if (!s.hostPlayerId || s.hostPlayerId !== s.localPlayerId) return;
       this.collisionLayer?.toggleDebug();
     });
@@ -253,7 +254,7 @@ export class GameScene extends Phaser.Scene {
     // F — lance des confettis pour toute la salle (comme dans Gather).
     this.fKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F);
     this.fKey?.on('down', () => {
-      if (useGameStore.getState().inputFocused) return;
+      if (gameShortcutsBlocked()) return;
       socketManager.sendConfetti();
     });
     this.input.keyboard?.clearCaptures();
@@ -279,7 +280,10 @@ export class GameScene extends Phaser.Scene {
     // Debug Shift+D
     this.shiftKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     this.dKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-    this.eKey?.on('down', () => this.handleInteract());
+    this.eKey?.on('down', () => {
+      if (gameShortcutsBlocked()) return;
+      this.handleInteract();
+    });
 
     // Pinch-to-zoom (tablette/mobile) : il faut un 2e pointeur tactile actif.
     this.input.addPointer(1);
@@ -676,7 +680,7 @@ export class GameScene extends Phaser.Scene {
    */
   private handleInteract(): void {
     const store = useGameStore.getState();
-    if (store.inputFocused) return;
+    if (isTypingInField()) return;
     // 1) Objet interactif prioritaire (tableau, note, lien, kanban, ou objet serveur).
     if (this.nearbyObjectId) {
       const obj = store.interactiveObjects.find((o) => o.id === this.nearbyObjectId);
@@ -726,7 +730,11 @@ export class GameScene extends Phaser.Scene {
       const v = Math.max(0, Math.min(1, 1 - d / FIRE_AUDIBLE_RADIUS));
       setFireVolume(v * 0.7);
     }
-    const focused = useGameStore.getState().inputFocused;
+    // Déplacement bloqué seulement quand on tape dans un champ (on peut continuer
+    // à se déplacer avec le chat ouvert). La danse (Z) est, elle, un raccourci
+    // d'action → bloquée aussi quand le chat est visible.
+    const focused = isTypingInField();
+    const actionsBlocked = gameShortcutsBlocked();
     const c = this.cursors;
     const w = this.wasdKeys;
     let input = focused
@@ -736,7 +744,7 @@ export class GameScene extends Phaser.Scene {
           down: !!(c?.down.isDown || w?.S.isDown),
           left: !!(c?.left.isDown || w?.A.isDown),
           right: !!(c?.right.isDown || w?.D.isDown),
-          dance: !!this.zKey?.isDown,
+          dance: !actionsBlocked && !!this.zKey?.isDown,
         };
 
     // Joystick tactile : on fusionne ses axes avec le clavier (8 directions,
