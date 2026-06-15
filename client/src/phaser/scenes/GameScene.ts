@@ -63,6 +63,7 @@ export class GameScene extends Phaser.Scene {
   private remoteBodiesGroup?: Phaser.Physics.Arcade.Group;
   private mapW = DEFAULT_MAP_W;
   private mapH = DEFAULT_MAP_H;
+  private followingPlayer = true; // false pendant la vue libre (minimap)
   private hasLayers = false;
   private lastSentX = -9999;
   private lastSentY = -9999;
@@ -139,6 +140,7 @@ export class GameScene extends Phaser.Scene {
     const worldH = this.mapH * TILE;
     this.physics.world.setBounds(0, 0, worldW, worldH);
     this.cameras.main.setBounds(0, 0, worldW, worldH);
+    useGameStore.getState().setWorldSize(worldW, worldH);
 
     this.buildFireplace();
 
@@ -755,6 +757,25 @@ export class GameScene extends Phaser.Scene {
       if (touchInput.dx > DEAD) input.right = true;
       if (touchInput.dy < -DEAD) input.up = true;
       if (touchInput.dy > DEAD) input.down = true;
+    }
+
+    // ── Vue libre via la minimap : la caméra explore la map sans déplacer le
+    // perso. Un input de déplacement = on reprend le contrôle → sortie.
+    const flStore = useGameStore.getState();
+    if (flStore.freeLook && flStore.freeLookTarget) {
+      if (input.up || input.down || input.left || input.right) {
+        flStore.exitFreeLook();
+      } else {
+        if (this.followingPlayer) {
+          this.cameras.main.stopFollow();
+          this.followingPlayer = false;
+        }
+        this.cameras.main.centerOn(flStore.freeLookTarget.x, flStore.freeLookTarget.y);
+      }
+    }
+    if (!useGameStore.getState().freeLook && !this.followingPlayer) {
+      this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+      this.followingPlayer = true;
     }
 
     // Bouton d'action tactile (équivalent E) — consommé une seule fois.

@@ -89,6 +89,16 @@ interface GameStore {
   setRecording: (on: boolean, hostName: string) => void;
   mapZoom: number;
   setMapZoom: (z: number) => void;
+  // Taille du monde (px) poussée par GameScene — pour mapper la minimap.
+  worldW: number;
+  worldH: number;
+  setWorldSize: (w: number, h: number) => void;
+  // Vue libre via la minimap : la caméra explore sans déplacer le perso.
+  freeLook: boolean;
+  freeLookTarget: { x: number; y: number } | null;
+  enterFreeLook: (x: number, y: number) => void;
+  setFreeLookTarget: (x: number, y: number) => void;
+  exitFreeLook: () => void;
   // Mute master : coupe TOUT le son entrant (effets + voix LiveKit) pour le joueur
   // local (= "sourdine"). N'affecte pas le micro (ce que les autres entendent).
   deafened: boolean;
@@ -398,6 +408,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setRecording: (on, hostName) => set({ isRecording: on, recordingHostName: hostName }),
   mapZoom: 1,
   setMapZoom: (z) => set({ mapZoom: clampMapZoom(z) }),
+  worldW: 50 * 32,
+  worldH: 40 * 32,
+  setWorldSize: (w, h) => set({ worldW: w, worldH: h }),
+  freeLook: false,
+  freeLookTarget: null,
+  enterFreeLook: (x, y) => set({ freeLook: true, freeLookTarget: { x, y } }),
+  setFreeLookTarget: (x, y) => set((s) => (s.freeLook ? { freeLookTarget: { x, y } } : {})),
+  exitFreeLook: () => set({ freeLook: false, freeLookTarget: null }),
   deafened: false,
   setDeafened: (v) => set({ deafened: v }),
   masterVolume: 1,
@@ -515,6 +533,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       isRecording: false,
       recordingHostName: '',
       mapZoom: 1,
+      freeLook: false,
+      freeLookTarget: null,
       deafened: false,
       masterVolume: 1,
       camMirror: true,
