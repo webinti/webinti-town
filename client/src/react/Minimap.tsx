@@ -28,7 +28,7 @@ export function Minimap() {
   return (
     <div
       className="pointer-events-auto rounded-lg border border-white/10 bg-slate-900/80 p-2 shadow-xl backdrop-blur"
-      style={{ width: SIZE + 16, height: SIZE + 16 }}
+      style={{ width: SIZE + 16 }}
     >
       <div
         ref={mapRef}
@@ -90,9 +90,9 @@ export function Minimap() {
       {freeLook && (
         <button
           onClick={() => exitFreeLook()}
-          className="pointer-events-auto mt-1.5 flex w-full items-center justify-center gap-1 rounded-md bg-amber-500 px-2 py-1 text-[11px] font-bold text-slate-900 hover:bg-amber-400"
+          className="pointer-events-auto mt-1.5 flex w-full items-center justify-center gap-1 whitespace-nowrap rounded-md bg-amber-500 px-2 py-1 text-[11px] font-bold text-slate-900 hover:bg-amber-400"
         >
-          👁 Vue libre — revenir à moi
+          👁 Revenir à moi
         </button>
       )}
     </div>
