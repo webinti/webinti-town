@@ -24,6 +24,14 @@ export const config = {
   hostEmail: (process.env.HOST_EMAIL ?? 'agence.webinti@gmail.com').toLowerCase(),
   // Durée de vie des messages (chat + DM) : au-delà, purge auto.
   messageTtlMs: Number(process.env.MESSAGE_TTL_MS ?? 3 * 24 * 60 * 60 * 1000),
+  // Plafond de présents simultanés par room selon le plan du compte propriétaire.
+  // Le 1er compte authentifié qui « crée » une room non-demo en devient
+  // propriétaire et fixe la capacité d'après son abonnement.
+  planCapacity: { free: 3, demarrage: 10, equipe: 25, entreprise: 100 } as Record<string, number>,
+  // Rooms de démonstration (slug 'demo' / 'demo-*') : capacité + durée de vie
+  // limitées (prospection). Surchargeable par env.
+  demoRoomCapacity: Number(process.env.DEMO_ROOM_CAPACITY ?? 10),
+  demoRoomTtlMs: Number(process.env.DEMO_ROOM_TTL_HOURS ?? 24) * 60 * 60 * 1000,
   // F11 — PocketBase backend (migration progressive depuis JSON)
   // Backend par store : 'json' (legacy) ou 'pocketbase'.
   // On peut switcher indépendamment pour migrer poste par poste.

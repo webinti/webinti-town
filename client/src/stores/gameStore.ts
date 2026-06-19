@@ -33,6 +33,10 @@ interface GameStore {
   chatPanelOpen: boolean;
   inputFocused: boolean;
   interactiveObjects: InteractiveObject[];
+  // Message d'erreur renvoyé par le serveur lors d'un join refusé
+  // (salle pleine, démo expirée…). Affiché sur l'écran de join.
+  joinError: string | null;
+  setJoinError: (msg: string | null) => void;
   setConnected: (v: boolean) => void;
   setJoined: (v: boolean) => void;
   setLocalPlayerId: (id: string | null) => void;
@@ -167,6 +171,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   chatPanelOpen: false,
   inputFocused: false,
   interactiveObjects: [],
+  joinError: null,
+  setJoinError: (msg) => set({ joinError: msg }),
   setConnected: (v) => set({ connected: v }),
   setJoined: (v) => set({ joined: v }),
   setLocalPlayerId: (id) => set({ localPlayerId: id }),
@@ -518,6 +524,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       chatPanelOpen: false,
       inputFocused: false,
       interactiveObjects: [],
+      joinError: null,
       openWhiteboardId: null,
       openNoteId: null,
       openLinkId: null,

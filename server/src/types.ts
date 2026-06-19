@@ -156,6 +156,11 @@ export interface RoomState {
   dmStore:
     | import('./dm/DmStore.js').DmStore
     | import('./dm/DmStorePocketBase.js').DmStorePocketBase;
+  // Plafonnement de capacité (abonnement) + rooms de démonstration.
+  isDemo: boolean;            // slug 'demo' / 'demo-*' → capacité + TTL bridés
+  capacity: number;          // nb max de présents simultanés
+  ownerEmail: string | null; // 1er compte authentifié à créer la room (fixe la capacité)
+  expiresAt: number | null;  // epoch ms d'expiration (rooms demo), sinon null
 }
 
 export interface PublicRoomInfo {

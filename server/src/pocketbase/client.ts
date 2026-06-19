@@ -67,25 +67,76 @@ export async function getPocketBase(): Promise<PocketBase> {
  * et l'existence du compte côté PocketBase. Un timeout évite de bloquer le join
  * si PocketBase est lent/injoignable (→ null = pas d'hôte, fail-safe).
  */
+/** Plans d'abonnement reconnus (toute autre valeur retombe sur 'free'). */
+const KNOWN_PLANS: ReadonlySet<string> = new Set(['free', 'demarrage', 'equipe', 'entreprise']);
+
+/**
+ * Cœur partagé de la vérification : crée un client PB jetable porteur du token,
+ * rejette d'abord localement un JWT expiré/malformé, puis `authRefresh()`
+ * re-valide la signature + l'existence du compte côté PocketBase. Retourne le
+ * modèle user rafraîchi (champs custom inclus, dont `plan`) ou null. Ne throw
+ * jamais. À envelopper dans un Promise.race(timeout) par les appelants.
+ */
+async function refreshUserModel(
+  token: string,
+): Promise<{ email?: string; plan?: unknown } | null> {
+  try {
+    const pb = new PocketBase(config.pocketbaseUrl);
+    pb.autoCancellation(false);
+    pb.authStore.save(token, null);
+    if (!pb.authStore.isValid) return null; // JWT expiré/malformé (contrôle local)
+    await pb.collection('users').authRefresh();
+    return (pb.authStore.model as { email?: string; plan?: unknown } | null) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Garde-fou anti-hang : résout sur `fallback` si le travail dépasse `ms`. */
+function withTimeout<T>(work: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    work,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+const VERIFY_TIMEOUT_MS = 4000;
+
 export async function verifyUserToken(token: string | undefined): Promise<string | null> {
   if (!token || typeof token !== 'string') return null;
   const doVerify = async (): Promise<string | null> => {
-    try {
-      const pb = new PocketBase(config.pocketbaseUrl);
-      pb.autoCancellation(false);
-      pb.authStore.save(token, null);
-      if (!pb.authStore.isValid) return null; // JWT expiré/malformé (contrôle local)
-      await pb.collection('users').authRefresh();
-      const email = (pb.authStore.model as { email?: string } | null)?.email;
-      return typeof email === 'string' ? email.toLowerCase() : null;
-    } catch {
-      return null;
-    }
+    const model = await refreshUserModel(token);
+    const email = model?.email;
+    return typeof email === 'string' ? email.toLowerCase() : null;
   };
-  return Promise.race([
-    doVerify(),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
-  ]);
+  return withTimeout(doVerify(), VERIFY_TIMEOUT_MS, null);
+}
+
+/**
+ * Comme `verifyUserToken`, mais retourne aussi le plan d'abonnement du compte.
+ * Sert au plafonnement de capacité des rooms : le 1er compte authentifié qui
+ * crée une room en devient propriétaire et fixe la capacité selon son plan.
+ *
+ * - `plan` = `model.plan` s'il s'agit d'un plan connu, sinon 'free'.
+ * - Le compte hôte (`config.hostEmail`) est toujours traité comme 'entreprise'.
+ * - Retourne null si token absent/invalide/timeout (jamais throw, jamais hang) →
+ *   le join continue en mode anonyme/free.
+ */
+export async function getAccountFromToken(
+  token: string | undefined,
+): Promise<{ email: string; plan: string } | null> {
+  if (!token || typeof token !== 'string') return null;
+  const doVerify = async (): Promise<{ email: string; plan: string } | null> => {
+    const model = await refreshUserModel(token);
+    const rawEmail = model?.email;
+    if (typeof rawEmail !== 'string') return null;
+    const email = rawEmail.toLowerCase();
+    let plan =
+      typeof model?.plan === 'string' && KNOWN_PLANS.has(model.plan) ? model.plan : 'free';
+    if (email === config.hostEmail) plan = 'entreprise';
+    return { email, plan };
+  };
+  return withTimeout(doVerify(), VERIFY_TIMEOUT_MS, null);
 }
 
 /** Returns true if any store is configured to use PocketBase. */

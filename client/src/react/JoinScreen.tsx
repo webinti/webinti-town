@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { useAuthStore } from '../stores/authStore';
 import { socketManager } from '../network/SocketManager';
@@ -11,6 +11,20 @@ import { readLastPosition } from '../lastPosition';
 const HOST_TOKEN_KEY = 'webinti-town:hostToken';
 const ROOM_SLUG_KEY = 'webinti-town:roomSlug';
 const ROOM_SLUG_RE = /^[a-z0-9-]{1,50}$/;
+
+// Libellés d'abonnement affichés sur l'écran de join (champ `plan` du user PB).
+const PLAN_LABELS: Record<string, string> = {
+  free: 'Gratuit · jusqu’à 3 personnes',
+  demarrage: 'Démarrage · jusqu’à 10',
+  equipe: 'Équipe · jusqu’à 25',
+  entreprise: 'Entreprise · jusqu’à 100',
+};
+
+/** Lit le plan du user PB de façon sûre (le type peut ne pas l'inclure). */
+function planLabel(user: unknown): string {
+  const plan = (user as { plan?: string } | null)?.plan ?? 'free';
+  return PLAN_LABELS[plan] ?? PLAN_LABELS.free!;
+}
 
 function readHostToken(): string {
   try {
@@ -46,6 +60,7 @@ export function JoinScreen() {
   const user = useAuthStore((s) => s.user);
   const saveProfile = useAuthStore((s) => s.saveProfile);
   const logout = useAuthStore((s) => s.logout);
+  const joinError = useGameStore((s) => s.joinError);
 
   const [roomSlug] = useState<string>(() => readRoomSlug());
   // Pré-rempli depuis le user connecté (PocketBase), plus de localStorage.
@@ -55,11 +70,19 @@ export function JoinScreen() {
   );
   const [submitting, setSubmitting] = useState(false);
 
+  // Un join refusé (salle pleine, démo expirée…) doit relâcher le bouton
+  // « Rejoindre » pour que l'utilisateur puisse réessayer.
+  useEffect(() => {
+    if (joinError) setSubmitting(false);
+  }, [joinError]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = pseudo.trim().slice(0, 20);
     if (!name) return;
     setSubmitting(true);
+    // Nouvelle tentative : on efface l'éventuelle erreur précédente.
+    useGameStore.getState().setJoinError(null);
     // Persiste pseudo + avatar sur le compte (best-effort, ne bloque pas l'entrée).
     try {
       await saveProfile(name, appearance);
@@ -99,10 +122,17 @@ export function JoinScreen() {
               Déconnexion
             </button>
           </div>
-          <p className="mb-4 text-sm text-slate-400">
+          <p className="mb-3 text-sm text-slate-400">
             Personnalisez votre avatar.
             {user?.email ? <span className="text-slate-500"> · {user.email}</span> : null}
           </p>
+
+          <div className="mb-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/60 px-3 py-1 text-xs font-medium text-slate-300 ring-1 ring-slate-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" aria-hidden />
+              Abonnement : {planLabel(user)}
+            </span>
+          </div>
 
           <div className="mb-2 flex justify-center">
             <div className="rounded-lg bg-slate-900/60 p-3 ring-1 ring-slate-700">
@@ -127,6 +157,14 @@ export function JoinScreen() {
           <AvatarControls appearance={appearance} onChange={setAppearance} />
 
           <div className="sticky bottom-0 -mx-6 -mb-6 mt-4 rounded-b-2xl border-t border-white/10 bg-slate-800/95 px-6 py-3 backdrop-blur">
+            {joinError ? (
+              <div
+                role="alert"
+                className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+              >
+                {joinError}
+              </div>
+            ) : null}
             <button
               type="submit"
               disabled={submitting || !pseudo.trim()}

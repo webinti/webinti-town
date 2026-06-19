@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { RoomServiceClient, TrackSource } from 'livekit-server-sdk';
 import { roomManager } from '../rooms/RoomManager.js';
 import { config } from '../config.js';
-import { verifyUserToken } from '../pocketbase/client.js';
+import { verifyUserToken, getAccountFromToken } from '../pocketbase/client.js';
 import { computeProximity } from './proximity.js';
 import { saveBest } from '../race/leaderboardStore.js';
 import { CIRCUIT_ID } from '../circuit.js';
@@ -251,6 +251,8 @@ export function registerSocketHandlers(io: Server): void {
       const name = sanitizeName(p.playerName);
       const appearance = parseAppearance(p.appearance);
       if (!roomSlug) return;
+      // Identité + plan d'abonnement (non-bloquant : null ⇒ anonyme/free).
+      const account = await getAccountFromToken(typeof p.token === 'string' ? p.token : undefined);
       let room = roomManager.getRoom(roomSlug);
       if (!room) {
         if (/^[a-z0-9-]{1,50}$/.test(roomSlug)) {
@@ -259,6 +261,20 @@ export function registerSocketHandlers(io: Server): void {
           socket.emit('join_error', { message: 'Room not found' });
           return;
         }
+      }
+      // Propriété + capacité (rooms non-demo) : le 1er compte authentifié qui
+      // crée la room en devient propriétaire et fixe la capacité selon son plan.
+      if (!room.isDemo && room.ownerEmail === null && account) {
+        room.ownerEmail = account.email;
+        room.capacity = config.planCapacity[account.plan] ?? config.planCapacity.free;
+      }
+      // Contrôle d'accès — refuser AVANT d'ajouter le joueur.
+      if (room.isDemo && room.expiresAt && Date.now() > room.expiresAt) {
+        socket.emit('join_error', { message: 'Cette démo a expiré. Contactez-nous pour continuer.' });
+        return;
+      } else if (room.players.size >= room.capacity) {
+        socket.emit('join_error', { message: `Cette salle est pleine (${room.capacity} personnes max).` });
+        return;
       }
       const existing = sessions.get(socket.id);
       if (existing) {

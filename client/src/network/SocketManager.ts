@@ -127,6 +127,7 @@ class SocketManager {
 
     socket.on('room_state', (state: RoomState) => {
       const store = useGameStore.getState();
+      store.setJoinError(null); // join réussi → on efface toute erreur précédente
       store.setLocalPlayerId(state.playerId);
       if (typeof state.roomSlug === 'string') store.setCurrentRoomSlug(state.roomSlug);
       store.setPlayers(state.players);
@@ -152,7 +153,10 @@ class SocketManager {
     );
 
     socket.on('join_error', (e: { message?: string }) => {
-      console.error('[join_error]', e?.message ?? 'unknown');
+      const message = e?.message ?? 'Impossible de rejoindre la salle.';
+      console.error('[join_error]', message);
+      // Remonte l'erreur à l'UI (affichée sur l'écran de join).
+      useGameStore.getState().setJoinError(message);
     });
 
     socket.on('players_update', (players: PlayerState[]) => {

@@ -138,6 +138,8 @@ export class RoomManager {
     );
     const raceManager = new RaceManager();
     hydrateLeaderboard(slug, raceManager);
+    // Room de démonstration : slug 'demo' ou 'demo-<...>' → capacité + TTL bridés.
+    const isDemo = /^demo(-[a-z0-9-]*)?$/.test(slug);
     const room: RoomState = {
       slug,
       name,
@@ -155,6 +157,10 @@ export class RoomManager {
       kartManager,
       raceManager,
       dmStore,
+      isDemo,
+      capacity: isDemo ? config.demoRoomCapacity : config.planCapacity.free,
+      ownerEmail: null,
+      expiresAt: isDemo ? Date.now() + config.demoRoomTtlMs : null,
     };
     this.rooms.set(slug, room);
     return room;
