@@ -35,9 +35,27 @@ const PLAN_LABELS: Record<string, string> = {
   entreprise: 'Entreprise · jusqu’à 100',
 };
 
-/** Lit le code du plan du user PB de façon sûre (le type peut ne pas l'inclure). */
+// Compte hôte : toujours Entreprise (comme côté serveur). Surchargeable via env.
+const HOST_EMAIL = (
+  (import.meta.env.VITE_HOST_EMAIL as string | undefined) ?? 'agence.webinti@gmail.com'
+).toLowerCase();
+
+// Style du badge par palier — l'Entreprise est mise en avant en Or.
+const PLAN_STYLE: Record<string, { wrap: string; dot: string }> = {
+  free: { wrap: 'bg-slate-900/60 text-slate-300 ring-slate-700', dot: 'bg-slate-400' },
+  demarrage: { wrap: 'bg-sky-500/10 text-sky-200 ring-sky-500/40', dot: 'bg-sky-400' },
+  equipe: { wrap: 'bg-violet-500/10 text-violet-200 ring-violet-500/40', dot: 'bg-violet-400' },
+  entreprise: {
+    wrap: 'bg-amber-400/15 text-amber-200 ring-amber-400/60 shadow-[0_0_14px_-2px_rgba(251,191,36,.55)]',
+    dot: 'bg-amber-400',
+  },
+};
+
+/** Lit le code du plan : l'hôte est toujours Entreprise ; sinon le champ `plan` du user PB. */
 function planCode(user: unknown): string {
-  return (user as { plan?: string } | null)?.plan ?? 'free';
+  const u = user as { plan?: string; email?: string } | null;
+  if (u?.email && u.email.toLowerCase() === HOST_EMAIL) return 'entreprise';
+  return u?.plan ?? 'free';
 }
 
 /** Libellé lisible du plan du user PB. */
@@ -120,6 +138,7 @@ export function JoinScreen() {
   );
 
   const currentPlan = planCode(user);
+  const badgeStyle = PLAN_STYLE[currentPlan] ?? PLAN_STYLE.free!;
 
   // Un join refusé (salle pleine, démo expirée…) doit relâcher le bouton
   // « Rejoindre » pour que l'utilisateur puisse réessayer.
@@ -225,8 +244,10 @@ export function JoinScreen() {
           ) : null}
 
           <div className="mb-4 rounded-lg bg-slate-900/40 p-3 ring-1 ring-slate-700">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/60 px-3 py-1 text-xs font-medium text-slate-300 ring-1 ring-slate-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" aria-hidden />
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${badgeStyle.wrap}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${badgeStyle.dot}`} aria-hidden />
               Abonnement : {planLabel(user)}
             </span>
 
