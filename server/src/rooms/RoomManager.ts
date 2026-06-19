@@ -160,7 +160,9 @@ export class RoomManager {
       isDemo,
       capacity: isDemo ? config.demoRoomCapacity : config.planCapacity.free,
       ownerEmail: null,
-      expiresAt: isDemo ? Date.now() + config.demoRoomTtlMs : null,
+      // Le /demo public partagé est PERMANENT (lien de campagne). Seules les
+      // éventuelles rooms démo dédiées (demo-<...>) expirent (anti-abus).
+      expiresAt: isDemo && slug !== 'demo' ? Date.now() + config.demoRoomTtlMs : null,
     };
     this.rooms.set(slug, room);
     return room;
