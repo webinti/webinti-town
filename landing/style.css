@@ -154,18 +154,18 @@ header{position:sticky;top:0;z-index:100;background:rgba(252,248,240,.87);backdr
 .step p{color:var(--soft);font-size:.97rem}
 
 /* pricing */
-.prices{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:stretch}
-.price{border:1px solid var(--line);border-radius:18px;padding:26px 24px;background:#fff;display:flex;flex-direction:column;transition:transform .18s,box-shadow .18s}
+.prices{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:stretch}
+.price{border:1px solid var(--line);border-radius:16px;padding:22px 18px;background:#fff;display:flex;flex-direction:column;transition:transform .18s,box-shadow .18s}
 .price:hover{transform:translateY(-4px);box-shadow:0 20px 44px -22px rgba(33,26,46,.3)}
 .price.hot{background:var(--ink);color:#fff;border-color:var(--ink)}
 .price .pn{font-family:var(--pixel);font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
 .price.hot .pn{color:var(--accent-l)}
-.price .amt{font-family:var(--serif);font-size:2.9rem;font-weight:600;margin:12px 0 2px;line-height:1}
+.price .amt{font-family:var(--serif);font-size:2.05rem;font-weight:600;margin:10px 0 2px;line-height:1}
 .price .amt small{font-size:.95rem;font-family:var(--sans);font-weight:600;color:var(--soft)}
 .price.hot .amt small{color:#b6aecb}
-.price .pd2{color:var(--soft);font-size:.94rem;margin-bottom:16px;min-height:40px}
+.price .pd2{color:var(--soft);font-size:.84rem;margin-bottom:13px;min-height:32px}
 .price.hot .pd2{color:#c6bfd8}
-.price ul{list-style:none;display:flex;flex-direction:column;gap:10px;margin:4px 0 24px;flex:1}
+.price ul{list-style:none;display:flex;flex-direction:column;gap:7px;margin:2px 0 18px;flex:1;font-size:.88rem}
 /* PAS de flex : sinon gras et texte normal se séparent en 2 colonnes. */
 .price li{position:relative;padding-left:24px;font-size:.96rem;font-weight:500}
 .price li b{font-weight:700}
@@ -208,10 +208,11 @@ footer{background:var(--paper);padding:54px 0 26px;border-top:1px solid var(--li
 @media(max-width:920px){
   .show{grid-template-columns:1fr;gap:32px;padding:38px 0}
   .show.rev .media{order:0}
-  .grid6,.steps,.prices{grid-template-columns:1fr 1fr}
+  .grid6,.steps{grid-template-columns:1fr 1fr}
   .uses{grid-template-columns:1fr 1fr}
   .fg{grid-template-columns:1fr 1fr}
 }
+@media(max-width:700px){.prices{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){
   .grid6,.steps,.prices,.uses{grid-template-columns:1fr}
   .sec{padding:72px 0}.cmp{overflow-x:auto}.cmp table{min-width:560px}
