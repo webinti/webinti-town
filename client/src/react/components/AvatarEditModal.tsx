@@ -3,6 +3,7 @@ import { useGameStore } from '../../stores/gameStore';
 import { useAuthStore } from '../../stores/authStore';
 import { socketManager } from '../../network/SocketManager';
 import { AvatarPreview, AvatarControls, clampAppearance } from '../avatar/AvatarCustomizer';
+import { SubscriptionSection } from './SubscriptionSection';
 
 /**
  * Menu d'édition de l'avatar en cours de partie (ouvert au clic sur le nom).
@@ -46,7 +47,7 @@ export function AvatarEditModal({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight">Mon avatar</h2>
+          <h2 className="text-xl font-bold tracking-tight">Mon compte</h2>
           <button
             type="button"
             onClick={onClose}
@@ -64,6 +65,10 @@ export function AvatarEditModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <AvatarControls appearance={appearance} onChange={setAppearance} />
+
+        <div className="mt-5 border-t border-white/10 pt-4">
+          <SubscriptionSection />
+        </div>
 
         <div className="mt-5 flex gap-2">
           <button

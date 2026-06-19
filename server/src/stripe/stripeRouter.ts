@@ -1,7 +1,12 @@
 import { Router, type Request, type Response } from 'express';
 import { config } from '../config.js';
 import { getAccountFromToken } from '../pocketbase/client.js';
-import { createCheckoutSession, handleWebhookEvent, isPlanId } from './stripe.js';
+import {
+  createCheckoutSession,
+  createPortalSession,
+  handleWebhookEvent,
+  isPlanId,
+} from './stripe.js';
 
 /**
  * Routes Stripe, montées sous `/api/stripe`.
@@ -50,6 +55,31 @@ stripeRouter.post('/create-checkout-session', async (req: Request, res: Response
   } catch (err) {
     console.error('[stripe] create-checkout-session a échoué:', err);
     return res.status(500).json({ error: 'création de la session de paiement impossible' });
+  }
+});
+
+// POST /api/stripe/create-portal-session
+// Ouvre le Portail client Stripe (gérer/annuler son abonnement) et renvoie son URL.
+stripeRouter.post('/create-portal-session', async (req: Request, res: Response) => {
+  if (!config.stripeEnabled) {
+    return res.status(503).json({ error: 'Stripe non configuré' });
+  }
+
+  const token = extractToken(req);
+  const account = await getAccountFromToken(token);
+  if (!account) {
+    return res.status(401).json({ error: 'authentification requise' });
+  }
+
+  try {
+    const url = await createPortalSession(account.email);
+    if (!url) {
+      return res.status(404).json({ error: 'aucun abonnement actif' });
+    }
+    return res.json({ url });
+  } catch (err) {
+    console.error('[stripe] create-portal-session a échoué:', err);
+    return res.status(500).json({ error: 'ouverture du portail client impossible' });
   }
 });
 

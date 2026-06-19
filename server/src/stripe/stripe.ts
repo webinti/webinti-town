@@ -65,6 +65,28 @@ export async function createCheckoutSession(email: string, plan: PlanId): Promis
 }
 
 /**
+ * Crée une session du Portail client Stripe pour gérer/annuler un abonnement et
+ * retourne son URL. On retrouve le customer Stripe par son email (renseigné à la
+ * création de la session Checkout), donc inutile de stocker son ID.
+ *
+ * Retourne `null` si aucun customer Stripe n'existe pour cet email (ex. plan
+ * `free` jamais passé par Checkout).
+ *
+ * Prérequis Stripe : le Portail client doit être activé une fois dans le
+ * dashboard (Settings → Billing → Customer portal).
+ */
+export async function createPortalSession(email: string): Promise<string | null> {
+  const stripe = getStripe();
+  const customers = await stripe.customers.list({ email, limit: 1 });
+  if (customers.data.length === 0) return null;
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customers.data[0]!.id,
+    return_url: config.appBaseUrl,
+  });
+  return session.url;
+}
+
+/**
  * Met à jour le champ `plan` d'un utilisateur PocketBase. Ne throw jamais :
  * logge clairement le succès ou l'échec (le webhook doit répondre 200 même si
  * la maj PB échoue, sinon Stripe retente en boucle).
