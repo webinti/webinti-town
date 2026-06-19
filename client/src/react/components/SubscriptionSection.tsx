@@ -41,11 +41,13 @@ const PLAN_STYLE: Record<string, { wrap: string; dot: string }> = {
   },
 };
 
-/** Lit le code du plan : l'hôte est toujours Entreprise ; sinon le champ `plan` du user PB. */
+/** Code du plan : le champ `plan` PocketBase est PRIORITAIRE ; l'hôte n'est
+ *  Entreprise que par défaut, si aucun plan n'est défini (permet de tester). */
 function planCode(user: unknown): string {
   const u = user as { plan?: string; email?: string } | null;
-  if (u?.email && u.email.toLowerCase() === HOST_EMAIL) return 'enterprise';
-  return u?.plan ?? 'free';
+  if (u?.plan) return u.plan; // un plan défini en base gagne
+  if (u?.email && u.email.toLowerCase() === HOST_EMAIL) return 'enterprise'; // défaut hôte
+  return 'free';
 }
 
 /** Libellé lisible du plan du user PB. */
