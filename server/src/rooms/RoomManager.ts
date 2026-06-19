@@ -35,6 +35,20 @@ function slugify(name: string): string {
   return base || 'room';
 }
 
+/**
+ * Sanitize un slug de room fourni par l'extérieur (URL ?room=<slug>) :
+ * minuscules, ne garde que [a-z0-9-], longueur 1–50, fallback 'room' si vide
+ * après nettoyage. À garder cohérent avec la regex de validation du handler
+ * `join_room` (/^[a-z0-9-]{1,50}$/).
+ */
+function sanitizeSlug(raw: string): string {
+  const cleaned = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')
+    .slice(0, 50);
+  return cleaned || 'room';
+}
+
 const CHAT_HISTORY_CAP = 200;
 
 /** Hydrate (best-effort) le leaderboard persistant d'une room dans son RaceManager. */
@@ -89,65 +103,14 @@ function defaultInteractiveObjects(): InteractiveObject[] {
 export class RoomManager {
   private rooms = new Map<string, RoomState>();
 
-  createRoom(name: string): { slug: string; adminToken: string } {
-    const cleanName = name.trim().slice(0, 60) || 'Untitled Room';
-    let slug = slugify(cleanName);
-    let suffix = 0;
-    while (this.rooms.has(slug)) {
-      suffix += 1;
-      slug = `${slugify(cleanName)}-${suffix}`;
-    }
-    const adminToken = randomUUID();
-    const kanbanStore = config.kanbanBackend === 'pocketbase'
-      ? new KanbanStorePocketBase({ roomSlug: slug })
-      : new KanbanStore({ roomSlug: slug, persist: true });
-    void kanbanStore.load();
-    const dmStore = config.dmBackend === 'pocketbase'
-      ? new DmStorePocketBase({ roomSlug: slug })
-      : new DmStore({ roomSlug: slug, persist: true });
-    void dmStore.load();
-    const workstationManager = config.workstationBackend === 'pocketbase'
-      ? new WorkstationManagerPocketBase(WORKSTATIONS, { roomSlug: slug })
-      : new WorkstationManager(WORKSTATIONS, { roomSlug: slug, persist: true });
-    const workstations = new Map(
-      workstationManager.getAllStates().map((s) => [s.id, s]),
-    );
-    // Lance le load et resync la Map miroir une fois résolu.
-    void workstationManager.load().then(() => {
-      for (const s of workstationManager.getAllStates()) {
-        workstations.set(s.id, s);
-      }
-    });
-    const kartManager = new KartManager(KARTS);
-    const karts = new Map(
-      kartManager.getAllStates().map((k) => [k.id, k]),
-    );
-    const raceManager = new RaceManager();
-    hydrateLeaderboard(slug, raceManager);
-    this.rooms.set(slug, {
-      slug,
-      name: cleanName,
-      adminToken,
-      players: new Map(),
-      createdAt: Date.now(),
-      chatHistory: [],
-      interactiveObjects: defaultInteractiveObjects(),
-      kanbanStore,
-      hostPlayerId: null,
-      isRecording: false,
-      workstations,
-      workstationManager,
-      karts,
-      kartManager,
-      raceManager,
-      dmStore,
-    });
-    return { slug, adminToken };
-  }
-
-  ensureRoom(slug: string, name: string): RoomState {
-    const existing = this.rooms.get(slug);
-    if (existing) return existing;
+  /**
+   * Initialisation COMPLÈTE d'une RoomState pour un slug + nom donnés, puis
+   * insertion dans la Map des rooms. Source unique de vérité partagée par
+   * `createRoom` (slug généré) et `ensureRoom` (slug imposé), afin que les deux
+   * chemins créent EXACTEMENT les mêmes stores/état par défaut et ne divergent
+   * jamais. Le slug est supposé déjà unique + valide (le caller s'en assure).
+   */
+  private buildRoomState(slug: string, name: string): RoomState {
     const adminToken = randomUUID();
     const kanbanStore = config.kanbanBackend === 'pocketbase'
       ? new KanbanStorePocketBase({ roomSlug: slug })
@@ -195,6 +158,32 @@ export class RoomManager {
     };
     this.rooms.set(slug, room);
     return room;
+  }
+
+  createRoom(name: string): { slug: string; adminToken: string } {
+    const cleanName = name.trim().slice(0, 60) || 'Untitled Room';
+    let slug = slugify(cleanName);
+    let suffix = 0;
+    while (this.rooms.has(slug)) {
+      suffix += 1;
+      slug = `${slugify(cleanName)}-${suffix}`;
+    }
+    const room = this.buildRoomState(slug, cleanName);
+    return { slug: room.slug, adminToken: room.adminToken };
+  }
+
+  /**
+   * Retourne la room `slug` si elle existe, sinon la crée À LA DEMANDE avec ce
+   * slug précis (auto-création : chaque prospect/client peut avoir sa room
+   * isolée via ?room=<slug>). Le slug est sanitizé (minuscules, [a-z0-9-],
+   * longueur 1–50, fallback 'room' si vide). Réutilise `buildRoomState` pour
+   * garantir une init identique à `createRoom`.
+   */
+  ensureRoom(slug: string, name: string): RoomState {
+    const cleanSlug = sanitizeSlug(slug);
+    const existing = this.rooms.get(cleanSlug);
+    if (existing) return existing;
+    return this.buildRoomState(cleanSlug, name);
   }
 
   pushChat(slug: string, msg: ChatMessage): void {
