@@ -1145,7 +1145,7 @@ export function registerSocketHandlers(io: Server): void {
       if (!session) return;
       const room = roomManager.getRoom(session.roomSlug);
       if (!room || room.hostPlayerId !== session.playerId) return;
-      socket.emit('ai:config', { knowledge: getMarieKnowledge() });
+      socket.emit('ai:config', { knowledge: getMarieKnowledge(session.roomSlug) });
     });
 
     socket.on('ai:set_config', (payload: unknown) => {
@@ -1157,7 +1157,10 @@ export function registerSocketHandlers(io: Server): void {
         payload && typeof payload === 'object'
           ? (payload as Record<string, unknown>).knowledge
           : undefined;
-      const saved = setMarieKnowledge(typeof knowledge === 'string' ? knowledge : '');
+      const saved = setMarieKnowledge(
+        session.roomSlug,
+        typeof knowledge === 'string' ? knowledge : '',
+      );
       socket.emit('ai:config', { knowledge: saved, saved: true });
     });
 

@@ -50,39 +50,61 @@ Comment ça marche, en bref : on se déplace avec son avatar ; quand on s'approc
 
 /* ───────── Consignes & connaissances éditables (panneau admin) ─────────
    L'hôte peut donner à Marie des infos/FAQ/règles spécifiques depuis l'app.
-   Persisté dans data/marie.json, chargé au démarrage, appliqué à chaud. */
+   Stockage PAR ROOM : un fichier data/marie-<roomSlug>.json par salle, chargé
+   paresseusement au premier accès et mis en cache en mémoire, appliqué à chaud.
+   Ainsi personnaliser Marie dans une room n'affecte plus les autres rooms. */
 
 const DATA_DIR = (() => {
   const here = dirname(fileURLToPath(import.meta.url));
   return join(here, '..', '..', 'data');
 })();
-const CONFIG_PATH = join(DATA_DIR, 'marie.json');
 const MAX_KNOWLEDGE = 6000;
 
-let knowledge = '';
-(function loadKnowledge() {
+// Cache mémoire des consignes par room (clé = roomSlug, valeur = knowledge).
+const knowledgeByRoom = new Map<string, string>();
+
+/**
+ * Rend un roomSlug sûr pour un nom de fichier : minuscules, seuls [a-z0-9-]
+ * conservés (tout le reste → « _ »), tronqué. Évite tout path traversal.
+ */
+function safeSlug(roomSlug: string): string {
+  return (roomSlug ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '_')
+    .slice(0, 64) || '_';
+}
+
+function configPathFor(roomSlug: string): string {
+  return join(DATA_DIR, `marie-${safeSlug(roomSlug)}.json`);
+}
+
+/** Consignes de Marie pour cette room (chargement paresseux + cache mémoire). */
+export function getMarieKnowledge(roomSlug: string): string {
+  const cached = knowledgeByRoom.get(roomSlug);
+  if (cached !== undefined) return cached;
+  let knowledge = '';
   try {
-    if (existsSync(CONFIG_PATH)) {
-      const raw = JSON.parse(readFileSync(CONFIG_PATH, 'utf8')) as { knowledge?: unknown };
+    const path = configPathFor(roomSlug);
+    if (existsSync(path)) {
+      const raw = JSON.parse(readFileSync(path, 'utf8')) as { knowledge?: unknown };
       if (typeof raw.knowledge === 'string') knowledge = raw.knowledge;
     }
   } catch (err) {
-    console.error('[ai] lecture de marie.json échouée :', err);
+    console.error(`[ai] lecture de marie-${safeSlug(roomSlug)}.json échouée :`, err);
   }
-})();
-
-export function getMarieKnowledge(): string {
+  knowledgeByRoom.set(roomSlug, knowledge);
   return knowledge;
 }
 
-/** Met à jour les consignes de Marie (appliqué immédiatement + persisté). */
-export function setMarieKnowledge(text: string): string {
-  knowledge = (text ?? '').slice(0, MAX_KNOWLEDGE);
+/** Met à jour les consignes de Marie pour une room (appliqué + persisté). */
+export function setMarieKnowledge(roomSlug: string, text: string): string {
+  const knowledge = (text ?? '').slice(0, MAX_KNOWLEDGE);
+  knowledgeByRoom.set(roomSlug, knowledge);
   try {
     mkdirSync(DATA_DIR, { recursive: true });
-    writeFileSync(CONFIG_PATH, JSON.stringify({ knowledge }, null, 2), 'utf8');
+    writeFileSync(configPathFor(roomSlug), JSON.stringify({ knowledge }, null, 2), 'utf8');
   } catch (err) {
-    console.error('[ai] écriture de marie.json échouée :', err);
+    console.error(`[ai] écriture de marie-${safeSlug(roomSlug)}.json échouée :`, err);
   }
   return knowledge;
 }
@@ -144,7 +166,8 @@ export async function receptionistReply(
   mem.turns.push({ role: 'user', content: `${userName}: ${userText}` });
   if (mem.turns.length > MAX_TURNS) mem.turns.splice(0, mem.turns.length - MAX_TURNS);
 
-  // Prompt système = base + consignes éditables de l'hôte + contexte temps réel.
+  // Prompt système = base + consignes éditables de l'hôte (par room) + contexte.
+  const knowledge = getMarieKnowledge(roomSlug);
   const systemPrompt =
     SYSTEM_PROMPT +
     (knowledge
