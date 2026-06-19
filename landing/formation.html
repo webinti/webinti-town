@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Formation | Webinti Town</title>
+<meta name="description" content="Un campus virtuel pour vos formations à distance : cours en salle de conf, travaux pratiques par îlots, vie de promo. Hébergé en France, conforme RGPD." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
+    <nav class="nav-links">
+      <a href="fonctionnalites.html">Fonctionnalités</a>
+      <a href="usages.html">Usages</a>
+      <a href="index.html#admin">Vision admin</a>
+      <a href="index.html#pricing">Tarifs</a>
+    </nav>
+    <a href="https://live.webinti.com" class="btn btn--accent btn--sm"><span class="hide-sm">Entrer dans la ville</span><span class="show-sm">Entrer</span>&nbsp;→</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="phero">
+  <div class="wrap">
+    <span class="kicker rv">Pour les organismes de formation</span>
+    <h1 class="rv">Vos formations à distance, enfin <em>vivantes</em>.</h1>
+    <p class="lead rv">Un campus virtuel où vos apprenants se déplacent, se croisent et participent, au lieu de subir une grille Zoom. Hébergé en France, conforme RGPD.</p>
+    <div class="cta-row rv">
+      <a href="https://live.webinti.com?room=demo" class="btn btn--lg">▶ Visiter la démo en 1 clic</a>
+      <a href="mailto:agence.webinti@gmail.com?subject=Démo%20formation%20·%20Webinti%20Town" class="btn btn--ghost btn--lg">Réserver 15 min</a>
+    </div>
+  </div>
+</section>
+
+<!-- LE PROBLÈME -->
+<section class="sec" style="padding-top:30px">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="kicker">Le constat</span>
+      <h2>La visio, c'est devenu fatigant</h2>
+      <p class="lead">Le distanciel a tout aplati. Vos apprenants méritent mieux qu'une mosaïque de vignettes.</p>
+    </div>
+    <div class="show">
+      <div class="rv">
+        <span class="kicker">Le problème</span>
+        <h3>Pourquoi vos sessions à distance s'essoufflent</h3>
+        <ul>
+          <li><b>Caméras coupées</b>, peu d'échanges, attention qui décroche.</li>
+          <li><b>Aucun esprit de promo</b> en distanciel.</li>
+          <li>Une offre de formation <b>« comme tout le monde »</b>.</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-accueil.png" alt="L'accueil de Webinti Town"><span class="cap">L'accueil</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 USAGES -->
+<section class="sec" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="kicker">Comment ça marche</span>
+      <h2>Un vrai campus, en trois temps</h2>
+      <p class="lead">Cours, travaux pratiques, vie de promo : tout se passe au même endroit.</p>
+    </div>
+
+    <div class="show" id="cours">
+      <div class="rv">
+        <span class="kicker">Le cours</span>
+        <h3>Toute la promo réunie, comme en amphi</h3>
+        <p class="lead">En salle de conférence, vous parlez à toute la promo et partagez votre écran, comme en amphi.</p>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-conf.png" alt="La salle de conférence"><span class="cap">La salle de conférence</span></div></div>
+    </div>
+
+    <div class="show rev" id="tp">
+      <div class="rv">
+        <span class="kicker">Les travaux pratiques</span>
+        <h3>Des îlots pour chaque sous-groupe</h3>
+        <p class="lead">Des îlots où chaque sous-groupe a son audio isolé. Vous passez de l'un à l'autre comme en salle, pour accompagner chaque équipe.</p>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-bureaux.png" alt="Les îlots de travail"><span class="cap">Les îlots de travail</span></div></div>
+    </div>
+
+    <div class="show" id="promo">
+      <div class="rv">
+        <span class="kicker">La vie de promo</span>
+        <h3>Ce qui soude un groupe, entre les sessions</h3>
+        <p class="lead">Un accueil où Marie, notre hôtesse, reçoit vos apprenants, des espaces communs entre les sessions, et même un circuit de karting pour souder le groupe.</p>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-accueil.png" alt="L'accueil et l'hôtesse"><span class="cap">L'accueil</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- RÉASSURANCE -->
+<section class="sec" style="background:var(--paper2)">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="kicker">Sérénité</span>
+      <h2>Pensé pour les organismes de formation</h2>
+      <p class="lead">Conforme, accessible, et installé pour vous.</p>
+    </div>
+    <div class="show">
+      <div class="rv">
+        <span class="kicker">Réassurance</span>
+        <h3>Vous êtes entre de bonnes mains</h3>
+        <ul>
+          <li>🇫🇷 <b>Données hébergées en France</b>, conforme RGPD, auto-hébergement possible.</li>
+          <li>Accessible depuis un <b>simple navigateur</b> (ordinateur, tablette, mobile), prise en main immédiate.</li>
+          <li><b>Mise en place de votre campus offerte.</b></li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-openspace.png" alt="L'open-space"><span class="cap">L'open-space</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="sec" id="pricing">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="kicker">Tarifs simples</span>
+      <h2>Un forfait clair, pensé PME</h2>
+      <p class="lead">Un montant fixe par mois. Sans frais cachés, sans facturation à l'utilisateur.</p>
+    </div>
+    <div class="prices">
+      <div class="price rv">
+        <div class="pn">Gratuit</div><div class="amt">0&nbsp;€</div>
+        <p class="pd2">Pour tester en vrai, sans limite de temps.</p>
+        <ul><li>Jusqu'à <b>3 personnes</b></li><li>Sur live.webinti.com</li><li>Audio/vidéo de proximité</li><li>Bureaux, chat, écran, mini-jeux</li></ul>
+        <a href="https://live.webinti.com" class="btn btn--ghost">Commencer gratuitement</a>
+      </div>
+      <div class="price rv">
+        <div class="pn">Démarrage</div><div class="amt">39&nbsp;€<small> /mois</small></div>
+        <p class="pd2">Pour les petites équipes et les formateurs.</p>
+        <ul><li>Jusqu'à <b>10 personnes</b></li><li>Room dédiée</li><li>Audio/vidéo de proximité</li><li>Marie, l'hôtesse IA</li><li>Support en français</li></ul>
+        <a href="mailto:agence.webinti@gmail.com?subject=Offre%20Démarrage%20·%20Webinti%20Town" class="btn btn--ghost">Choisir Démarrage</a>
+      </div>
+      <div class="price hot rv">
+        <span class="rb">★ LE PLUS CHOISI</span>
+        <div class="pn">Équipe</div><div class="amt">90&nbsp;€<small> /mois</small></div>
+        <p class="pd2">Pour les équipes qui s'installent pour de bon.</p>
+        <ul><li>Jusqu'à <b>25 personnes</b></li><li><b>Room dédiée</b> possible</li><li>Map personnalisée à votre marque</li><li>Vision admin &amp; enregistrement</li><li>Support en français</li></ul>
+        <a href="mailto:agence.webinti@gmail.com?subject=Offre%20Équipe%20·%20Webinti%20Town" class="btn">Choisir Équipe</a>
+      </div>
+      <div class="price rv">
+        <div class="pn">Entreprise</div><div class="amt">350&nbsp;€<small> /mois</small></div>
+        <p class="pd2">Souveraineté totale &amp; sur-mesure.</p>
+        <ul><li>Jusqu'à <b>100 personnes</b></li><li><b>Auto-hébergé</b>, configuration du serveur offerte</li><li>Données <b>100 % en France</b></li><li>Domaine perso &amp; marque blanche</li></ul>
+        <a href="mailto:agence.webinti@gmail.com?subject=Offre%20Entreprise%20·%20Webinti%20Town" class="btn btn--ghost">Nous contacter</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head rv"><span class="kicker">FAQ</span><h2>Les questions fréquentes</h2></div>
+    <div class="faq">
+      <details class="qa rv"><summary>Mes formateurs vont-ils s'y retrouver ?</summary><div class="ans">Oui. On entre depuis un navigateur, on se déplace aux flèches, et Marie accueille les arrivants. On configure votre campus pour vous, la prise en main se fait en une session.</div></details>
+      <details class="qa rv"><summary>Combien d'apprenants en même temps ?</summary><div class="ans">Jusqu'à 10 sur l'offre Démarrage, 25 sur Équipe, 100 sur Entreprise. On dimensionne selon vos cohortes.</div></details>
+      <details class="qa rv"><summary>Et le RGPD / mes données ?</summary><div class="ans">Données hébergées en France, conformes RGPD. En offre Entreprise, auto-hébergement possible : vos données ne sortent jamais de chez vous.</div></details>
+      <details class="qa rv"><summary>Ça remplace Zoom ou ça s'ajoute ?</summary><div class="ans">Les deux usages existent : certains remplacent Zoom complètement, d'autres gardent Webinti Town pour la vie de promo et les TP. À vous de voir.</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL -->
+<section class="final">
+  <div class="wrap">
+    <h2 class="rv">Donnez un lieu à vos formations.</h2>
+    <p class="rv">Visitez la démo, ou parlons de votre prochaine session.</p>
+    <div class="cta-row rv">
+      <a href="https://live.webinti.com?room=demo" class="btn btn--lg">▶ Visiter la démo en 1 clic</a>
+      <a href="mailto:agence.webinti@gmail.com?subject=Démo%20formation%20·%20Webinti%20Town" class="btn btn--ghost btn--lg">Réserver 15 min</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fg">
+      <div class="fb">
+        <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
+        <p>Le bureau virtuel de votre équipe, à la française. Une création de l'agence Webinti.</p>
+      </div>
+      <div><h4>Produit</h4><a href="fonctionnalites.html">Fonctionnalités</a><a href="usages.html">Usages</a><a href="index.html#compare">vs Gather</a><a href="index.html#pricing">Tarifs</a></div>
+      <div><h4>Ressources</h4><a href="https://live.webinti.com">Démo live</a><a href="mailto:agence.webinti@gmail.com">Contact</a></div>
+      <div><h4>Webinti</h4><a href="https://webinti.com">L'agence</a><a href="mailto:agence.webinti@gmail.com">Nous écrire</a><a href="#">Mentions légales</a></div>
+    </div>
+    <div class="fbot"><span>© 2026 Webinti Town</span><span>Conçu en France · Données en Europe 🇪🇺</span></div>
+  </div>
+</footer>
+
+<script src="site.js"></script>
+</body>
+</html>
