@@ -20,19 +20,19 @@ const API_BASE =
 
 // Plans payants proposés au changement d'abonnement (le plan `free` n'est pas
 // vendable). Ordre = ordre d'affichage des boutons.
-type PaidPlan = 'demarrage' | 'equipe' | 'entreprise';
+type PaidPlan = 'starter' | 'team' | 'enterprise';
 const PAID_PLANS: { id: PaidPlan; label: string; price: string }[] = [
-  { id: 'demarrage', label: 'Démarrage', price: '39€' },
-  { id: 'equipe', label: 'Équipe', price: '90€' },
-  { id: 'entreprise', label: 'Entreprise', price: '350€' },
+  { id: 'starter', label: 'Démarrage', price: '39€' },
+  { id: 'team', label: 'Équipe', price: '90€' },
+  { id: 'enterprise', label: 'Entreprise', price: '350€' },
 ];
 
 // Libellés d'abonnement affichés sur l'écran de join (champ `plan` du user PB).
 const PLAN_LABELS: Record<string, string> = {
   free: 'Gratuit · jusqu’à 3 personnes',
-  demarrage: 'Démarrage · jusqu’à 10',
-  equipe: 'Équipe · jusqu’à 25',
-  entreprise: 'Entreprise · jusqu’à 100',
+  starter: 'Démarrage · jusqu’à 10',
+  team: 'Équipe · jusqu’à 25',
+  enterprise: 'Entreprise · jusqu’à 100',
 };
 
 // Compte hôte : toujours Entreprise (comme côté serveur). Surchargeable via env.
@@ -43,9 +43,9 @@ const HOST_EMAIL = (
 // Style du badge par palier — l'Entreprise est mise en avant en Or.
 const PLAN_STYLE: Record<string, { wrap: string; dot: string }> = {
   free: { wrap: 'bg-slate-900/60 text-slate-300 ring-slate-700', dot: 'bg-slate-400' },
-  demarrage: { wrap: 'bg-sky-500/10 text-sky-200 ring-sky-500/40', dot: 'bg-sky-400' },
-  equipe: { wrap: 'bg-violet-500/10 text-violet-200 ring-violet-500/40', dot: 'bg-violet-400' },
-  entreprise: {
+  starter: { wrap: 'bg-sky-500/10 text-sky-200 ring-sky-500/40', dot: 'bg-sky-400' },
+  team: { wrap: 'bg-violet-500/10 text-violet-200 ring-violet-500/40', dot: 'bg-violet-400' },
+  enterprise: {
     wrap: 'bg-amber-400/15 text-amber-200 ring-amber-400/60 shadow-[0_0_14px_-2px_rgba(251,191,36,.55)]',
     dot: 'bg-amber-400',
   },
@@ -54,7 +54,7 @@ const PLAN_STYLE: Record<string, { wrap: string; dot: string }> = {
 /** Lit le code du plan : l'hôte est toujours Entreprise ; sinon le champ `plan` du user PB. */
 function planCode(user: unknown): string {
   const u = user as { plan?: string; email?: string } | null;
-  if (u?.email && u.email.toLowerCase() === HOST_EMAIL) return 'entreprise';
+  if (u?.email && u.email.toLowerCase() === HOST_EMAIL) return 'enterprise';
   return u?.plan ?? 'free';
 }
 

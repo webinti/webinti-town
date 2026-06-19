@@ -68,7 +68,7 @@ export async function getPocketBase(): Promise<PocketBase> {
  * si PocketBase est lent/injoignable (→ null = pas d'hôte, fail-safe).
  */
 /** Plans d'abonnement reconnus (toute autre valeur retombe sur 'free'). */
-const KNOWN_PLANS: ReadonlySet<string> = new Set(['free', 'demarrage', 'equipe', 'entreprise']);
+const KNOWN_PLANS: ReadonlySet<string> = new Set(['free', 'starter', 'team', 'enterprise']);
 
 /**
  * Cœur partagé de la vérification : crée un client PB jetable porteur du token,
@@ -118,7 +118,7 @@ export async function verifyUserToken(token: string | undefined): Promise<string
  * crée une room en devient propriétaire et fixe la capacité selon son plan.
  *
  * - `plan` = `model.plan` s'il s'agit d'un plan connu, sinon 'free'.
- * - Le compte hôte (`config.hostEmail`) est toujours traité comme 'entreprise'.
+ * - Le compte hôte (`config.hostEmail`) est toujours traité comme 'enterprise'.
  * - Retourne null si token absent/invalide/timeout (jamais throw, jamais hang) →
  *   le join continue en mode anonyme/free.
  */
@@ -133,7 +133,7 @@ export async function getAccountFromToken(
     const email = rawEmail.toLowerCase();
     let plan =
       typeof model?.plan === 'string' && KNOWN_PLANS.has(model.plan) ? model.plan : 'free';
-    if (email === config.hostEmail) plan = 'entreprise';
+    if (email === config.hostEmail) plan = 'enterprise';
     return { email, plan };
   };
   return withTimeout(doVerify(), VERIFY_TIMEOUT_MS, null);

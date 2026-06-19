@@ -41,7 +41,7 @@ stripeRouter.post('/create-checkout-session', async (req: Request, res: Response
   const body = req.body as { plan?: unknown } | undefined;
   const plan = body?.plan;
   if (!isPlanId(plan)) {
-    return res.status(400).json({ error: 'plan invalide (demarrage | equipe | entreprise)' });
+    return res.status(400).json({ error: 'plan invalide (starter | team | enterprise)' });
   }
 
   try {

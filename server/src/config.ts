@@ -31,7 +31,7 @@ export const config = {
   // Plafond de présents simultanés par room selon le plan du compte propriétaire.
   // Le 1er compte authentifié qui « crée » une room non-demo en devient
   // propriétaire et fixe la capacité d'après son abonnement.
-  planCapacity: { free: 3, demarrage: 10, equipe: 25, entreprise: 100 } as Record<string, number>,
+  planCapacity: { free: 3, starter: 10, team: 25, enterprise: 100 } as Record<string, number>,
   // Rooms de démonstration (slug 'demo' / 'demo-*') : capacité + durée de vie
   // limitées (prospection). Surchargeable par env.
   demoRoomCapacity: Number(process.env.DEMO_ROOM_CAPACITY ?? 10),
@@ -56,9 +56,9 @@ export const config = {
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
   stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? '',
   stripePrices: {
-    demarrage: process.env.STRIPE_PRICE_DEMARRAGE ?? '',
-    equipe: process.env.STRIPE_PRICE_EQUIPE ?? '',
-    entreprise: process.env.STRIPE_PRICE_ENTREPRISE ?? '',
+    starter: process.env.STRIPE_PRICE_STARTER ?? '',
+    team: process.env.STRIPE_PRICE_TEAM ?? '',
+    enterprise: process.env.STRIPE_PRICE_ENTERPRISE ?? '',
   },
   // Stripe activé uniquement si une clé secrète est fournie. Sinon les routes
   // /api/stripe/* renvoient 503 sans jamais instancier le SDK ni crasher.

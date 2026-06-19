@@ -11,9 +11,9 @@ import { getPocketBase } from '../pocketbase/client.js';
  * serveur démarre normalement (pas de crash en l'absence de clés).
  */
 
-export type PlanId = 'demarrage' | 'equipe' | 'entreprise';
+export type PlanId = 'starter' | 'team' | 'enterprise';
 
-export const PLAN_IDS: readonly PlanId[] = ['demarrage', 'equipe', 'entreprise'] as const;
+export const PLAN_IDS: readonly PlanId[] = ['starter', 'team', 'enterprise'] as const;
 
 export function isPlanId(value: unknown): value is PlanId {
   return typeof value === 'string' && (PLAN_IDS as readonly string[]).includes(value);
