@@ -12,6 +12,21 @@ const HOST_TOKEN_KEY = 'webinti-town:hostToken';
 const ROOM_SLUG_KEY = 'webinti-town:roomSlug';
 const ROOM_SLUG_RE = /^[a-z0-9-]{1,50}$/;
 
+// Base de l'API (même logique que SocketManager) : same-origin en prod,
+// localhost:3001 en dev, surchargeable via VITE_SERVER_URL.
+const API_BASE =
+  (import.meta.env.VITE_SERVER_URL as string | undefined) ??
+  (import.meta.env.PROD ? '' : 'http://localhost:3001');
+
+// Plans payants proposés au changement d'abonnement (le plan `free` n'est pas
+// vendable). Ordre = ordre d'affichage des boutons.
+type PaidPlan = 'demarrage' | 'equipe' | 'entreprise';
+const PAID_PLANS: { id: PaidPlan; label: string; price: string }[] = [
+  { id: 'demarrage', label: 'Démarrage', price: '39€' },
+  { id: 'equipe', label: 'Équipe', price: '90€' },
+  { id: 'entreprise', label: 'Entreprise', price: '350€' },
+];
+
 // Libellés d'abonnement affichés sur l'écran de join (champ `plan` du user PB).
 const PLAN_LABELS: Record<string, string> = {
   free: 'Gratuit · jusqu’à 3 personnes',
@@ -20,10 +35,36 @@ const PLAN_LABELS: Record<string, string> = {
   entreprise: 'Entreprise · jusqu’à 100',
 };
 
-/** Lit le plan du user PB de façon sûre (le type peut ne pas l'inclure). */
+/** Lit le code du plan du user PB de façon sûre (le type peut ne pas l'inclure). */
+function planCode(user: unknown): string {
+  return (user as { plan?: string } | null)?.plan ?? 'free';
+}
+
+/** Libellé lisible du plan du user PB. */
 function planLabel(user: unknown): string {
-  const plan = (user as { plan?: string } | null)?.plan ?? 'free';
-  return PLAN_LABELS[plan] ?? PLAN_LABELS.free!;
+  return PLAN_LABELS[planCode(user)] ?? PLAN_LABELS.free!;
+}
+
+// Message de retour de paiement Stripe, lu une seule fois au montage à partir de
+// l'URL (?checkout=success|cancel) puis nettoyé de l'URL.
+type CheckoutNotice = { kind: 'success' | 'cancel'; text: string } | null;
+
+function readCheckoutNotice(): CheckoutNotice {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('checkout');
+    if (status !== 'success' && status !== 'cancel') return null;
+    // Retire le paramètre pour ne pas re-déclencher le message au reload.
+    params.delete('checkout');
+    const qs = params.toString();
+    const url = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
+    window.history.replaceState(null, '', url);
+    return status === 'success'
+      ? { kind: 'success', text: 'Merci ! Votre abonnement est actif.' }
+      : { kind: 'cancel', text: 'Paiement annulé.' };
+  } catch {
+    return null;
+  }
 }
 
 function readHostToken(): string {
@@ -70,11 +111,45 @@ export function JoinScreen() {
   );
   const [submitting, setSubmitting] = useState(false);
 
+  // Abonnement Stripe : plan en cours de redirection + erreur éventuelle.
+  const [checkoutPlan, setCheckoutPlan] = useState<PaidPlan | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  // Message de retour de paiement (lu une fois au montage depuis l'URL).
+  const [checkoutNotice, setCheckoutNotice] = useState<CheckoutNotice>(() =>
+    readCheckoutNotice(),
+  );
+
+  const currentPlan = planCode(user);
+
   // Un join refusé (salle pleine, démo expirée…) doit relâcher le bouton
   // « Rejoindre » pour que l'utilisateur puisse réessayer.
   useEffect(() => {
     if (joinError) setSubmitting(false);
   }, [joinError]);
+
+  // Lance une session Stripe Checkout pour le plan choisi puis redirige.
+  const startCheckout = async (plan: PaidPlan) => {
+    setCheckoutError(null);
+    setCheckoutPlan(plan);
+    try {
+      const res = await fetch(`${API_BASE}/api/stripe/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {}),
+        },
+        body: JSON.stringify({ plan, token: pb.authStore.token }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { url?: string };
+      if (!data.url) throw new Error('no url');
+      // Redirection vers Stripe Checkout.
+      window.location.href = data.url;
+    } catch {
+      setCheckoutError('Paiement indisponible pour le moment.');
+      setCheckoutPlan(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,11 +202,70 @@ export function JoinScreen() {
             {user?.email ? <span className="text-slate-500"> · {user.email}</span> : null}
           </p>
 
-          <div className="mb-4">
+          {checkoutNotice ? (
+            <div
+              role="status"
+              className={
+                'mb-4 flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm ring-1 ' +
+                (checkoutNotice.kind === 'success'
+                  ? 'border border-emerald-500/40 bg-emerald-500/10 text-emerald-200 ring-emerald-500/20'
+                  : 'border border-slate-600 bg-slate-900/60 text-slate-300 ring-slate-700')
+              }
+            >
+              <span>{checkoutNotice.text}</span>
+              <button
+                type="button"
+                onClick={() => setCheckoutNotice(null)}
+                className="shrink-0 text-xs text-slate-400 hover:text-slate-200"
+                aria-label="Fermer"
+              >
+                ✕
+              </button>
+            </div>
+          ) : null}
+
+          <div className="mb-4 rounded-lg bg-slate-900/40 p-3 ring-1 ring-slate-700">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/60 px-3 py-1 text-xs font-medium text-slate-300 ring-1 ring-slate-700">
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" aria-hidden />
               Abonnement : {planLabel(user)}
             </span>
+
+            <div className="mt-3">
+              <p className="mb-2 text-xs font-medium text-slate-400">Changer d'abonnement</p>
+              <div className="grid grid-cols-3 gap-2">
+                {PAID_PLANS.map(({ id, label, price }) => {
+                  const isCurrent = currentPlan === id;
+                  const isRedirecting = checkoutPlan === id;
+                  const busy = checkoutPlan !== null;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      disabled={isCurrent || busy}
+                      onClick={() => startCheckout(id)}
+                      className="flex flex-col items-center rounded-lg border border-slate-600 bg-slate-800 px-2 py-2 text-center text-xs font-medium text-slate-200 transition hover:border-indigo-400 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-600 disabled:hover:bg-slate-800"
+                    >
+                      {isRedirecting ? (
+                        <span>Redirection…</span>
+                      ) : (
+                        <>
+                          <span>{label}</span>
+                          <span className="text-slate-400">{price}</span>
+                          {isCurrent ? (
+                            <span className="mt-0.5 text-[10px] text-indigo-300">Plan actuel</span>
+                          ) : null}
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {checkoutError ? (
+                <p role="alert" className="mt-2 text-xs text-amber-300/90">
+                  {checkoutError}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div className="mb-2 flex justify-center">

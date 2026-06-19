@@ -9,6 +9,10 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 // AI_API_KEY a priorité ; OPENROUTER_API_KEY accepté en repli (nom usuel).
 const aiApiKey = process.env.AI_API_KEY ?? process.env.OPENROUTER_API_KEY ?? '';
 
+// Stripe (abonnements). Toutes les clés sont optionnelles : si la clé secrète
+// est vide, Stripe est désactivé et les routes renvoient 503 (pas de crash).
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY ?? '';
+
 export const config = {
   port: Number(process.env.PORT ?? 3001),
   clientOrigin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
@@ -47,4 +51,18 @@ export const config = {
   aiApiKey,
   aiModel: process.env.AI_MODEL ?? 'openai/gpt-4o-mini',
   aiEnabled: aiApiKey.length > 0,
+  // Stripe — abonnements mensuels (Démarrage / Équipe / Entreprise).
+  stripeSecretKey,
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
+  stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? '',
+  stripePrices: {
+    demarrage: process.env.STRIPE_PRICE_DEMARRAGE ?? '',
+    equipe: process.env.STRIPE_PRICE_EQUIPE ?? '',
+    entreprise: process.env.STRIPE_PRICE_ENTREPRISE ?? '',
+  },
+  // Stripe activé uniquement si une clé secrète est fournie. Sinon les routes
+  // /api/stripe/* renvoient 503 sans jamais instancier le SDK ni crasher.
+  stripeEnabled: stripeSecretKey.length > 0,
+  // Base URL de l'app pour construire les success/cancel URLs du Checkout.
+  appBaseUrl: process.env.APP_BASE_URL ?? 'https://live.webinti.com',
 };
