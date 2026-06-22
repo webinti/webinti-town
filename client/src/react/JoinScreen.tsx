@@ -6,7 +6,7 @@ import { pb } from '../pocketbase';
 import type { Appearance } from '../types';
 import { DEFAULT_APPEARANCE } from '../types';
 import { AvatarPreview, AvatarControls, clampAppearance } from './avatar/AvatarCustomizer';
-import { SubscriptionSection } from './components/SubscriptionSection';
+// (abonnement géré dans le menu in-game « Mon compte », pas sur l'écran d'entrée)
 import { readLastPosition } from '../lastPosition';
 
 const HOST_TOKEN_KEY = 'webinti-town:hostToken';
@@ -73,7 +73,11 @@ export function JoinScreen() {
 
   const [roomSlug] = useState<string>(() => readRoomSlug());
   // Pré-rempli depuis le user connecté (PocketBase), plus de localStorage.
-  const [pseudo, setPseudo] = useState(user?.name ?? '');
+  // Pré-rempli depuis le nom du compte, sinon le préfixe de l'email → jamais
+  // vide pour un utilisateur connecté (sinon le bouton « Rejoindre » est désactivé).
+  const [pseudo, setPseudo] = useState(
+    user?.name?.trim() || user?.email?.split('@')[0] || '',
+  );
   const [appearance, setAppearance] = useState<Appearance>(
     user?.appearance ? clampAppearance(user.appearance) : DEFAULT_APPEARANCE,
   );
@@ -97,12 +101,9 @@ export function JoinScreen() {
     setSubmitting(true);
     // Nouvelle tentative : on efface l'éventuelle erreur précédente.
     useGameStore.getState().setJoinError(null);
-    // Persiste pseudo + avatar sur le compte (best-effort, ne bloque pas l'entrée).
-    try {
-      await saveProfile(name, appearance);
-    } catch {
-      /* on entre quand même si la sauvegarde échoue */
-    }
+    // Persiste pseudo + avatar sur le compte EN ARRIÈRE-PLAN — ne doit jamais
+    // bloquer l'entrée (un appel PocketBase lent ne doit pas figer « Rejoindre »).
+    void saveProfile(name, appearance).catch(() => {});
     useGameStore.getState().setName(name);
     useGameStore.getState().setAppearance(appearance);
     const hostToken = readHostToken();
@@ -163,9 +164,8 @@ export function JoinScreen() {
             </div>
           ) : null}
 
-          <div className="mb-4">
-            <SubscriptionSection />
-          </div>
+          {/* L'abonnement se gère dans le menu in-game « Mon compte » — pas ici,
+              pour ne pas bloquer/embrouiller les nouveaux qui veulent juste entrer. */}
 
           <div className="mb-2 flex justify-center">
             <div className="rounded-lg bg-slate-900/60 p-3 ring-1 ring-slate-700">
@@ -203,7 +203,7 @@ export function JoinScreen() {
               disabled={submitting || !pseudo.trim()}
               className="w-full rounded-lg bg-indigo-500 px-4 py-2.5 font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? 'Connexion...' : 'Rejoindre'}
+              {submitting ? 'Connexion...' : 'Rejoindre gratuitement'}
             </button>
           </div>
         </form>
