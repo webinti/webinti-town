@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { Appearance } from '../../types';
 import {
   SKIN_COUNT,
@@ -13,7 +14,6 @@ const HAIR_STYLE_LABELS = ['Court', 'Ondulé', 'Mi-long', 'Bouclé', 'Long', 'Ch
 // Pastilles indicatives pour les couleurs de cheveux LimeZu (variantes 01-04).
 const HAIR_COLOR_SWATCHES = ['#3b2a1a', '#6b4423', '#c98a3a', '#1a1a1a'];
 
-const hairVariantOf = (a: Appearance) => a.hairStyle * HAIR_COLOR_COUNT + a.hairColor;
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
 // Sanitise une apparence (ex. champ JSON PocketBase) vers un Appearance valide et borné.
@@ -31,36 +31,60 @@ export function clampAppearance(a: unknown): Appearance {
   };
 }
 
-// Affiche la frame "face, idle" (col 0) en superposant les 3 couches.
-// Layout des planches: row = variante*4 + dir ; frame face-idle = variante*4.
+// Cache des spritesheets (chargées une seule fois, partagées par toutes les previews).
+const sheetCache = new Map<string, HTMLImageElement>();
+function loadSheet(file: string): HTMLImageElement {
+  const url = `${import.meta.env.BASE_URL}assets/avatars/${file}.png`;
+  let img = sheetCache.get(url);
+  if (!img) {
+    img = new Image();
+    img.src = url;
+    sheetCache.set(url, img);
+  }
+  return img;
+}
+
+// Affiche la frame "face, idle" (col 0) en superposant les 3 couches, dessinées
+// sur un <canvas> (pixel-exact, robuste sur tous les navigateurs — contrairement
+// à un background-size CSS géant que certains navigateurs intégrés déforment).
+// Layout des planches: row = variante*4 + dir ; frame face-idle = variante*4 (col 0).
 export function AvatarPreview({ appearance, scale }: { appearance: Appearance; scale: number }) {
   const w = FRAME_W * scale;
   const h = FRAME_H * scale;
+  const ref = useRef<HTMLCanvasElement>(null);
+  const { skin, outfit, hairStyle, hairColor } = appearance;
 
-  const layerStyle = {
-    position: 'absolute' as const,
-    left: 0,
-    top: 0,
-    width: w,
-    height: h,
-    imageRendering: 'pixelated' as const,
-    backgroundRepeat: 'no-repeat' as const,
-  };
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const layers: Array<[string, number]> = [
+      ['body', skin],
+      ['outfit', outfit],
+      ['hair', hairStyle * HAIR_COLOR_COUNT + hairColor],
+    ];
+    let cancelled = false;
+    const draw = () => {
+      if (cancelled) return;
+      ctx.clearRect(0, 0, w, h);
+      ctx.imageSmoothingEnabled = false; // pixel-art net (pas de flou à l'upscale)
+      for (const [file, variant] of layers) {
+        const img = loadSheet(file);
+        if (img.complete && img.naturalWidth > 0) {
+          // source: colonne 0, ligne variant*4 (frame face-idle), 32×64 → dest w×h
+          ctx.drawImage(img, 0, variant * 4 * FRAME_H, FRAME_W, FRAME_H, 0, 0, w, h);
+        } else {
+          img.addEventListener('load', draw, { once: true });
+        }
+      }
+    };
+    draw();
+    return () => {
+      cancelled = true;
+    };
+  }, [skin, outfit, hairStyle, hairColor, w, h]);
 
-  const layer = (file: string, variant: number, count: number) => ({
-    ...layerStyle,
-    backgroundImage: `url('${import.meta.env.BASE_URL}assets/avatars/${file}.png')`,
-    backgroundSize: `${3 * w}px ${count * 4 * h}px`,
-    backgroundPosition: `0px -${variant * 4 * h}px`,
-  });
-
-  return (
-    <div style={{ position: 'relative', width: w, height: h }}>
-      <div style={layer('body', appearance.skin, SKIN_COUNT)} />
-      <div style={layer('outfit', appearance.outfit, OUTFIT_COUNT)} />
-      <div style={layer('hair', hairVariantOf(appearance), HAIR_STYLE_COUNT * HAIR_COLOR_COUNT)} />
-    </div>
-  );
+  return <canvas ref={ref} width={w} height={h} style={{ width: w, height: h, imageRendering: 'pixelated' }} />;
 }
 
 function Swatch({ color, selected, onClick, label }: {
