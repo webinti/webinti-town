@@ -10,9 +10,7 @@ import {
 const FRAME_W = 32;
 const FRAME_H = 64;
 
-const HAIR_STYLE_LABELS = ['Court', 'Ondulé', 'Mi-long', 'Bouclé', 'Long', 'Chignon'];
-// Pastilles indicatives pour les couleurs de cheveux LimeZu (variantes 01-04).
-const HAIR_COLOR_SWATCHES = ['#3b2a1a', '#6b4423', '#c98a3a', '#1a1a1a'];
+const HAIR_STYLE_LABELS = ['Court', 'Ondulé', 'Mi-long', 'Bouclé', 'Long', 'Chignon', 'Longs', 'Couettes'];
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
@@ -87,23 +85,6 @@ export function AvatarPreview({ appearance, scale }: { appearance: Appearance; s
   return <canvas ref={ref} width={w} height={h} style={{ width: w, height: h, imageRendering: 'pixelated' }} />;
 }
 
-function Swatch({ color, selected, onClick, label }: {
-  color: string; selected: boolean; onClick: () => void; label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={`h-8 w-8 rounded-full ring-2 transition ${
-        selected ? 'ring-indigo-400 scale-110' : 'ring-slate-700 hover:ring-slate-500'
-      }`}
-      style={{ backgroundColor: color }}
-    />
-  );
-}
-
 function VariantThumb({ base, override, selected, onClick, title }: {
   base: Appearance; override: Partial<Appearance>; selected: boolean; onClick: () => void; title?: string;
 }) {
@@ -164,10 +145,10 @@ export function AvatarControls({ appearance, onChange }: {
 
       <div className="mb-2">
         <label className="mb-2 block text-sm font-medium">Couleur des cheveux</label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {range(HAIR_COLOR_COUNT).map((i) => (
-            <Swatch key={i} color={HAIR_COLOR_SWATCHES[i] ?? '#888'}
-              selected={appearance.hairColor === i} onClick={() => update('hairColor', i)} label={`Cheveux ${i + 1}`} />
+            <VariantThumb key={i} base={appearance} override={{ hairColor: i }}
+              selected={appearance.hairColor === i} onClick={() => update('hairColor', i)} title={`Couleur ${i + 1}`} />
           ))}
         </div>
       </div>

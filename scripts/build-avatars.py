@@ -39,14 +39,25 @@ IDLE_F = 0                        # frame neutre
 # --- sélections curatées (indices de variantes du jeu) ---
 SKINS = [f'Bodies/32x32/Body_32x32_0{i}.png' for i in range(1, 10)]   # 9 teints
 
-HAIR_STYLES = ['01', '03', '05', '08', '12', '20']                    # 6 styles
-HAIR_COLORS = ['01', '02', '03', '04']                               # 4 couleurs
-# variant = style*len(colors) + color
+# 8 coiffures : 6 réalistes (courtes/moyennes) + 2 longues féminines (27 longs,
+# 28 couettes). Les cheveux "réalistes" (bruns/noir) et "longs" (vifs) n'ont PAS
+# les mêmes teintes dans LimeZu : chaque style porte donc sa propre palette de 4
+# couleurs (slot hairColor 0..3). variant = styleIndex*4 + colorIndex.
+HAIR_COLOR_COUNT = 4
+NATURAL_COLORS = ['04', '02', '01', '07']   # brun foncé, brun, auburn, noir
+LONG_COLORS    = ['06', '05', '01', '04']   # roux, blond, rose, bleu
+HAIR_STYLE_COLORS = [
+    ('01', NATURAL_COLORS), ('03', NATURAL_COLORS), ('05', NATURAL_COLORS),
+    ('08', NATURAL_COLORS), ('12', NATURAL_COLORS), ('20', NATURAL_COLORS),
+    ('27', LONG_COLORS),    ('28', LONG_COLORS),
+]
+HAIR_STYLES = [s for s, _ in HAIR_STYLE_COLORS]
 HAIRS = [f'Hairstyles/32x32/Hairstyle_{s}_32x32_{c}.png'
-         for s in HAIR_STYLES for c in HAIR_COLORS]
+         for s, colors in HAIR_STYLE_COLORS for c in colors]
 
-OUTFIT_MODELS = ['01', '05', '07', '10', '14', '18', '21', '24', '25', '28', '31', '32']
-OUTFITS = [f'Outfits/32x32/Outfit_{m}_32x32_01.png' for m in OUTFIT_MODELS]   # 12 tenues
+# 13 tenues : 12 hauts unisexes + 1 robe longue (33), option clairement féminine.
+OUTFIT_MODELS = ['01', '05', '07', '10', '14', '18', '21', '24', '25', '28', '31', '32', '33']
+OUTFITS = [f'Outfits/32x32/Outfit_{m}_32x32_01.png' for m in OUTFIT_MODELS]   # 13 tenues
 
 EYES = 'Eyes/32x32/Eyes_32x32_01.png'                                # yeux par défaut
 
@@ -107,7 +118,7 @@ def main():
     build_layer(HAIRS, 'hair')
     print(f'[build-avatars] OK -> {OUT}')
     print(f'  skins={len(SKINS)}  outfits={len(OUTFITS)}  '
-          f'hair={len(HAIRS)} ({len(HAIR_STYLES)} styles x {len(HAIR_COLORS)} couleurs)')
+          f'hair={len(HAIRS)} ({len(HAIR_STYLES)} styles x {HAIR_COLOR_COUNT} couleurs)')
 
 
 if __name__ == '__main__':

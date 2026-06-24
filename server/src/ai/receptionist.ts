@@ -22,11 +22,12 @@ export const RECEPTIONIST = {
   y: 560,
 } as const;
 
-// Apparence de Marie (avatar LimeZu, bornes : skin 0-8 / outfit 0-11 / hair 0-5 / 0-3).
+// Apparence de Marie (avatar LimeZu, bornes : skin 0-8 / outfit 0-12 / hair 0-7 / 0-3).
+// Longs (style 6) blonds (couleur 1) → clairement féminine.
 export const MARIE_APPEARANCE: Appearance = {
   skin: 1,
   outfit: 3,
-  hairStyle: 4,
+  hairStyle: 6,
   hairColor: 1,
 };
 

@@ -3,9 +3,9 @@ export type Direction = 'up' | 'down' | 'left' | 'right';
 // Couches d'avatar LimeZu (Modern Interiors). Les spritesheets sont générées
 // par scripts/build-avatars.py — garder ces compteurs synchronisés avec lui.
 export const SKIN_COUNT = 9;        // Bodies/32x32 (teints)
-export const OUTFIT_COUNT = 12;     // tenues curatées
-export const HAIR_STYLE_COUNT = 6;  // coiffures curatées
-export const HAIR_COLOR_COUNT = 4;  // couleurs de cheveux
+export const OUTFIT_COUNT = 13;     // 12 hauts unisexes + 1 robe (féminine)
+export const HAIR_STYLE_COUNT = 8;  // 6 courtes/moyennes + 2 longues (féminines)
+export const HAIR_COLOR_COUNT = 4;  // couleurs de cheveux (palette par style)
 // Variante de la planche `hair` = hairStyle * HAIR_COLOR_COUNT + hairColor.
 
 export interface Appearance {

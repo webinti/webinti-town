@@ -227,8 +227,8 @@ function parseAppearance(raw: unknown): Appearance {
   const r = raw as Record<string, unknown>;
   // Bornes synchronisées avec client/src/types.ts (SKIN/OUTFIT/HAIR_*_COUNT).
   const skin = intInRange(r.skin, 0, 8);
-  const outfit = intInRange(r.outfit, 0, 11);
-  const hairStyle = intInRange(r.hairStyle, 0, 5);
+  const outfit = intInRange(r.outfit, 0, 12);
+  const hairStyle = intInRange(r.hairStyle, 0, 7);
   const hairColor = intInRange(r.hairColor, 0, 3);
   return {
     skin: skin ?? DEFAULT_APPEARANCE.skin,
