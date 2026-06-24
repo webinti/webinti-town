@@ -24,8 +24,14 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSTATIONS } from '../workstations.js';
 import { RECEPTIONIST, getMarieKnowledge, setMarieKnowledge } from '../ai/receptionist.js';
-import { generateAgentReply } from '../ai/agent.js';
-import { getNearestAgent, toPublicAgents, buildAgentSystemPrompt } from '../ai/AgentRegistry.js';
+import { generateAgentReply, forgetConversation } from '../ai/agent.js';
+import {
+  getNearestAgent,
+  toPublicAgents,
+  toPublicAgent,
+  buildAgentSystemPrompt,
+  createEmployeeRecord,
+} from '../ai/AgentRegistry.js';
 
 const UPLOADS_ROOT_HANDLER = (() => {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -1190,6 +1196,50 @@ export function registerSocketHandlers(io: Server): void {
       const marie = room.agents.get(RECEPTIONIST.id);
       if (marie) marie.knowledge = saved;
       socket.emit('ai:config', { knowledge: saved, saved: true });
+    });
+
+    // ── Embauche d'IA (hôte) : crée un agent « employé » posté là où est l'hôte ──
+    const MAX_EMPLOYEES = 8;
+    socket.on('ai:hire', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      const room = roomManager.getRoom(session.roomSlug);
+      if (!room || room.hostPlayerId !== session.playerId) return;
+      const host = room.players.get(session.playerId);
+      if (!host) return;
+      if (typeof payload !== 'object' || payload === null) return;
+      const p = payload as Record<string, unknown>;
+      const name = sanitizeName(p.name);
+      const role = sanitizeText(p.role, 60);
+      const knowledge = typeof p.knowledge === 'string' ? p.knowledge.slice(0, 6000) : '';
+      const appearance = parseAppearance(p.appearance);
+      let count = 0;
+      for (const a of room.agents.values()) if (a.kind === 'employee') count += 1;
+      if (count >= MAX_EMPLOYEES) {
+        socket.emit('ai:hire_error', { message: `Limite atteinte (${MAX_EMPLOYEES} IA maximum par salle).` });
+        return;
+      }
+      const rec = createEmployeeRecord({ name, role, knowledge, appearance, x: host.x, y: host.y });
+      room.agents.set(rec.agentId, rec);
+      io.to(session.roomSlug).emit('ai_agent_joined', toPublicAgent(rec));
+    });
+
+    socket.on('ai:fire', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      const room = roomManager.getRoom(session.roomSlug);
+      if (!room || room.hostPlayerId !== session.playerId) return;
+      const agentId =
+        payload && typeof payload === 'object'
+          ? (payload as Record<string, unknown>).agentId
+          : undefined;
+      if (typeof agentId !== 'string' || !agentId) return;
+      const rec = room.agents.get(agentId);
+      // On ne licencie que les IA embauchées (jamais Marie ni une doublure).
+      if (!rec || rec.kind !== 'employee') return;
+      room.agents.delete(agentId);
+      forgetConversation(`${session.roomSlug}:${agentId}`);
+      io.to(session.roomSlug).emit('ai_agent_left', { agentId });
     });
 
     socket.on('admin_kick', (payload: unknown) => {

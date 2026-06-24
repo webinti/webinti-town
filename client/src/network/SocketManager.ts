@@ -113,6 +113,7 @@ class SocketManager {
   private workstationStateListeners = new Set<(ws: WorkstationStatePayload) => void>();
   private workstationInviteListeners = new Set<(inv: WorkstationInvitePayload) => void>();
   private speakingStateListeners = new Set<(p: SpeakingStatePayload) => void>();
+  private aiHireErrorListeners = new Set<(msg: string) => void>();
 
   connect(): Socket {
     if (this.socket && this.socket.connected) return this.socket;
@@ -297,6 +298,10 @@ class SocketManager {
     socket.on('ai_agent_left', (payload: { agentId?: string }) => {
       if (!payload || typeof payload.agentId !== 'string') return;
       useGameStore.getState().removeAiAgent(payload.agentId);
+    });
+    socket.on('ai:hire_error', (payload: { message?: string }) => {
+      const msg = payload?.message ?? 'Embauche refusée.';
+      for (const fn of this.aiHireErrorListeners) fn(msg);
     });
 
     socket.on('whiteboard_text_update', (payload: WhiteboardTextUpdatePayload) => {
@@ -498,6 +503,22 @@ class SocketManager {
     this.aiConfigListeners.add(fn);
     return () => {
       this.aiConfigListeners.delete(fn);
+    };
+  }
+
+  /** Embauche d'IA (hôte) : crée un agent posté là où se tient l'hôte. */
+  aiHire(payload: { name: string; role: string; knowledge: string; appearance: Appearance }): void {
+    this.socket?.emit('ai:hire', payload);
+  }
+
+  aiFire(agentId: string): void {
+    this.socket?.emit('ai:fire', { agentId });
+  }
+
+  onAiHireError(fn: (msg: string) => void): () => void {
+    this.aiHireErrorListeners.add(fn);
+    return () => {
+      this.aiHireErrorListeners.delete(fn);
     };
   }
 

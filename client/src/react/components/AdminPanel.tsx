@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../../stores/gameStore';
 import { socketManager } from '../../network/SocketManager';
+import { AvatarPreview, AvatarControls } from '../avatar/AvatarCustomizer';
+import type { Appearance } from '../../types';
+
+// Apparence par défaut d'une IA fraîchement embauchée (distincte de Marie).
+const NEW_HIRE_APPEARANCE: Appearance = { skin: 3, outfit: 5, hairStyle: 2, hairColor: 1 };
 
 /** "il y a 3 s / 12 min / 1 h 05" depuis joinedAt. */
 function formatConnected(ms: number): string {
@@ -37,6 +42,16 @@ export function AdminPanel() {
   const [aiKnowledge, setAiKnowledge] = useState('');
   const [aiStatus, setAiStatus] = useState<'idle' | 'loaded' | 'saving' | 'saved'>('idle');
 
+  // Embauche d'IA : IA embauchées (depuis le store) + formulaire.
+  const aiAgents = useGameStore((s) => s.aiAgents);
+  const employees = useMemo(() => aiAgents.filter((a) => a.kind === 'employee'), [aiAgents]);
+  const [hireOpen, setHireOpen] = useState(false);
+  const [hName, setHName] = useState('');
+  const [hRole, setHRole] = useState('');
+  const [hKnowledge, setHKnowledge] = useState('');
+  const [hAppearance, setHAppearance] = useState<Appearance>(NEW_HIRE_APPEARANCE);
+  const [hireError, setHireError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!open || !isHost) return;
     const off = socketManager.onAiConfig((p) => {
@@ -45,6 +60,11 @@ export function AdminPanel() {
     });
     socketManager.aiGetConfig();
     return off;
+  }, [open, isHost]);
+
+  useEffect(() => {
+    if (!open || !isHost) return;
+    return socketManager.onAiHireError((msg) => setHireError(msg));
   }, [open, isHost]);
 
   // Horloge qui avance pour rafraîchir les durées de connexion (toutes les 15 s).
@@ -90,6 +110,19 @@ export function AdminPanel() {
   const handleSaveAi = () => {
     setAiStatus('saving');
     socketManager.aiSetConfig(aiKnowledge);
+  };
+
+  const handleHire = () => {
+    const name = hName.trim();
+    if (!name) return;
+    setHireError(null);
+    socketManager.aiHire({ name, role: hRole.trim(), knowledge: hKnowledge, appearance: hAppearance });
+    // L'agent arrive via 'ai_agent_joined' ; on réinitialise le formulaire.
+    setHName('');
+    setHRole('');
+    setHKnowledge('');
+    setHAppearance(NEW_HIRE_APPEARANCE);
+    setHireOpen(false);
   };
 
   return (
@@ -157,6 +190,109 @@ export function AdminPanel() {
               Enregistrer
             </button>
           </div>
+        </div>
+
+        {/* ── Embauche d'IA ── */}
+        <div className="mb-4 rounded-lg bg-slate-800/60 p-3 ring-1 ring-white/5">
+          <div className="mb-1.5 flex items-center justify-between">
+            <h3 className="text-sm font-semibold">🤖 Embaucher une IA</h3>
+            <span className="text-[11px] text-slate-400">{employees.length}/8</span>
+          </div>
+
+          {employees.length > 0 && (
+            <ul className="mb-2 space-y-1">
+              {employees.map((e) => (
+                <li
+                  key={e.agentId}
+                  className="flex items-center gap-2 rounded-md bg-slate-900/60 px-2 py-1 text-xs"
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    <b>{e.name}</b>
+                    {e.role ? <span className="text-slate-400"> · {e.role}</span> : null}
+                  </span>
+                  <button
+                    onClick={() => socketManager.aiFire(e.agentId)}
+                    className="flex-none rounded bg-red-600/80 px-2 py-0.5 text-[11px] font-semibold hover:bg-red-500"
+                  >
+                    Licencier
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {!hireOpen ? (
+            <button
+              onClick={() => { setHireError(null); setHireOpen(true); }}
+              className="w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold hover:bg-emerald-500"
+            >
+              + Embaucher une IA
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] leading-snug text-slate-400">
+                L'IA apparaîtra <b className="text-slate-200">là où vous vous tenez</b> et répondra
+                aux personnes proches dans le chat de proximité.
+              </p>
+              <div className="flex gap-3">
+                <div className="flex-none rounded-md bg-slate-900/60 p-2 ring-1 ring-white/10">
+                  <AvatarPreview appearance={hAppearance} scale={2} />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <input
+                    value={hName}
+                    onChange={(e) => setHName(e.target.value)}
+                    maxLength={20}
+                    placeholder="Nom (ex. Léa)"
+                    className="w-full rounded-md bg-slate-900 px-2 py-1 text-xs ring-1 ring-white/10 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <input
+                    value={hRole}
+                    onChange={(e) => setHRole(e.target.value)}
+                    maxLength={60}
+                    placeholder="Rôle (ex. Support formation)"
+                    className="w-full rounded-md bg-slate-900 px-2 py-1 text-xs ring-1 ring-white/10 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+              <textarea
+                value={hKnowledge}
+                onChange={(e) => setHKnowledge(e.target.value)}
+                rows={3}
+                maxLength={6000}
+                placeholder="Ce qu'elle sait / sa FAQ (une info par ligne)…"
+                className="w-full resize-y rounded-md bg-slate-900 p-2 text-xs ring-1 ring-white/10 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <details>
+                <summary className="cursor-pointer text-[11px] text-slate-400 hover:text-slate-200">
+                  Personnaliser l'avatar
+                </summary>
+                <div className="mt-2">
+                  <AvatarControls appearance={hAppearance} onChange={setHAppearance} />
+                </div>
+              </details>
+              {hireError && (
+                <div className="rounded-md bg-red-500/10 px-2 py-1 text-[11px] text-red-300 ring-1 ring-red-500/30">
+                  {hireError}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleHire}
+                  disabled={!hName.trim()}
+                  className="flex-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold hover:bg-emerald-500 disabled:opacity-50"
+                >
+                  Embaucher
+                </button>
+                <button
+                  onClick={() => setHireOpen(false)}
+                  className="rounded-md bg-slate-700 px-3 py-1.5 text-xs hover:bg-slate-600"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="overflow-y-auto pr-1">

@@ -1,4 +1,5 @@
-import type { AiAgentRecord, AiAgentState, Appearance } from '../types.js';
+import { randomUUID } from 'node:crypto';
+import type { AiAgentRecord, AiAgentState, Appearance, Direction } from '../types.js';
 import {
   RECEPTIONIST,
   MARIE_PERSONA,
@@ -48,6 +49,33 @@ Règles de style :
 - Tu réponds directement : ne commence JAMAIS ta réponse par un nom suivi de deux-points.
 - Tu n'inventes pas. Si tu ignores quelque chose, dis-le simplement et propose ton aide.
 - Tu restes dans ton rôle (pas de méta sur l'IA, pas de markdown).`;
+}
+
+/** Crée le record d'une IA « embauchée » par l'hôte, postée à (x, y). */
+export function createEmployeeRecord(opts: {
+  name: string;
+  role: string;
+  knowledge: string;
+  appearance: Appearance;
+  x: number;
+  y: number;
+  direction?: Direction;
+}): AiAgentRecord {
+  return {
+    agentId: `ai-emp-${randomUUID().slice(0, 8)}`,
+    name: opts.name,
+    role: opts.role,
+    appearance: opts.appearance,
+    x: opts.x,
+    y: opts.y,
+    direction: opts.direction ?? 'down',
+    kind: 'employee',
+    badge: null,
+    ownerPlayerId: null,
+    persona: buildEmployeePersona(opts.name, opts.role),
+    knowledge: opts.knowledge,
+    createdAt: Date.now(),
+  };
 }
 
 /** Persona d'une doublure : garde le poste d'un joueur absent et répond en son nom. */
