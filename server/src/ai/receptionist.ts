@@ -1,19 +1,17 @@
-import { config } from '../config.js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Appearance } from '../types.js';
 
 /**
- * Agent IA d'accueil — « Marie », l'hôtesse de Webinti Town.
+ * « Marie », l'hôtesse d'accueil de Webinti Town — le premier agent IA incarné,
+ * présent d'office dans chaque room. Sa personnalité (persona) et son apparence
+ * sont définies ici ; son cerveau (réponses) et sa présence en jeu passent
+ * désormais par le système GÉNÉRIQUE d'agents (ai/agent.ts + ai/AgentRegistry.ts),
+ * réutilisé par les IA « embauchées » et les doublures.
  *
- * C'est un personnage non-joueur (PNJ) posé à la réception. Quand un joueur
- * proche écrit dans le chat local, le serveur lui fait générer une réponse via
- * OpenRouter (API compatible OpenAI) et la renvoie dans le chat.
- *
- * Le moteur est volontairement abstrait derrière `config.ai*` : par défaut on
- * tape OpenRouter, mais il suffit de changer AI_BASE_URL / AI_API_KEY / AI_MODEL
- * pour brancher un Hermes ou un endpoint maison (réutilisable plus tard pour les
- * « agents IA par bureau »).
+ * Ce module ne garde que ce qui est PROPRE à Marie : ses constantes et son savoir
+ * éditable par l'hôte (fichier data/marie-<roomSlug>.json, appliqué à chaud).
  */
 
 export const RECEPTIONIST = {
@@ -24,7 +22,15 @@ export const RECEPTIONIST = {
   y: 560,
 } as const;
 
-const SYSTEM_PROMPT = `Tu es Marie, l'hôtesse d'accueil de Webinti Town, un bureau virtuel en pixel-art où les équipes se retrouvent comme dans un vrai bureau. Tu te tiens à la réception, près de l'entrée.
+// Apparence de Marie (avatar LimeZu, bornes : skin 0-8 / outfit 0-11 / hair 0-5 / 0-3).
+export const MARIE_APPEARANCE: Appearance = {
+  skin: 1,
+  outfit: 3,
+  hairStyle: 4,
+  hairColor: 1,
+};
+
+export const MARIE_PERSONA = `Tu es Marie, l'hôtesse d'accueil de Webinti Town, un bureau virtuel en pixel-art où les équipes se retrouvent comme dans un vrai bureau. Tu te tiens à la réception, près de l'entrée.
 
 Ton rôle : accueillir les visiteurs, les orienter dans les lieux et expliquer simplement comment ça marche. Tu es chaleureuse, naturelle et efficace.
 
@@ -107,120 +113,4 @@ export function setMarieKnowledge(roomSlug: string, text: string): string {
     console.error(`[ai] écriture de marie-${safeSlug(roomSlug)}.json échouée :`, err);
   }
   return knowledge;
-}
-
-interface Turn {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-interface RoomMemory {
-  turns: Turn[];
-  lastAt: number;
-  busy: boolean;
-}
-
-const MAX_TURNS = 10; // on ne garde que les derniers échanges (contexte court)
-const MEMORY_TTL_MS = 30 * 60 * 1000; // au-delà, on repart sur une conversation fraîche
-
-const memories = new Map<string, RoomMemory>();
-
-function getMemory(roomSlug: string): RoomMemory {
-  const existing = memories.get(roomSlug);
-  if (existing && Date.now() - existing.lastAt <= MEMORY_TTL_MS) return existing;
-  const fresh: RoomMemory = { turns: [], lastAt: Date.now(), busy: false };
-  memories.set(roomSlug, fresh);
-  return fresh;
-}
-
-/** Retire un préfixe « Nom : » en tête de réponse (« Marie : » ou le prénom du joueur). */
-function stripNamePrefix(text: string, userName: string): string {
-  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const names = ['Marie', userName].filter(Boolean).map(esc).join('|');
-  return text.replace(new RegExp(`^\\s*(?:${names})\\s*:\\s*`, 'i'), '');
-}
-
-/** Distance² au comptoir d'accueil ≤ rayon de proximité ? */
-export function isNearReceptionist(x: number, y: number): boolean {
-  const dx = x - RECEPTIONIST.x;
-  const dy = y - RECEPTIONIST.y;
-  const r = config.proximityRadiusPx;
-  return dx * dx + dy * dy <= r * r;
-}
-
-/**
- * Génère la réponse de la secrétaire à un message d'un joueur proche de l'accueil.
- * Retourne le texte, ou null si l'IA est désactivée / occupée / en erreur.
- */
-export async function receptionistReply(
-  roomSlug: string,
-  userName: string,
-  userText: string,
-  liveContext = '',
-): Promise<string | null> {
-  if (!config.aiEnabled) return null;
-
-  const mem = getMemory(roomSlug);
-  if (mem.busy) return null; // un appel est déjà en cours pour cette room → on laisse passer
-
-  mem.turns.push({ role: 'user', content: `${userName}: ${userText}` });
-  if (mem.turns.length > MAX_TURNS) mem.turns.splice(0, mem.turns.length - MAX_TURNS);
-
-  // Prompt système = base + consignes éditables de l'hôte (par room) + contexte.
-  const knowledge = getMarieKnowledge(roomSlug);
-  const systemPrompt =
-    SYSTEM_PROMPT +
-    (knowledge
-      ? `\n\n# Consignes et connaissances spécifiques (à privilégier)\n${knowledge}`
-      : '') +
-    (liveContext ? `\n\n# Contexte en temps réel\n${liveContext}` : '');
-
-  mem.busy = true;
-  try {
-    const res = await fetch(`${config.aiBaseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.aiApiKey}`,
-        // En-têtes recommandés par OpenRouter (classement / attribution).
-        'HTTP-Referer': 'https://live.webinti.com',
-        'X-Title': 'Webinti Town',
-      },
-      body: JSON.stringify({
-        model: config.aiModel,
-        max_tokens: 220,
-        temperature: 0.6,
-        messages: [{ role: 'system', content: systemPrompt }, ...mem.turns],
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      console.error(`[ai] OpenRouter ${res.status} ${res.statusText} ${body.slice(0, 300)}`);
-      return null;
-    }
-
-    const data = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    let text = data.choices?.[0]?.message?.content?.trim();
-    if (!text) {
-      console.error('[ai] OpenRouter: réponse vide');
-      return null;
-    }
-    // Filet de sécurité : le modèle imite parfois le format d'entrée et préfixe
-    // sa réponse par « Marie : » ou « <prénom> : ». On retire ce préfixe.
-    text = stripNamePrefix(text, userName);
-
-    mem.turns.push({ role: 'assistant', content: text });
-    if (mem.turns.length > MAX_TURNS) mem.turns.splice(0, mem.turns.length - MAX_TURNS);
-    mem.lastAt = Date.now();
-    return text;
-  } catch (err) {
-    console.error('[ai] appel OpenRouter échoué :', err);
-    return null;
-  } finally {
-    mem.busy = false;
-  }
 }

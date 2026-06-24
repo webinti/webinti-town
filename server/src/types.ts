@@ -38,6 +38,35 @@ export interface PlayerState {
   boosting: boolean;                // true pendant l'effet nitro
 }
 
+// ─────────────────────────── Agents IA incarnés ───────────────────────────
+// Un agent IA est un PNJ piloté serveur, rendu côté client comme un avatar
+// (3 couches LimeZu + label), avec qui on parle dans le chat de proximité.
+//   - 'receptionist' : Marie, l'hôtesse, présente d'office dans chaque room.
+//   - 'employee'     : IA « embauchée » par l'hôte, postée à un endroit.
+//   - 'understudy'   : doublure d'un joueur absent (garde son poste).
+export type AiAgentKind = 'receptionist' | 'employee' | 'understudy';
+
+/** État public d'un agent IA — diffusé au client pour le rendu (sans persona/savoir). */
+export interface AiAgentState {
+  agentId: string;
+  name: string;
+  role: string;                 // poste / métier affiché (« Accueil », « Support »…)
+  appearance: Appearance;
+  x: number;
+  y: number;
+  direction: Direction;
+  kind: AiAgentKind;
+  badge: string | null;         // ex. « En remplacement de Alice »
+  ownerPlayerId: string | null; // doublure : à qui appartient le poste, sinon null
+}
+
+/** Données SERVEUR d'un agent IA : l'état public + son cerveau (jamais diffusé). */
+export interface AiAgentRecord extends AiAgentState {
+  persona: string;    // prompt système de base (rôle + comportement)
+  knowledge: string;  // consignes / FAQ spécifiques (peut être '')
+  createdAt: number;
+}
+
 export interface KartState {
   id: string;          // 'kart-1' … 'kart-5'
   x: number;
@@ -136,6 +165,7 @@ export interface RoomState {
   name: string;
   adminToken: string;
   players: Map<string, PlayerState>;
+  agents: Map<string, AiAgentRecord>;   // agents IA incarnés (Marie + embauchés + doublures)
   createdAt: number;
   chatHistory: ChatMessage[];
   interactiveObjects: InteractiveObject[];

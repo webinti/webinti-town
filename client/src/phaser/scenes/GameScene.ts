@@ -6,7 +6,7 @@ import { socketManager } from '../../network/SocketManager';
 import { gameShortcutsBlocked, isTypingInField } from '../../utils/inputGuard';
 import { stepMapZoom } from '../../mapZoom';
 import { setFireVolume } from '../../sounds/sounds';
-import type { Appearance, EmoteType, InteractiveObject, PlayerState } from '../../types';
+import type { AiAgentState, Appearance, EmoteType, InteractiveObject, PlayerState } from '../../types';
 import { saveLastPosition } from '../../lastPosition';
 import { WorkstationOverlay } from '../WorkstationOverlay';
 import { WORKSTATIONS } from '../../workstations';
@@ -51,6 +51,10 @@ const DEFAULT_SPAWN_Y = 256;
 export class GameScene extends Phaser.Scene {
   private player?: Player;
   private remotePlayers = new Map<string, RemotePlayer>();
+  // Agents IA incarnés (Marie + embauchés + doublures) — rendus comme des
+  // RemotePlayer mais pilotés serveur, sans corps de collision ni contrôle local.
+  private aiAgents = new Map<string, RemotePlayer>();
+  private lastAgentsRef: AiAgentState[] | null = null;
   private wasdKeys?: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private wallsLayer?: Phaser.Tilemaps.TilemapLayer;
@@ -236,6 +240,7 @@ export class GameScene extends Phaser.Scene {
     for (const [id, p] of store.players) {
       if (id !== localId) this.spawnRemote(p);
     }
+    this.reconcileAgents(store.aiAgents);
 
     this.unsubUpdate = socketManager.onPlayerUpdate((p) => this.handleRemoteUpdate(p));
     this.unsubRemove = socketManager.onPlayerRemoved((id) => this.handleRemoteRemove(id));
@@ -322,6 +327,7 @@ export class GameScene extends Phaser.Scene {
       for (const id of this.remotePlayers.keys()) {
         if (!s.players.has(id)) this.handleRemoteRemove(id);
       }
+      this.reconcileAgents(s.aiAgents);
       for (const obj of s.interactiveObjects) this.refreshObject(obj);
     });
 
@@ -354,6 +360,8 @@ export class GameScene extends Phaser.Scene {
       this.kartOverlay?.destroy();
       this.circuitOverlay?.destroy();
       this.ambient?.destroy();
+      for (const rp of this.aiAgents.values()) rp.destroy();
+      this.aiAgents.clear();
       this.kartPrompt?.destroy();
       this.boostGfx?.destroy();
       this.boostTrail?.destroy();
@@ -624,6 +632,46 @@ export class GameScene extends Phaser.Scene {
     if (this.remoteBodiesGroup) rp.enableCollisionBody(this.remoteBodiesGroup);
   }
 
+  /** Adapte un AiAgentState en PlayerState pour le rendu via RemotePlayer. */
+  private agentToState(a: AiAgentState): PlayerState {
+    return {
+      playerId: a.agentId,
+      name: a.name,
+      appearance: a.appearance,
+      x: a.x,
+      y: a.y,
+      direction: a.direction,
+      isMoving: false,
+      kartId: null,
+      boosting: false,
+    };
+  }
+
+  /** Réconcilie les agents IA rendus avec la liste reçue du serveur. */
+  private reconcileAgents(list: AiAgentState[]): void {
+    if (list === this.lastAgentsRef) return; // pas de changement → rien à faire
+    this.lastAgentsRef = list;
+    const seen = new Set<string>();
+    for (const a of list) {
+      seen.add(a.agentId);
+      const existing = this.aiAgents.get(a.agentId);
+      if (existing) {
+        existing.setTarget(this.agentToState(a));
+        existing.setBadge(a.badge);
+      } else {
+        const rp = new RemotePlayer(this, this.agentToState(a), this.hasLayers);
+        rp.setBadge(a.badge);
+        this.aiAgents.set(a.agentId, rp);
+      }
+    }
+    for (const id of this.aiAgents.keys()) {
+      if (!seen.has(id)) {
+        this.aiAgents.get(id)?.destroy();
+        this.aiAgents.delete(id);
+      }
+    }
+  }
+
   private handleRemoteUpdate(p: PlayerState): void {
     const localId = useGameStore.getState().localPlayerId;
     if (p.playerId === localId) return;
@@ -799,6 +847,7 @@ export class GameScene extends Phaser.Scene {
     this.player.update(input);
 
     for (const rp of this.remotePlayers.values()) rp.update();
+    for (const rp of this.aiAgents.values()) rp.update();
 
     this.updateEmoteStacks();
     this.updateObjectProximity();

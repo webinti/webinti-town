@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  AiAgentState,
   Appearance,
   ChatMessage,
   DmMessage,
@@ -28,6 +29,10 @@ interface GameStore {
   name: string;
   appearance: Appearance;
   players: Map<string, PlayerState>;
+  aiAgents: AiAgentState[];
+  setAiAgents: (list: AiAgentState[]) => void;
+  upsertAiAgent: (a: AiAgentState) => void;
+  removeAiAgent: (agentId: string) => void;
   chat: ChatMessage[];
   unreadChat: number;
   chatPanelOpen: boolean;
@@ -166,6 +171,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
   name: '',
   appearance: DEFAULT_APPEARANCE,
   players: new Map(),
+  aiAgents: [],
+  setAiAgents: (list) => set({ aiAgents: list }),
+  upsertAiAgent: (a) =>
+    set((s) => {
+      const next = s.aiAgents.slice();
+      const idx = next.findIndex((x) => x.agentId === a.agentId);
+      if (idx >= 0) next[idx] = a;
+      else next.push(a);
+      return { aiAgents: next };
+    }),
+  removeAiAgent: (agentId) =>
+    set((s) => ({ aiAgents: s.aiAgents.filter((x) => x.agentId !== agentId) })),
   chat: [],
   unreadChat: 0,
   chatPanelOpen: false,
@@ -519,6 +536,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       joined: false,
       localPlayerId: null,
       players: new Map(),
+      aiAgents: [],
       chat: [],
       unreadChat: 0,
       chatPanelOpen: false,

@@ -23,13 +23,9 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKSTATIONS } from '../workstations.js';
-import {
-  RECEPTIONIST,
-  isNearReceptionist,
-  receptionistReply,
-  getMarieKnowledge,
-  setMarieKnowledge,
-} from '../ai/receptionist.js';
+import { RECEPTIONIST, getMarieKnowledge, setMarieKnowledge } from '../ai/receptionist.js';
+import { generateAgentReply } from '../ai/agent.js';
+import { getNearestAgent, toPublicAgents, buildAgentSystemPrompt } from '../ai/AgentRegistry.js';
 
 const UPLOADS_ROOT_HANDLER = (() => {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -325,6 +321,7 @@ export function registerSocketHandlers(io: Server): void {
           .filter((m) => m.timestamp >= Date.now() - config.messageTtlMs)
           .slice(-50),
         interactiveObjects: room.interactiveObjects,
+        aiAgents: toPublicAgents(room.agents),
         hostPlayerId: room.hostPlayerId,
         isRecording: room.isRecording,
       });
@@ -478,37 +475,49 @@ export function registerSocketHandlers(io: Server): void {
         io.to(session.roomSlug).emit('chat_message', msg);
       }
 
-      // Agent IA d'accueil : si un joueur proche de la réception écrit en chat
-      // local, « Marie » lui répond dans le chat. Fire-and-forget (l'appel réseau
-      // ne doit pas bloquer le handler).
-      if (config.aiEnabled && text && msg.type === 'local' && isNearReceptionist(player.x, player.y)) {
-        // Contexte temps réel : qui est connecté maintenant (Marie peut répondre
-        // précisément à « on est combien / qui est là »).
-        const present = [...room.players.values()].map((pl) => pl.name);
-        const liveContext =
-          `Personnes actuellement connectées : ${present.length} ` +
-          `(${present.join(', ') || 'aucune autre'}). ` +
-          `Ce nombre est affiché en haut de l'écran sous la forme « Connecté · N joueur(s) ».`;
-        void receptionistReply(session.roomSlug, player.name, text, liveContext).then((reply) => {
-          if (!reply) return;
-          const liveRoom = roomManager.getRoom(session.roomSlug);
-          if (!liveRoom) return;
-          const aiMsg: ChatMessage = {
-            id: randomUUID(),
-            playerId: RECEPTIONIST.id,
-            playerName: RECEPTIONIST.name,
-            text: reply,
-            type: 'local',
-            timestamp: Date.now(),
-          };
-          roomManager.pushChat(session.roomSlug, aiMsg);
-          const rSq = config.proximityRadiusPx * config.proximityRadiusPx;
-          for (const other of liveRoom.players.values()) {
-            const dx = other.x - RECEPTIONIST.x;
-            const dy = other.y - RECEPTIONIST.y;
-            if (dx * dx + dy * dy <= rSq) io.to(other.socketId).emit('chat_message', aiMsg);
-          }
-        });
+      // Agents IA incarnés : si un joueur proche d'un agent (Marie, IA embauchée
+      // ou doublure) écrit en chat local, l'agent LE PLUS PROCHE lui répond.
+      // Fire-and-forget (l'appel réseau ne doit pas bloquer le handler).
+      if (config.aiEnabled && text && msg.type === 'local') {
+        const agent = getNearestAgent(room.agents, player.x, player.y, config.proximityRadiusPx);
+        if (agent) {
+          // Contexte temps réel : qui est connecté maintenant (l'agent peut répondre
+          // précisément à « on est combien / qui est là »).
+          const present = [...room.players.values()].map((pl) => pl.name);
+          const liveContext =
+            `Personnes actuellement connectées : ${present.length} ` +
+            `(${present.join(', ') || 'aucune autre'}). ` +
+            `Ce nombre est affiché en haut de l'écran sous la forme « Connecté · N joueur(s) ».`;
+          const agentX = agent.x;
+          const agentY = agent.y;
+          void generateAgentReply({
+            conversationKey: `${session.roomSlug}:${agent.agentId}`,
+            systemPrompt: buildAgentSystemPrompt(agent, liveContext),
+            agentName: agent.name,
+            userName: player.name,
+            userText: text,
+          }).then((reply) => {
+            if (!reply) return;
+            const liveRoom = roomManager.getRoom(session.roomSlug);
+            if (!liveRoom) return;
+            const aiMsg: ChatMessage = {
+              id: randomUUID(),
+              playerId: agent.agentId,
+              playerName: agent.name,
+              text: reply,
+              type: 'local',
+              timestamp: Date.now(),
+            };
+            roomManager.pushChat(session.roomSlug, aiMsg);
+            // On diffuse aux joueurs proches de L'AGENT (pas de l'émetteur).
+            const rSq = config.proximityRadiusPx * config.proximityRadiusPx;
+            for (const other of liveRoom.players.values()) {
+              const dx = other.x - agentX;
+              const dy = other.y - agentY;
+              if (dx * dx + dy * dy <= rSq) io.to(other.socketId).emit('chat_message', aiMsg);
+            }
+          });
+        }
       }
     });
 
@@ -1177,6 +1186,9 @@ export function registerSocketHandlers(io: Server): void {
         session.roomSlug,
         typeof knowledge === 'string' ? knowledge : '',
       );
+      // Applique à chaud le nouveau savoir au record d'agent de Marie.
+      const marie = room.agents.get(RECEPTIONIST.id);
+      if (marie) marie.knowledge = saved;
       socket.emit('ai:config', { knowledge: saved, saved: true });
     });
 

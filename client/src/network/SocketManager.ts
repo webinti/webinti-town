@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import type {
+  AiAgentState,
   Appearance,
   ChatAttachment,
   ChatMessage,
@@ -131,6 +132,7 @@ class SocketManager {
       store.setLocalPlayerId(state.playerId);
       if (typeof state.roomSlug === 'string') store.setCurrentRoomSlug(state.roomSlug);
       store.setPlayers(state.players);
+      store.setAiAgents(state.aiAgents ?? []);
       if (state.chatHistory) store.setChatHistory(state.chatHistory);
       if (state.interactiveObjects) store.setInteractiveObjects(state.interactiveObjects);
       store.setHost(state.hostPlayerId ?? null);
@@ -281,6 +283,20 @@ class SocketManager {
     socket.on('ai:config', (payload: AiConfigPayload) => {
       if (!payload || typeof payload.knowledge !== 'string') return;
       for (const fn of this.aiConfigListeners) fn(payload);
+    });
+
+    // Agents IA incarnés : apparition / mise à jour (déplacement, badge) / départ.
+    socket.on('ai_agent_joined', (a: AiAgentState) => {
+      if (!a || typeof a.agentId !== 'string') return;
+      useGameStore.getState().upsertAiAgent(a);
+    });
+    socket.on('ai_agent_update', (a: AiAgentState) => {
+      if (!a || typeof a.agentId !== 'string') return;
+      useGameStore.getState().upsertAiAgent(a);
+    });
+    socket.on('ai_agent_left', (payload: { agentId?: string }) => {
+      if (!payload || typeof payload.agentId !== 'string') return;
+      useGameStore.getState().removeAiAgent(payload.agentId);
     });
 
     socket.on('whiteboard_text_update', (payload: WhiteboardTextUpdatePayload) => {

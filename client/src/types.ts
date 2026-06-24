@@ -40,6 +40,24 @@ export interface PlayerState {
   boosting: boolean;               // true pendant l'effet nitro
 }
 
+// ─────────────────────────── Agents IA incarnés ───────────────────────────
+// PNJ pilotés serveur, rendus comme des avatars (via RemotePlayer), avec qui on
+// parle dans le chat de proximité. Reçus dans room_state (+ events ai_agent_*).
+export type AiAgentKind = 'receptionist' | 'employee' | 'understudy';
+
+export interface AiAgentState {
+  agentId: string;
+  name: string;
+  role: string;
+  appearance: Appearance;
+  x: number;
+  y: number;
+  direction: Direction;
+  kind: AiAgentKind;
+  badge: string | null;          // ex. « En remplacement de Alice »
+  ownerPlayerId: string | null;
+}
+
 export interface KartState {
   id: string;          // 'kart-1' … 'kart-5'
   x: number;
@@ -154,6 +172,7 @@ export interface RoomState {
   roomSlug: string;
   roomName: string;
   players: PlayerState[];
+  aiAgents?: AiAgentState[];
   chatHistory?: ChatMessage[];
   interactiveObjects?: InteractiveObject[];
   hostPlayerId?: string | null;

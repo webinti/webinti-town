@@ -20,6 +20,8 @@ export class RemotePlayer {
   outfitLayer?: Phaser.GameObjects.Sprite;
   hairLayer?: Phaser.GameObjects.Sprite;
   label: Phaser.GameObjects.Text;
+  private badgeLabel: Phaser.GameObjects.Text | null = null;
+  private badgeText = '';
   private typingBubble: Phaser.GameObjects.Text | null = null;
   private speakingBubble: Phaser.GameObjects.Text | null = null;
   private speakingPulseTween: Phaser.Tweens.Tween | null = null;
@@ -112,6 +114,36 @@ export class RemotePlayer {
 
   setBoosting(b: boolean): void { this.boosting = b; }
 
+  /**
+   * Badge persistant sous le nom (ex. « En remplacement de Alice » pour une
+   * doublure IA). null/'' = pas de badge. Couleur ambre pour se distinguer.
+   */
+  setBadge(text: string | null): void {
+    const next = text ?? '';
+    if (next === this.badgeText) return;
+    this.badgeText = next;
+    if (!next) {
+      this.badgeLabel?.destroy();
+      this.badgeLabel = null;
+      return;
+    }
+    if (!this.badgeLabel) {
+      this.badgeLabel = this.scene.add
+        .text(this.sprite.x, this.sprite.y - 14, next, {
+          fontSize: '10px',
+          fontFamily: 'system-ui, sans-serif',
+          color: '#0f172a',
+          backgroundColor: '#f59e0b', // ambre
+          padding: { left: 3, right: 3, top: 1, bottom: 1 },
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(12);
+      if (this.isGhost) this.badgeLabel.setAlpha(0.5);
+    } else {
+      this.badgeLabel.setText(next);
+    }
+  }
+
   setGhost(isGhost: boolean): void {
     if (this.isGhost === isGhost) return;
     this.isGhost = isGhost;
@@ -120,6 +152,7 @@ export class RemotePlayer {
     this.outfitLayer?.setAlpha(a);
     this.hairLayer?.setAlpha(a);
     this.label.setAlpha(a);
+    this.badgeLabel?.setAlpha(a);
     this.typingBubble?.setAlpha(a);
     this.speakingBubble?.setAlpha(a);
   }
@@ -248,6 +281,7 @@ export class RemotePlayer {
     if (this.outfitLayer) this.outfitLayer.setPosition(x, y);
     if (this.hairLayer) this.hairLayer.setPosition(x, y);
     this.label.setPosition(x, y - 28);
+    if (this.badgeLabel) this.badgeLabel.setPosition(x, y - 14);
     if (this.typingBubble) this.typingBubble.setPosition(x, y - 42);
     if (this.speakingBubble) this.speakingBubble.setPosition(x, y - 54);
 
@@ -275,6 +309,7 @@ export class RemotePlayer {
     this.outfitLayer?.destroy();
     this.hairLayer?.destroy();
     this.label.destroy();
+    this.badgeLabel?.destroy();
     this.typingBubble?.destroy();
     this.speakingPulseTween?.stop();
     this.speakingBubble?.destroy();
