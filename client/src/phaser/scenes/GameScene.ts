@@ -341,8 +341,19 @@ export class GameScene extends Phaser.Scene {
     };
     document.addEventListener('visibilitychange', onVisibility);
 
+    // Cmd/Ctrl + D : revenir instantanément à SON bureau revendiqué — même si on
+    // est invité au poste d'un autre (comme dans Gather).
+    const onReturnDeskKey = (e: KeyboardEvent) => {
+      if (!((e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D'))) return;
+      e.preventDefault(); // empêche le « bookmark » du navigateur
+      if (isTypingInField()) return;
+      this.returnToMyDesk();
+    };
+    window.addEventListener('keydown', onReturnDeskKey);
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('keydown', onReturnDeskKey);
       this.game.loop.wake();
       this.dayNight?.destroy();
       this.officeStatus?.destroy();
@@ -747,6 +758,28 @@ export class GameScene extends Phaser.Scene {
     } else if (store.nearbyKartId !== null) {
       socketManager.sendKartMount(store.nearbyKartId);
     }
+  }
+
+  /**
+   * Téléporte le joueur local sur SON poste de travail revendiqué (Cmd/Ctrl+D).
+   * Marche même si on se trouve au bureau d'un autre. Sans effet si aucun poste
+   * n'est revendiqué. Réutilise autoWalkTarget (téléportation fiable, sans
+   * pathfinding) consommé dans update().
+   */
+  private returnToMyDesk(): void {
+    const store = useGameStore.getState();
+    const myId = store.localPlayerId;
+    if (!myId) return;
+    let myWsId: string | null = null;
+    for (const ws of store.workstations.values()) {
+      if (ws.claimedBy === myId) { myWsId = ws.id; break; }
+    }
+    if (!myWsId) return; // pas de bureau revendiqué → rien à faire
+    const def = WORKSTATIONS.find((w) => w.id === myWsId);
+    if (!def) return;
+    const cx = (def.minX + def.maxX) / 2;
+    const cy = (def.minY + def.maxY) / 2;
+    store.setAutoWalkTarget({ x: cx, y: cy, startedAt: Date.now() });
   }
 
   update(): void {
