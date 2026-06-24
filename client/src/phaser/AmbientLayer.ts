@@ -38,16 +38,13 @@ const CAT_MEOW_RANGE = 180;    // px : miaule si un joueur est plus près que ç
 // (32×30), i%3==2 = sliver (6px), i%3==0 = demi-chat. On ne garde QUE les chats
 // complets (i%3==1), sinon ça clignote.
 const CAT_FRAMES = Array.from({ length: 36 }, (_, i) => i).filter((i) => i % 3 === 1);
-// PNJ d'ambiance : { x, y, appearance, dir, bob:[amp,durMs] }
+// PNJ d'ambiance « en dur » RETIRÉS : la map ne montre plus que les vrais agents
+// IA (Marie + les IA embauchées par l'hôte), pour ne pas les confondre avec de
+// faux figurants. Laisser ce tableau vide suffit (createNpcs n'instancie rien).
 const NPCS: Array<{
   x: number; y: number; appearance: Appearance;
   dir: 'down' | 'up' | 'left' | 'right'; bob: [number, number];
-}> = [
-  // Personne qui tape au clavier dans l'open space (face à l'écran = haut)
-  { x: 640, y: 470, appearance: { skin: 3, outfit: 5, hairStyle: 2, hairColor: 0 }, dir: 'up', bob: [2, 240] },
-  // Sportif sur le tapis de la gym
-  { x: 2200, y: 470, appearance: { skin: 5, outfit: 8, hairStyle: 0, hairColor: 2 }, dir: 'down', bob: [5, 300] },
-];
+}> = [];
 
 interface Butterfly {
   s: Phaser.GameObjects.Sprite;
