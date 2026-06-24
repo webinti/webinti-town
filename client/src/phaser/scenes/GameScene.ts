@@ -658,6 +658,12 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
+  /** Texte de la bulle d'indice d'un agent IA (le distingue d'un joueur). */
+  private agentBubbleText(a: AiAgentState): string {
+    const who = a.role ? `🤖 ${a.name} · ${a.role}` : `🤖 ${a.name}`;
+    return `${who}\nParlez-moi dans le chat « Proximité » 💬`;
+  }
+
   /** Réconcilie les agents IA rendus avec la liste reçue du serveur. */
   private reconcileAgents(list: AiAgentState[]): void {
     if (list === this.lastAgentsRef) return; // pas de changement → rien à faire
@@ -669,9 +675,11 @@ export class GameScene extends Phaser.Scene {
       if (existing) {
         existing.setTarget(this.agentToState(a));
         existing.setBadge(a.badge);
+        existing.setAgentBubbleText(this.agentBubbleText(a));
       } else {
         const rp = new RemotePlayer(this, this.agentToState(a), this.hasLayers);
         rp.setBadge(a.badge);
+        rp.setAgentBubbleText(this.agentBubbleText(a));
         this.aiAgents.set(a.agentId, rp);
       }
     }
@@ -881,6 +889,19 @@ export class GameScene extends Phaser.Scene {
 
     for (const rp of this.remotePlayers.values()) rp.update();
     for (const rp of this.aiAgents.values()) rp.update();
+
+    // Bulle d'indice des agents IA (façon Marie), révélée quand le joueur local
+    // s'approche : distingue l'IA d'un joueur + rappelle qu'on lui parle en proximité.
+    if (this.player && this.aiAgents.size) {
+      const px = this.player.sprite.x;
+      const py = this.player.sprite.y;
+      const RSQ = 150 * 150;
+      for (const rp of this.aiAgents.values()) {
+        const dx = px - rp.sprite.x;
+        const dy = py - rp.sprite.y;
+        rp.showAgentBubble(dx * dx + dy * dy < RSQ);
+      }
+    }
 
     this.updateEmoteStacks();
     this.updateObjectProximity();

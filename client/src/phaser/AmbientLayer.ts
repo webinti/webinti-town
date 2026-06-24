@@ -13,18 +13,10 @@ const STEAM_SPOTS: Array<{ x: number; y: number }> = [
   { x: 478, y: 740 }, // machine à café gauche
   { x: 768, y: 740 }, // machine à café droite
 ];
-const GREETERS = [
-  // Secrétaire IA « Marie » : la bulle invite à lui parler dans le chat de
-  // proximité. Rayon < proximité IA (160px) pour que l'indice n'apparaisse que
-  // là où elle répond réellement.
-  {
-    x: 48,
-    y: 560,
-    text: 'Bonjour, je suis Marie 👋\nParlez-moi dans le chat « Proximité » 💬',
-    radius: 150,
-    originX: 0, // ancrée à gauche : Marie est contre le mur, la bulle s'étend vers la pièce
-  },
-];
+// Plus de bulle « Marie » codée en dur ici : Marie est désormais un agent IA
+// incarné (comme les IA embauchées), et la bulle d'indice de proximité est gérée
+// de façon unifiée sur chaque agent par GameScene/RemotePlayer.
+const GREETERS: Array<{ x: number; y: number; text: string; radius: number; originX: number }> = [];
 const BUTTERFLY_ZONE = { x0: 60, y0: 30, x1: 1860, y1: 300 };
 const N_BUTTERFLIES = 7;
 const BUTTERFLY_COLORS = [0xfacc15, 0xf472b6, 0x60a5fa, 0xfb923c, 0xa78bfa];

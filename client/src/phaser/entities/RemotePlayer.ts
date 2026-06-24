@@ -22,6 +22,11 @@ export class RemotePlayer {
   label: Phaser.GameObjects.Text;
   private badgeLabel: Phaser.GameObjects.Text | null = null;
   private badgeText = '';
+  // Bulle « agent IA » : indice de proximité (façon Marie), révélé quand le
+  // joueur local s'approche. Distingue une IA d'un vrai joueur + indique qu'on
+  // lui parle via le chat de proximité. Piloté par GameScene.
+  private agentBubble: Phaser.GameObjects.Text | null = null;
+  private agentBubbleShown = false;
   private typingBubble: Phaser.GameObjects.Text | null = null;
   private speakingBubble: Phaser.GameObjects.Text | null = null;
   private speakingPulseTween: Phaser.Tweens.Tween | null = null;
@@ -113,6 +118,34 @@ export class RemotePlayer {
   }
 
   setBoosting(b: boolean): void { this.boosting = b; }
+
+  /** Définit/maj le texte de la bulle « agent IA » (créée cachée la 1re fois). */
+  setAgentBubbleText(text: string): void {
+    if (this.agentBubble) {
+      this.agentBubble.setText(text);
+      return;
+    }
+    this.agentBubble = this.scene.add
+      .text(this.sprite.x, this.sprite.y - 46, text, {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '12px',
+        color: '#ffffff',
+        backgroundColor: '#1e293be6',
+        padding: { x: 8, y: 5 },
+        align: 'center',
+        lineSpacing: 2,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(16)
+      .setVisible(false);
+  }
+
+  /** Affiche/masque la bulle « agent IA » (révélée par proximité du joueur local). */
+  showAgentBubble(visible: boolean): void {
+    if (!this.agentBubble || this.agentBubbleShown === visible) return;
+    this.agentBubbleShown = visible;
+    this.agentBubble.setVisible(visible);
+  }
 
   /**
    * Badge persistant sous le nom (ex. « En remplacement de Alice » pour une
@@ -282,6 +315,7 @@ export class RemotePlayer {
     if (this.hairLayer) this.hairLayer.setPosition(x, y);
     this.label.setPosition(x, y - 28);
     if (this.badgeLabel) this.badgeLabel.setPosition(x, y - 14);
+    if (this.agentBubble) this.agentBubble.setPosition(x, y - 46);
     if (this.typingBubble) this.typingBubble.setPosition(x, y - 42);
     if (this.speakingBubble) this.speakingBubble.setPosition(x, y - 54);
 
@@ -310,6 +344,7 @@ export class RemotePlayer {
     this.hairLayer?.destroy();
     this.label.destroy();
     this.badgeLabel?.destroy();
+    this.agentBubble?.destroy();
     this.typingBubble?.destroy();
     this.speakingPulseTween?.stop();
     this.speakingBubble?.destroy();
