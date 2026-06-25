@@ -157,7 +157,7 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
   if (mode === 'fullscreen') {
     return (
       <div className="pointer-events-auto fixed inset-0 z-50 flex flex-col bg-black">
-        <div className="flex items-center justify-between gap-2 bg-black/80 px-3 py-2 text-white">
+        <div className="flex shrink-0 items-center justify-between gap-2 bg-black/80 px-3 py-2 text-white">
           <div className="flex items-center gap-2">
             {LiveBadge}
             <span className="truncate text-sm">{label}</span>
@@ -169,7 +169,9 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
             Fenêtré
           </button>
         </div>
-        <div className="relative flex-1">
+        {/* min-h-0 indispensable : sinon le flex item refuse de rétrécir sous la
+            hauteur intrinsèque de la <video> → débordement (zoom + bas coupé). */}
+        <div className="relative min-h-0 flex-1">
           {VideoBody}
           {ZoomCluster}
         </div>
