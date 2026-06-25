@@ -114,6 +114,7 @@ class SocketManager {
   private workstationInviteListeners = new Set<(inv: WorkstationInvitePayload) => void>();
   private speakingStateListeners = new Set<(p: SpeakingStatePayload) => void>();
   private aiHireErrorListeners = new Set<(msg: string) => void>();
+  private aiAgentConfigListeners = new Set<(p: { agentId: string; name: string; role: string; knowledge: string; appearance: Appearance; saved?: boolean }) => void>();
 
   connect(): Socket {
     if (this.socket && this.socket.connected) return this.socket;
@@ -302,6 +303,12 @@ class SocketManager {
     socket.on('ai:hire_error', (payload: { message?: string }) => {
       const msg = payload?.message ?? 'Embauche refusée.';
       for (const fn of this.aiHireErrorListeners) fn(msg);
+    });
+    socket.on('ai:agent_config', (p: { agentId?: string; name?: string; role?: string; knowledge?: string; appearance?: Appearance; saved?: boolean }) => {
+      if (!p || typeof p.agentId !== 'string' || !p.appearance) return;
+      for (const fn of this.aiAgentConfigListeners) {
+        fn({ agentId: p.agentId, name: p.name ?? '', role: p.role ?? '', knowledge: p.knowledge ?? '', appearance: p.appearance, saved: p.saved });
+      }
     });
 
     socket.on('whiteboard_text_update', (payload: WhiteboardTextUpdatePayload) => {
@@ -519,6 +526,25 @@ class SocketManager {
     this.aiHireErrorListeners.add(fn);
     return () => {
       this.aiHireErrorListeners.delete(fn);
+    };
+  }
+
+  /** Met à jour une IA embauchée (nom, rôle, instructions, avatar). */
+  aiUpdate(payload: { agentId: string; name?: string; role?: string; knowledge?: string; appearance?: Appearance }): void {
+    this.socket?.emit('ai:update', payload);
+  }
+
+  /** Demande la config éditable d'une IA (pour pré-remplir le formulaire). */
+  aiGetAgent(agentId: string): void {
+    this.socket?.emit('ai:get_agent', { agentId });
+  }
+
+  onAiAgentConfig(
+    fn: (p: { agentId: string; name: string; role: string; knowledge: string; appearance: Appearance; saved?: boolean }) => void,
+  ): () => void {
+    this.aiAgentConfigListeners.add(fn);
+    return () => {
+      this.aiAgentConfigListeners.delete(fn);
     };
   }
 

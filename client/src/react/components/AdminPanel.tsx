@@ -51,6 +51,10 @@ export function AdminPanel() {
   const [hKnowledge, setHKnowledge] = useState('');
   const [hAppearance, setHAppearance] = useState<Appearance>(NEW_HIRE_APPEARANCE);
   const [hireError, setHireError] = useState<string | null>(null);
+  // null = mode embauche ; sinon = agentId en cours d'édition.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // Modale dédiée pour personnaliser l'avatar (scrollable, au-dessus du panneau).
+  const [avatarOpen, setAvatarOpen] = useState(false);
 
   useEffect(() => {
     if (!open || !isHost) return;
@@ -65,6 +69,21 @@ export function AdminPanel() {
   useEffect(() => {
     if (!open || !isHost) return;
     return socketManager.onAiHireError((msg) => setHireError(msg));
+  }, [open, isHost]);
+
+  // Réception de la config d'une IA (après « Modifier ») → pré-remplit le formulaire.
+  useEffect(() => {
+    if (!open || !isHost) return;
+    return socketManager.onAiAgentConfig((cfg) => {
+      if (cfg.saved) return; // simple confirmation d'enregistrement, pas un pré-remplissage
+      setEditingId(cfg.agentId);
+      setHName(cfg.name);
+      setHRole(cfg.role);
+      setHKnowledge(cfg.knowledge);
+      setHAppearance(cfg.appearance);
+      setHireError(null);
+      setHireOpen(true);
+    });
   }, [open, isHost]);
 
   // Horloge qui avance pour rafraîchir les durées de connexion (toutes les 15 s).
@@ -112,20 +131,45 @@ export function AdminPanel() {
     socketManager.aiSetConfig(aiKnowledge);
   };
 
-  const handleHire = () => {
-    const name = hName.trim();
-    if (!name) return;
-    setHireError(null);
-    socketManager.aiHire({ name, role: hRole.trim(), knowledge: hKnowledge, appearance: hAppearance });
-    // L'agent arrive via 'ai_agent_joined' ; on réinitialise le formulaire.
+  const closeForm = () => {
+    setHireOpen(false);
+    setEditingId(null);
     setHName('');
     setHRole('');
     setHKnowledge('');
     setHAppearance(NEW_HIRE_APPEARANCE);
-    setHireOpen(false);
+  };
+
+  const openHireForm = () => {
+    setEditingId(null);
+    setHName('');
+    setHRole('');
+    setHKnowledge('');
+    setHAppearance(NEW_HIRE_APPEARANCE);
+    setHireError(null);
+    setHireOpen(true);
+  };
+
+  // « Modifier » : demande la config au serveur ; onAiAgentConfig pré-remplit + ouvre.
+  const handleEdit = (agentId: string) => {
+    setHireError(null);
+    socketManager.aiGetAgent(agentId);
+  };
+
+  const handleSubmit = () => {
+    const name = hName.trim();
+    if (!name) return;
+    setHireError(null);
+    if (editingId) {
+      socketManager.aiUpdate({ agentId: editingId, name, role: hRole.trim(), knowledge: hKnowledge, appearance: hAppearance });
+    } else {
+      socketManager.aiHire({ name, role: hRole.trim(), knowledge: hKnowledge, appearance: hAppearance });
+    }
+    closeForm();
   };
 
   return (
+    <>
     <div
       className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onMouseDown={(e) => {
@@ -211,6 +255,13 @@ export function AdminPanel() {
                     {e.role ? <span className="text-slate-400"> · {e.role}</span> : null}
                   </span>
                   <button
+                    onClick={() => handleEdit(e.agentId)}
+                    title="Modifier le prompt / l'avatar"
+                    className="flex-none rounded bg-indigo-600/80 px-2 py-0.5 text-[11px] font-semibold hover:bg-indigo-500"
+                  >
+                    ✏️ Modifier
+                  </button>
+                  <button
                     onClick={() => socketManager.aiFire(e.agentId)}
                     className="flex-none rounded bg-red-600/80 px-2 py-0.5 text-[11px] font-semibold hover:bg-red-500"
                   >
@@ -223,7 +274,7 @@ export function AdminPanel() {
 
           {!hireOpen ? (
             <button
-              onClick={() => { setHireError(null); setHireOpen(true); }}
+              onClick={openHireForm}
               className="w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold hover:bg-emerald-500"
             >
               + Embaucher une IA
@@ -231,8 +282,9 @@ export function AdminPanel() {
           ) : (
             <div className="space-y-2">
               <p className="text-[11px] leading-snug text-slate-400">
-                L'IA apparaîtra <b className="text-slate-200">là où vous vous tenez</b> et répondra
-                aux personnes proches dans le chat de proximité.
+                {editingId
+                  ? "Modifiez le nom, le rôle, les instructions (FAQ/prompt) et l'avatar de cette IA."
+                  : "L'IA apparaîtra là où vous vous tenez et répondra aux personnes proches dans le chat de proximité."}
               </p>
               <div className="flex gap-3">
                 <div className="flex-none rounded-md bg-slate-900/60 p-2 ring-1 ring-white/10">
@@ -263,14 +315,13 @@ export function AdminPanel() {
                 placeholder="Ce qu'elle sait / sa FAQ (une info par ligne)…"
                 className="w-full resize-y rounded-md bg-slate-900 p-2 text-xs ring-1 ring-white/10 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
-              <details>
-                <summary className="cursor-pointer text-[11px] text-slate-400 hover:text-slate-200">
-                  Personnaliser l'avatar
-                </summary>
-                <div className="mt-2">
-                  <AvatarControls appearance={hAppearance} onChange={setHAppearance} />
-                </div>
-              </details>
+              <button
+                type="button"
+                onClick={() => setAvatarOpen(true)}
+                className="w-full rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium hover:bg-slate-600"
+              >
+                🎨 Personnaliser l'avatar
+              </button>
               {hireError && (
                 <div className="rounded-md bg-red-500/10 px-2 py-1 text-[11px] text-red-300 ring-1 ring-red-500/30">
                   {hireError}
@@ -278,14 +329,14 @@ export function AdminPanel() {
               )}
               <div className="flex gap-2">
                 <button
-                  onClick={handleHire}
+                  onClick={handleSubmit}
                   disabled={!hName.trim()}
                   className="flex-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold hover:bg-emerald-500 disabled:opacity-50"
                 >
-                  Embaucher
+                  {editingId ? 'Enregistrer' : 'Embaucher'}
                 </button>
                 <button
-                  onClick={() => setHireOpen(false)}
+                  onClick={closeForm}
                   className="rounded-md bg-slate-700 px-3 py-1.5 text-xs hover:bg-slate-600"
                 >
                   Annuler
@@ -365,5 +416,33 @@ export function AdminPanel() {
         <div className="mt-3 text-center text-xs text-slate-400">Esc pour fermer</div>
       </div>
     </div>
+
+      {avatarOpen && (
+        <div
+          className="pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center bg-black/70"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setAvatarOpen(false); }}
+        >
+          <div className="flex max-h-[88vh] w-[420px] max-w-[95vw] flex-col rounded-2xl bg-slate-900 p-5 text-slate-100 shadow-2xl ring-1 ring-white/10">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-base font-semibold">Avatar de l'IA</h3>
+              <button
+                onClick={() => setAvatarOpen(false)}
+                className="rounded-md bg-indigo-600 px-3 py-1 text-sm font-semibold hover:bg-indigo-500"
+              >
+                Valider
+              </button>
+            </div>
+            <div className="mb-3 flex justify-center">
+              <div className="rounded-lg bg-slate-900/60 p-3 ring-1 ring-slate-700">
+                <AvatarPreview appearance={hAppearance} scale={3} />
+              </div>
+            </div>
+            <div className="overflow-y-auto pr-1">
+              <AvatarControls appearance={hAppearance} onChange={setHAppearance} />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

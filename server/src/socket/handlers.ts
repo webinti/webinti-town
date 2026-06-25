@@ -30,6 +30,7 @@ import {
   toPublicAgents,
   toPublicAgent,
   buildAgentSystemPrompt,
+  buildEmployeePersona,
   createEmployeeRecord,
 } from '../ai/AgentRegistry.js';
 
@@ -1240,6 +1241,56 @@ export function registerSocketHandlers(io: Server): void {
       room.agents.delete(agentId);
       forgetConversation(`${session.roomSlug}:${agentId}`);
       io.to(session.roomSlug).emit('ai_agent_left', { agentId });
+    });
+
+    // Récupère la config éditable d'une IA embauchée (hôte) — pour pré-remplir le formulaire d'édition.
+    socket.on('ai:get_agent', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      const room = roomManager.getRoom(session.roomSlug);
+      if (!room || room.hostPlayerId !== session.playerId) return;
+      const agentId =
+        payload && typeof payload === 'object'
+          ? (payload as Record<string, unknown>).agentId
+          : undefined;
+      if (typeof agentId !== 'string') return;
+      const rec = room.agents.get(agentId);
+      if (!rec || rec.kind !== 'employee') return;
+      socket.emit('ai:agent_config', {
+        agentId: rec.agentId,
+        name: rec.name,
+        role: rec.role,
+        knowledge: rec.knowledge,
+        appearance: rec.appearance,
+      });
+    });
+
+    // Met à jour une IA embauchée (hôte) : nom, rôle, FAQ/instructions, avatar.
+    socket.on('ai:update', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      const room = roomManager.getRoom(session.roomSlug);
+      if (!room || room.hostPlayerId !== session.playerId) return;
+      if (typeof payload !== 'object' || payload === null) return;
+      const p = payload as Record<string, unknown>;
+      const agentId = typeof p.agentId === 'string' ? p.agentId : '';
+      const rec = room.agents.get(agentId);
+      if (!rec || rec.kind !== 'employee') return;
+      if (typeof p.name === 'string') rec.name = sanitizeName(p.name);
+      if (typeof p.role === 'string') rec.role = sanitizeText(p.role, 60);
+      if (typeof p.knowledge === 'string') rec.knowledge = p.knowledge.slice(0, 6000);
+      if (p.appearance) rec.appearance = parseAppearance(p.appearance);
+      // Reconstruit le persona avec le nom/rôle à jour.
+      rec.persona = buildEmployeePersona(rec.name, rec.role);
+      io.to(session.roomSlug).emit('ai_agent_update', toPublicAgent(rec));
+      socket.emit('ai:agent_config', {
+        agentId: rec.agentId,
+        name: rec.name,
+        role: rec.role,
+        knowledge: rec.knowledge,
+        appearance: rec.appearance,
+        saved: true,
+      });
     });
 
     socket.on('admin_kick', (payload: unknown) => {
