@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-K5Q25TL2QW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag("js", new Date());
+  gtag("config", "G-K5Q25TL2QW");
+</script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Le bureau virtuel habité par l'IA : Webinti Town (hôtesse IA + collègues IA)</title>
+<meta name="description" content="Webinti Town est le premier bureau virtuel habité par l'IA : une hôtesse IA accueille vos visiteurs et vous pouvez « embaucher » des collègues IA (support, formation, coach) qui s'installent sur la map et répondent en proximité. Découvrez comment ça marche." />
+<link rel="canonical" href="https://town.webinti.com/bureau-virtuel-ia.html" />
+<meta property="og:title" content="Le bureau virtuel habité par l'IA — Webinti Town" />
+<meta property="og:description" content="Une hôtesse IA, et des collègues IA que vous embauchez et postez sur la map. Le bureau virtuel devient vivant et intelligent." />
+<meta property="og:type" content="article" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Webinti Town",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web (navigateur)",
+  "url": "https://town.webinti.com/",
+  "inLanguage": "fr",
+  "description": "Le premier bureau virtuel habité par l'IA : hôtesse IA d'accueil et collègues IA que l'on embauche et place sur la map. Hébergé en France, conforme RGPD.",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR", "description": "Gratuit jusqu'à 3 personnes, puis forfait fixe à partir de 39 €/mois." },
+  "publisher": { "@type": "Organization", "name": "Webinti", "url": "https://webinti.com" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Qu'est-ce qu'un bureau virtuel habité par l'IA ?", "acceptedAnswer": { "@type": "Answer", "text": "C'est un bureau virtuel où l'IA n'est pas un simple chatbot dans un coin, mais des personnages qui vivent dans les lieux : une hôtesse IA qui accueille, et des collègues IA que l'on « embauche » et place sur la carte, et qui répondent aux personnes qui s'approchent d'eux dans le chat de proximité. C'est la spécificité de Webinti Town." } },
+    { "@type": "Question", "name": "Comment fonctionne l'hôtesse IA de Webinti Town ?", "acceptedAnswer": { "@type": "Answer", "text": "Marie, l'hôtesse IA, se tient à l'accueil. Elle souhaite la bienvenue aux visiteurs, les oriente dans les lieux et répond à leurs questions en langage naturel. L'hôte la personnalise avec ses propres informations et sa FAQ, qu'elle utilise en priorité." } },
+    { "@type": "Question", "name": "Comment « embaucher » une IA dans Webinti Town ?", "acceptedAnswer": { "@type": "Answer", "text": "Depuis le panneau d'administration, l'hôte crée un collègue IA en lui donnant un nom, un rôle, un avatar et une FAQ. L'IA apparaît alors là où se tient l'hôte et répond aux personnes proches dans le chat de proximité. On peut en placer plusieurs à différents endroits, chacune dans son rôle." } },
+    { "@type": "Question", "name": "À quoi sert un collègue IA dans un bureau virtuel ?", "acceptedAnswer": { "@type": "Answer", "text": "À accueillir et renseigner sans intervention humaine : un guichet de support, un assistant de formation qui répond aux apprenants, une FAQ produit vivante, un coach… L'IA est disponible en continu, même quand l'équipe est absente." } },
+    { "@type": "Question", "name": "Gather.town ou WorkAdventure proposent-ils des collègues IA ?", "acceptedAnswer": { "@type": "Answer", "text": "Non, pas nativement. C'est ce qui distingue Webinti Town : l'IA est intégrée et clé en main (hôtesse IA et IA « embauchées »), sans script ni développement." } }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
+    <nav class="nav-links">
+      <a href="index.html#ia" class="nav-ia">🤖 IA <span class="tag">NOUVEAU</span></a>
+      <a href="fonctionnalites.html">Fonctionnalités</a>
+      <a href="usages.html">Usages</a>
+      <a href="index.html#pricing">Tarifs</a>
+    </nav>
+    <a href="https://live.webinti.com/?room=discord" class="btn btn--accent btn--sm"><span class="hide-sm">Entrer dans la ville</span><span class="show-sm">Entrer</span>&nbsp;→</a>
+  </div>
+</header>
+
+<section class="phero">
+  <div class="wrap">
+    <span class="kicker rv">Intelligence artificielle</span>
+    <h1 class="rv">Le premier bureau virtuel <em>habité par l'IA</em></h1>
+    <p class="lead rv"><b style="color:var(--ink)">Webinti Town est un bureau virtuel où l'IA n'est pas un chatbot dans un coin, mais des personnages qui vivent dans vos locaux.</b> Une hôtesse IA accueille vos visiteurs, et vous pouvez « embaucher » des collègues IA qui s'installent sur la map et répondent aux gens qui passent.</p>
+  </div>
+</section>
+
+<section class="sec" style="padding-top:24px">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="kicker">L'hôtesse IA</span>
+      <h2>Marie accueille, oriente et répond — même quand vous n'êtes pas là</h2>
+    </div>
+    <div class="show">
+      <div class="rv">
+        <span class="kicker">Toujours présente</span>
+        <h3>Une réception qui ne dort jamais</h3>
+        <p class="lead">À l'accueil, Marie souhaite la bienvenue aux visiteurs, les oriente dans les lieux et répond à leurs questions en langage naturel, dans le chat de proximité.</p>
+        <ul>
+          <li><b>Présente en continu</b>, sans aucune intervention</li>
+          <li>Elle connaît <b>vos lieux et votre FAQ</b>, que vous éditez vous-même</li>
+          <li>On lui parle <b>comme à un collègue</b>, en s'approchant d'elle</li>
+        </ul>
+      </div>
+      <div class="media rv"><div class="shot"><img class="pixelated" src="assets/f-accueil.png" alt="Marie, l'hôtesse IA de Webinti Town, à l'accueil"><span class="cap">Marie, l'hôtesse IA</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="embauche" style="background:var(--paper2)">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="kicker">Vos collègues IA</span>
+      <h2>Embauchez une IA, et postez-la où vous voulez</h2>
+      <p class="lead">En quelques secondes, recrutez un collègue IA et placez-le sur la map. Il répond aux personnes qui s'en approchent.</p>
+    </div>
+    <div class="show rev">
+      <div class="rv">
+        <span class="kicker">En 3 étapes</span>
+        <h3>Nom, rôle, FAQ — et c'est embauché</h3>
+        <ul>
+          <li><b>1. Vous décrivez l'IA</b> : un nom, un rôle (support, formation, coach…), un avatar et sa FAQ.</li>
+          <li><b>2. Elle apparaît</b> là où vous vous tenez sur la carte.</li>
+          <li><b>3. Elle répond en proximité</b> aux gens qui passent à côté, chacune dans son rôle.</li>
+        </ul>
+        <p class="lead">Vous pouvez en poster plusieurs à différents endroits : un guichet support à l'accueil, un assistant de formation dans la salle de cours, un coach à la salle de sport…</p>
+      </div>
+      <div class="media rv">
+        <div style="max-width:340px;margin:0 auto;border-radius:16px;overflow:hidden;background:#171221;box-shadow:0 30px 70px -30px rgba(33,26,46,.5)">
+          <div style="height:38px;background:#0f0b18;display:flex;align-items:center;gap:7px;padding:0 14px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#5a5172"></span>
+            <span style="width:10px;height:10px;border-radius:50%;background:#7d739a"></span>
+            <span style="width:10px;height:10px;border-radius:50%;background:#a59cc0"></span>
+            <span style="margin-left:8px;font-family:var(--pixel);font-size:.72rem;color:#9d94b5">embaucher une IA</span>
+          </div>
+          <div style="padding:16px;display:grid;gap:11px">
+            <div style="display:flex;gap:12px;align-items:center">
+              <div style="width:46px;height:46px;flex:none;border-radius:10px;background:#241c35;display:grid;place-items:center;font-size:24px">🧑‍💼</div>
+              <div style="flex:1;display:grid;gap:6px">
+                <div style="background:#241c35;border-radius:7px;padding:6px 10px;font-size:.8rem;color:#fff">Léa</div>
+                <div style="background:#241c35;border-radius:7px;padding:6px 10px;font-size:.72rem;color:#9d94b5">Support formation</div>
+              </div>
+            </div>
+            <div style="background:#241c35;border-radius:7px;padding:8px 10px;font-size:.72rem;color:#9d94b5;line-height:1.45">FAQ : horaires, accès aux cours, contact…</div>
+            <div style="background:#34d399;color:#06251a;border-radius:9px;padding:10px;font-weight:800;font-family:var(--pixel);text-align:center;font-size:.82rem">+ Embaucher</div>
+            <div style="font-size:.72rem;color:#9d94b5;line-height:1.4">↳ son avatar apparaît sur la map et répond en proximité 💬</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <span class="kicker">Cas d'usage</span>
+      <h2>À quoi servent des collègues IA</h2>
+    </div>
+    <div class="grid6">
+      <div class="card rv"><div class="cbody"><h3>🎓 Formation</h3><p>Un assistant IA répond aux questions des apprenants sans interrompre le formateur ni la promo.</p></div></div>
+      <div class="card rv"><div class="cbody"><h3>🛟 Support</h3><p>Un guichet IA renseigne les visiteurs et trie les demandes, même en dehors des horaires.</p></div></div>
+      <div class="card rv"><div class="cbody"><h3>👋 Accueil</h3><p>Une hôtesse IA souhaite la bienvenue, oriente et présente les lieux à chaque nouvel arrivant.</p></div></div>
+      <div class="card rv"><div class="cbody"><h3>📣 Événements</h3><p>Un·e IA d'accueil oriente les participants d'un salon, d'un afterwork ou d'un séminaire virtuel.</p></div></div>
+      <div class="card rv"><div class="cbody"><h3>🏷️ FAQ produit</h3><p>Une IA « porte-parole » qui connaît votre offre et répond aux prospects qui visitent l'espace.</p></div></div>
+      <div class="card rv"><div class="cbody"><h3>🤝 RH &amp; onboarding</h3><p>Un·e IA qui guide les nouveaux arrivants et répond aux questions récurrentes du quotidien.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="faq" style="background:var(--paper2)">
+  <div class="wrap">
+    <div class="sec-head rv"><span class="kicker">FAQ</span><h2>Questions fréquentes</h2></div>
+    <div class="rv" style="max-width:780px;margin:0 auto;display:grid;gap:12px">
+      <details style="background:#fff;border-radius:14px;padding:16px 20px;box-shadow:0 8px 24px -16px rgba(33,26,46,.4)"><summary style="font-weight:700;cursor:pointer;color:var(--ink)">Qu'est-ce qu'un bureau virtuel habité par l'IA ?</summary><p style="margin-top:10px;color:var(--soft)">C'est un bureau virtuel où l'IA prend la forme de personnages qui vivent dans les lieux : une hôtesse IA qui accueille, et des collègues IA que l'on « embauche » et place sur la carte, et qui répondent en proximité. C'est la spécificité de Webinti Town par rapport à Gather.town ou WorkAdventure.</p></details>
+      <details style="background:#fff;border-radius:14px;padding:16px 20px;box-shadow:0 8px 24px -16px rgba(33,26,46,.4)"><summary style="font-weight:700;cursor:pointer;color:var(--ink)">Comment « embaucher » une IA ?</summary><p style="margin-top:10px;color:var(--soft)">Depuis le panneau d'admin, l'hôte crée l'IA (nom, rôle, avatar, FAQ). Elle apparaît là où il se tient et répond aux personnes proches dans le chat de proximité. On peut en placer plusieurs, chacune dans son rôle et son coin.</p></details>
+      <details style="background:#fff;border-radius:14px;padding:16px 20px;box-shadow:0 8px 24px -16px rgba(33,26,46,.4)"><summary style="font-weight:700;cursor:pointer;color:var(--ink)">Les données restent-elles en France ?</summary><p style="margin-top:10px;color:var(--soft)">Oui. Webinti Town est hébergé en France et conforme au RGPD, IA comprise. C'est aussi ce qui en fait <a href="alternative-gather-town.html">l'alternative française à Gather.town</a>.</p></details>
+      <details style="background:#fff;border-radius:14px;padding:16px 20px;box-shadow:0 8px 24px -16px rgba(33,26,46,.4)"><summary style="font-weight:700;cursor:pointer;color:var(--ink)">Gather.town ou WorkAdventure ont-ils des collègues IA ?</summary><p style="margin-top:10px;color:var(--soft)">Non, pas nativement. L'IA intégrée et clé en main (sans script ni développement) est propre à Webinti Town.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2 class="rv">Venez parler à une IA dans la ville.</h2>
+    <p class="rv">Approchez-vous de Marie à l'accueil — elle vous répondra dans le chat de proximité.</p>
+    <div class="cta-row rv">
+      <a href="https://live.webinti.com/?room=discord" class="btn btn--lg">▶ Entrer dans la démo</a>
+      <a href="alternative-gather-town.html" class="btn btn--ghost btn--lg">Alternative à Gather.town →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fg">
+      <div class="fb">
+        <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
+        <p>Le bureau virtuel de votre équipe, à la française. Une création de l'agence Webinti.</p>
+      </div>
+      <div><h4>Produit</h4><a href="fonctionnalites.html">Fonctionnalités</a><a href="usages.html">Usages</a><a href="index.html#pricing">Tarifs</a></div>
+      <div><h4>Guides</h4><a href="alternative-gather-town.html">Alternative à Gather.town</a><a href="bureau-virtuel-ia.html">Bureau virtuel &amp; IA</a><a href="formation.html">Pour la formation</a></div>
+      <div><h4>Webinti</h4><a href="https://webinti.com">L'agence</a><a href="mailto:agence.webinti@gmail.com">Nous écrire</a></div>
+    </div>
+    <div class="fbot"><span>© 2026 Webinti Town</span><span>Conçu en France · Données en Europe 🇪🇺</span></div>
+  </div>
+</footer>
+
+<script src="site.js"></script>
+</body>
+</html>
