@@ -192,7 +192,9 @@ export function playKnock(): void {
 }
 
 export function playJoin(): void {
-  sweep(440, 880, 0.18, 0.12);
+  // Son de connexion bien audible : montée + petite note d'accent par-dessus.
+  sweep(440, 880, 0.2, 0.38);
+  setTimeout(() => blip(1320, 0.12, 'triangle', 0.3), 120);
 }
 
 export function playLeave(): void {

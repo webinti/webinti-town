@@ -29,10 +29,15 @@ export function clampAppearance(a: unknown): Appearance {
   };
 }
 
+// Anti-cache : même buster que Phaser (BootScene) pour que les spritesheets
+// régénérées soient rechargées et non servies depuis le cache (nginx 30j / SW).
+declare const __BUILD_ID__: string;
+const SHEET_V = `?v=${typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev'}`;
+
 // Cache des spritesheets (chargées une seule fois, partagées par toutes les previews).
 const sheetCache = new Map<string, HTMLImageElement>();
 function loadSheet(file: string): HTMLImageElement {
-  const url = `${import.meta.env.BASE_URL}assets/avatars/${file}.png`;
+  const url = `${import.meta.env.BASE_URL}assets/avatars/${file}.png${SHEET_V}`;
   let img = sheetCache.get(url);
   if (!img) {
     img = new Image();

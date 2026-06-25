@@ -13,7 +13,7 @@
  * Les WebSocket / WebRTC ne sont de toute façon jamais interceptés par un SW.
  * => l'audio/vidéo de proximité et le temps réel ne sont jamais impactés.
  */
-const CACHE = 'webinti-assets-v1';
+const CACHE = 'webinti-assets-v2';
 
 self.addEventListener('install', () => self.skipWaiting());
 
