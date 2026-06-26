@@ -78,6 +78,32 @@ export function createEmployeeRecord(opts: {
   };
 }
 
+/** Crée le record d'une DOUBLURE : un agent à l'effigie d'un joueur absent. */
+export function createUnderstudyRecord(opts: {
+  ownerPlayerId: string;
+  ownerName: string;
+  appearance: Appearance;
+  x: number;
+  y: number;
+  note?: string;
+}): AiAgentRecord {
+  return {
+    agentId: `ai-und-${opts.ownerPlayerId}`,
+    name: opts.ownerName,
+    role: '',
+    appearance: opts.appearance,
+    x: opts.x,
+    y: opts.y,
+    direction: 'down',
+    kind: 'understudy',
+    badge: 'Doublure IA',
+    ownerPlayerId: opts.ownerPlayerId,
+    persona: buildUnderstudyPersona(opts.ownerName),
+    knowledge: opts.note ?? '',
+    createdAt: Date.now(),
+  };
+}
+
 /** Persona d'une doublure : garde le poste d'un joueur absent et répond en son nom. */
 export function buildUnderstudyPersona(ownerName: string): string {
   return `Tu es la doublure IA de ${ownerName}, qui s'est momentanément absenté(e) de son poste dans Webinti Town, un bureau virtuel. Tu gardes sa place et réponds à sa place, en son nom, aux personnes qui passent.

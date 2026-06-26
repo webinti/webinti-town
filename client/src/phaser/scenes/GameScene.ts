@@ -660,7 +660,12 @@ export class GameScene extends Phaser.Scene {
 
   /** Texte de la bulle d'indice d'un agent IA (le distingue d'un joueur). */
   private agentBubbleText(a: AiAgentState): string {
-    const who = a.role ? `🤖 ${a.name} · ${a.role}` : `🤖 ${a.name}`;
+    const who =
+      a.kind === 'understudy'
+        ? `🤖 Doublure de ${a.name}`
+        : a.role
+          ? `🤖 ${a.name} · ${a.role}`
+          : `🤖 ${a.name}`;
     return `${who}\nParlez-moi dans le chat « Proximité » 💬`;
   }
 

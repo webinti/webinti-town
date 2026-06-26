@@ -16,6 +16,7 @@ import type {
   EmoteType,
   InteractiveObject,
   PlayerState,
+  RoomState,
   WhiteboardStroke,
   WhiteboardText,
 } from '../types.js';
@@ -32,6 +33,7 @@ import {
   buildAgentSystemPrompt,
   buildEmployeePersona,
   createEmployeeRecord,
+  createUnderstudyRecord,
 } from '../ai/AgentRegistry.js';
 
 const UPLOADS_ROOT_HANDLER = (() => {
@@ -155,6 +157,40 @@ interface SocketSession {
 const sessions = new Map<string, SocketSession>();
 // Dernier confetti par joueur (cooldown anti-spam serveur).
 const lastConfetti = new Map<string, number>();
+
+// Messages captés par les doublures, en attente de livraison à leur propriétaire
+// quand il revient. Clé = `${roomSlug}:${ownerPlayerId}`.
+const understudyMessages = new Map<string, Array<{ from: string; text: string; ts: number }>>();
+
+/** Retire la doublure d'un joueur (si présente) et lui livre les messages captés. */
+function removeUnderstudy(room: RoomState, roomSlug: string, ownerPlayerId: string, io: Server): void {
+  const agentId = `ai-und-${ownerPlayerId}`;
+  if (room.agents.has(agentId)) {
+    room.agents.delete(agentId);
+    forgetConversation(`${roomSlug}:${agentId}`);
+    io.to(roomSlug).emit('ai_agent_left', { agentId });
+  }
+  const key = `${roomSlug}:${ownerPlayerId}`;
+  const msgs = understudyMessages.get(key);
+  understudyMessages.delete(key);
+  if (msgs && msgs.length) {
+    const owner = room.players.get(ownerPlayerId);
+    if (owner) {
+      const text =
+        `📨 Pendant votre absence, votre doublure a reçu ${msgs.length} message(s) :\n` +
+        msgs.map((m) => `• ${m.from} : ${m.text}`).join('\n');
+      const sysMsg: ChatMessage = {
+        id: randomUUID(),
+        playerId: agentId,
+        playerName: 'Doublure IA',
+        text,
+        type: 'system',
+        timestamp: Date.now(),
+      };
+      io.to(owner.socketId).emit('chat_message', sysMsg);
+    }
+  }
+}
 
 let roomServiceClient: RoomServiceClient | null = null;
 function getRoomServiceClient(): RoomServiceClient | null {
@@ -371,6 +407,9 @@ export function registerSocketHandlers(io: Server): void {
       if (myBest !== null) socket.emit('circuit:event', { type: 'best', ms: myBest });
       socket.to(roomSlug).emit('player_joined', publicPlayer(player));
       io.to(roomSlug).emit('host_changed', { hostPlayerId: room.hostPlayerId });
+      // Le joueur revient : si une doublure le remplaçait, on la retire et on lui
+      // livre les messages reçus pendant son absence.
+      removeUnderstudy(room, roomSlug, player.playerId, io);
     });
 
     socket.on('recording_state', (payload: unknown) => {
@@ -491,6 +530,14 @@ export function registerSocketHandlers(io: Server): void {
       if (config.aiEnabled && text && msg.type === 'local') {
         const agent = getNearestAgent(room.agents, player.x, player.y, config.proximityRadiusPx);
         if (agent) {
+          // Doublure : on capte le message pour le livrer au propriétaire à son retour.
+          if (agent.kind === 'understudy' && agent.ownerPlayerId && agent.ownerPlayerId !== player.playerId) {
+            const key = `${session.roomSlug}:${agent.ownerPlayerId}`;
+            const arr = understudyMessages.get(key) ?? [];
+            arr.push({ from: player.name, text, ts: Date.now() });
+            if (arr.length > 30) arr.shift();
+            understudyMessages.set(key, arr);
+          }
           // Contexte temps réel : qui est connecté maintenant (l'agent peut répondre
           // précisément à « on est combien / qui est là »).
           const present = [...room.players.values()].map((pl) => pl.name);
@@ -1299,6 +1346,38 @@ export function registerSocketHandlers(io: Server): void {
       });
     });
 
+    // ── Doublure de poste : activer/désactiver son IA de remplacement ──
+    socket.on('understudy:set', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      const room = roomManager.getRoom(session.roomSlug);
+      if (!room) return;
+      const player = room.players.get(session.playerId);
+      if (!player) return;
+      const p = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
+      const on = p.on === true;
+      const agentId = `ai-und-${player.playerId}`;
+      if (on) {
+        if (!room.agents.has(agentId)) {
+          const note = typeof p.note === 'string' ? p.note.slice(0, 2000) : '';
+          const rec = createUnderstudyRecord({
+            ownerPlayerId: player.playerId,
+            ownerName: player.name,
+            appearance: player.appearance,
+            x: player.x,
+            y: player.y,
+            note,
+          });
+          room.agents.set(agentId, rec);
+          io.to(session.roomSlug).emit('ai_agent_joined', toPublicAgent(rec));
+        }
+        socket.emit('understudy:state', { on: true });
+      } else {
+        removeUnderstudy(room, session.roomSlug, player.playerId, io);
+        socket.emit('understudy:state', { on: false });
+      }
+    });
+
     socket.on('admin_kick', (payload: unknown) => {
       const session = sessions.get(socket.id);
       if (!session) return;
@@ -1505,4 +1584,18 @@ export function startTickLoops(io: Server): void {
       if (!io.sockets.sockets.get(socketId)) sessions.delete(socketId);
     }
   }, 5 * 60 * 1000);
+
+  // Doublures : TTL de sécurité — retire celles actives depuis > 60 min, pour
+  // éviter les doublures orphelines si le joueur ne revient jamais.
+  const UNDERSTUDY_TTL_MS = 60 * 60 * 1000;
+  setInterval(() => {
+    const now = Date.now();
+    for (const room of roomManager.listRooms()) {
+      for (const a of [...room.agents.values()]) {
+        if (a.kind === 'understudy' && now - a.createdAt > UNDERSTUDY_TTL_MS) {
+          removeUnderstudy(room, room.slug, a.ownerPlayerId ?? '', io);
+        }
+      }
+    }
+  }, 60_000);
 }

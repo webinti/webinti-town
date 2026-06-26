@@ -365,6 +365,7 @@ const PRESENCE_OPTIONS: ReadonlyArray<PresenceOption> = [
 function PresenceSelector() {
   const localPresence = useGameStore((s) => s.localPresence);
   const setLocalPresence = useGameStore((s) => s.setLocalPresence);
+  const understudyOn = useGameStore((s) => s.understudyOn);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -456,6 +457,24 @@ function PresenceSelector() {
               </button>
             );
           })}
+          <div className="mt-1 border-t border-white/10 pt-1">
+            <button
+              type="button"
+              onClick={() => { socketManager.setUnderstudy(!understudyOn); setOpen(false); }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-white/5"
+            >
+              <span className="text-base leading-none">🤖</span>
+              <span className="flex flex-1 flex-col">
+                <span className="font-medium text-slate-100">Doublure IA{understudyOn ? ' · active' : ''}</span>
+                <span className="text-xs text-slate-400">
+                  {understudyOn ? 'Désactiver — vous reprenez la main' : 'Une IA répond à votre place quand vous partez'}
+                </span>
+              </span>
+              <span className={`inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition ${understudyOn ? 'bg-indigo-500' : 'bg-slate-600'}`}>
+                <span className={`h-4 w-4 rounded-full bg-white transition-transform ${understudyOn ? 'translate-x-4' : ''}`} />
+              </span>
+            </button>
+          </div>
         </div>
       )}
     </div>

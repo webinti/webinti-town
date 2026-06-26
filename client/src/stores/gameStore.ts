@@ -80,6 +80,8 @@ interface GameStore {
   totalUnreadDm: () => number;
   localPresence: Presence;
   setLocalPresence: (p: Presence) => void;
+  understudyOn: boolean;
+  setUnderstudyOn: (v: boolean) => void;
   currentRoomSlug: string;
   setCurrentRoomSlug: (slug: string) => void;
   appendWhiteboardStroke: (objectId: string, stroke: WhiteboardStroke) => void;
@@ -345,6 +347,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   localPresence: 'available' as Presence,
   setLocalPresence: (p) => set({ localPresence: p }),
+  understudyOn: false,
+  setUnderstudyOn: (v) => set({ understudyOn: v }),
   currentRoomSlug: 'demo',
   setCurrentRoomSlug: (slug) => set({ currentRoomSlug: slug }),
   appendWhiteboardStroke: (objectId, stroke) =>
@@ -552,6 +556,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       unreadDm: new Map(),
       activeDmTarget: null,
       localPresence: 'available' as Presence,
+      understudyOn: false,
       helpOpen: false,
       adminPanelOpen: false,
       hostPlayerId: null,

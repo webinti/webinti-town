@@ -304,6 +304,9 @@ class SocketManager {
       const msg = payload?.message ?? 'Embauche refusée.';
       for (const fn of this.aiHireErrorListeners) fn(msg);
     });
+    socket.on('understudy:state', (payload: { on?: boolean }) => {
+      useGameStore.getState().setUnderstudyOn(payload?.on === true);
+    });
     socket.on('ai:agent_config', (p: { agentId?: string; name?: string; role?: string; knowledge?: string; appearance?: Appearance; saved?: boolean }) => {
       if (!p || typeof p.agentId !== 'string' || !p.appearance) return;
       for (const fn of this.aiAgentConfigListeners) {
@@ -715,6 +718,11 @@ class SocketManager {
 
   sendPresenceSet(presence: Presence): void {
     this.socket?.emit('presence_set', { presence });
+  }
+
+  /** Doublure de poste : activer/désactiver son IA de remplacement. */
+  setUnderstudy(on: boolean): void {
+    this.socket?.emit('understudy:set', { on });
   }
 
   sendActivity(): void {
