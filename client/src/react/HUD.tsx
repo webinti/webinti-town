@@ -367,7 +367,16 @@ function PresenceSelector() {
   const setLocalPresence = useGameStore((s) => s.setLocalPresence);
   const understudyOn = useGameStore((s) => s.understudyOn);
   const [open, setOpen] = useState(false);
+  const [undModalOpen, setUndModalOpen] = useState(false);
+  const [undNote, setUndNote] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const activateUnderstudy = () => {
+    const note = undNote.trim();
+    try { localStorage.setItem('webinti:understudyNote', note); } catch { /* ignore */ }
+    socketManager.setUnderstudy(true, note);
+    setUndModalOpen(false);
+  };
 
   // Close on click outside.
   useEffect(() => {
@@ -460,7 +469,15 @@ function PresenceSelector() {
           <div className="mt-1 border-t border-white/10 pt-1">
             <button
               type="button"
-              onClick={() => { socketManager.setUnderstudy(!understudyOn); setOpen(false); }}
+              onClick={() => {
+                setOpen(false);
+                if (understudyOn) {
+                  socketManager.setUnderstudy(false);
+                } else {
+                  try { setUndNote(localStorage.getItem('webinti:understudyNote') || ''); } catch { setUndNote(''); }
+                  setUndModalOpen(true);
+                }
+              }}
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-white/5"
             >
               <span className="text-base leading-none">🤖</span>
@@ -474,6 +491,34 @@ function PresenceSelector() {
                 <span className={`h-4 w-4 rounded-full bg-white transition-transform ${understudyOn ? 'translate-x-4' : ''}`} />
               </span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {undModalOpen && (
+        <div
+          className="pointer-events-auto fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setUndModalOpen(false); }}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-slate-900 p-5 text-slate-100 shadow-2xl ring-1 ring-white/10">
+            <h3 className="mb-1 text-lg font-semibold">🤖 Activer ma doublure</h3>
+            <p className="mb-3 text-sm text-slate-400">
+              Une IA à votre effigie répondra à votre place en proximité. Dites-lui quoi répondre / ce
+              qu'elle doit savoir (laissez vide pour un simple « je suis absent, je prends le message »).
+            </p>
+            <textarea
+              value={undNote}
+              onChange={(e) => setUndNote(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              autoFocus
+              placeholder={'Ex. : Je suis en réunion jusqu’à 15h, je rappelle après. Pour le projet Webinti, dis que c’est en cours de dev. Urgence → contacte Marc.'}
+              className="w-full resize-y rounded-lg bg-slate-950 p-3 text-sm text-slate-100 ring-1 ring-white/10 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <button onClick={() => setUndModalOpen(false)} className="rounded-lg bg-slate-700 px-4 py-2 text-sm hover:bg-slate-600">Annuler</button>
+              <button onClick={activateUnderstudy} className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-400">Activer ma doublure</button>
+            </div>
           </div>
         </div>
       )}

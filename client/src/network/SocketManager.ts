@@ -720,9 +720,9 @@ class SocketManager {
     this.socket?.emit('presence_set', { presence });
   }
 
-  /** Doublure de poste : activer/désactiver son IA de remplacement. */
-  setUnderstudy(on: boolean): void {
-    this.socket?.emit('understudy:set', { on });
+  /** Doublure de poste : activer/désactiver son IA de remplacement (avec consignes). */
+  setUnderstudy(on: boolean, note?: string): void {
+    this.socket?.emit('understudy:set', { on, note: note ?? '' });
   }
 
   sendActivity(): void {
