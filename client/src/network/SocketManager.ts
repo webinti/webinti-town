@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { readLastPosition } from '../lastPosition';
 import type {
   AiAgentState,
   Appearance,
@@ -91,6 +92,11 @@ const SERVER_URL =
 
 class SocketManager {
   private socket: Socket | null = null;
+  // Dernier join réussi : permet de RE-rejoindre automatiquement la salle après
+  // une reconnexion socket (onglet en arrière-plan throttlé, wifi qui saute…).
+  // Sans ça, le socket se reconnecte mais le serveur nous a retirés de la room
+  // → l'avatar reste « fantôme » pour les autres jusqu'au rechargement.
+  private lastJoinPayload: JoinRoomPayload | null = null;
   private listeners = new Set<(p: PlayerState) => void>();
   private removalListeners = new Set<(id: string) => void>();
   private proximityListeners = new Set<(ids: string[]) => void>();
@@ -118,7 +124,9 @@ class SocketManager {
 
   connect(): Socket {
     if (this.socket && this.socket.connected) return this.socket;
-    const socket = io(SERVER_URL, { transports: ['websocket'], autoConnect: true });
+    // Polling en repli si le WebSocket ne peut pas s'établir/se rétablir
+    // (proxy capricieux, onglet réveillé) → reconnexion plus robuste.
+    const socket = io(SERVER_URL, { transports: ['websocket', 'polling'], autoConnect: true });
     this.socket = socket;
 
     socket.on('connect', () => {
@@ -126,6 +134,22 @@ class SocketManager {
     });
     socket.on('disconnect', () => {
       useGameStore.getState().setConnected(false);
+    });
+
+    // RECONNEXION : socket.io rétablit la connexion tout seul, mais le serveur
+    // nous a retirés de la room au moment de la coupure. On re-rejoint donc
+    // automatiquement avec la MÊME identité (clientKey) et la dernière position
+    // connue → l'avatar et l'audio de proximité reviennent sans rechargement.
+    socket.io.on('reconnect', () => {
+      const p = this.lastJoinPayload;
+      if (!p) return; // jamais joint encore (1er connect géré par l'écran de join)
+      const pos = readLastPosition(p.roomSlug);
+      this.socket?.emit('join_room', {
+        ...p,
+        spawnX: pos?.x ?? p.spawnX,
+        spawnY: pos?.y ?? p.spawnY,
+        clientKey: getOrCreateClientKey(),
+      });
     });
 
     socket.on('room_state', (state: RoomState) => {
@@ -441,6 +465,7 @@ class SocketManager {
   }
 
   joinRoom(payload: JoinRoomPayload): void {
+    this.lastJoinPayload = payload; // mémorisé pour le re-join auto sur reconnexion
     this.socket?.emit('join_room', { ...payload, clientKey: getOrCreateClientKey() });
   }
 
@@ -804,6 +829,7 @@ class SocketManager {
   }
 
   disconnect(): void {
+    this.lastJoinPayload = null; // départ volontaire → pas de re-join auto
     this.socket?.disconnect();
     this.socket = null;
   }

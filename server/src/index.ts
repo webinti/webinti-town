@@ -34,6 +34,12 @@ app.use('/api', apiRouter);
 const httpServer = createServer(app);
 const io = new SocketIOServer(httpServer, {
   cors: { origin: config.clientOrigin, credentials: true },
+  // Tolérance aux onglets en arrière-plan : les navigateurs throttlent les
+  // timers d'un onglet inactif → le heartbeat client arrive en retard. Avec le
+  // pingTimeout par défaut (20 s) ça provoquait des déconnexions intempestives
+  // (avatar « fantôme », audio coupé). 60 s laisse largement le temps au pong.
+  pingInterval: 25000,
+  pingTimeout: 60000,
 });
 
 registerSocketHandlers(io);
