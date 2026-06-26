@@ -96,7 +96,9 @@ export function WorkstationPanel() {
   return (
     <div
       className="pointer-events-auto fixed left-1/2 z-30 w-64 -translate-x-1/2 rounded-xl bg-slate-900/95 p-3 text-slate-100 ring-1 ring-white/10 shadow-2xl"
-      style={TOUCH ? { top: 'calc(env(safe-area-inset-top) + 0.75rem)' } : { bottom: '1rem' }}
+      // Desktop : on remonte le panneau AU-DESSUS de la barre d'actions
+      // (~4.25rem de haut) pour ne pas recouvrir chat / micro / cam.
+      style={TOUCH ? { top: 'calc(env(safe-area-inset-top) + 0.75rem)' } : { bottom: '6rem' }}
     >
       {/* En-tête */}
       <div className="mb-3 flex items-center justify-between">

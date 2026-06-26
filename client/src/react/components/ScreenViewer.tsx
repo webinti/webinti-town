@@ -21,9 +21,14 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
   const [pos, setPos] = useState({ x: 80 + index * 32, y: 72 + index * 32 });
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
+  // Position libre de la vignette « réduite ». null = position par défaut
+  // (au-dessus de la barre d'actions) tant que l'utilisateur ne l'a pas déplacée.
+  const [miniPos, setMiniPos] = useState<{ x: number; y: number } | null>(null);
 
   const dragWin = useRef<{ ox: number; oy: number } | null>(null);
   const dragPan = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
+  // sx/sy = point de départ (pour distinguer un clic d'un glisser via `moved`).
+  const dragMini = useRef<{ ox: number; oy: number; sx: number; sy: number; moved: boolean } | null>(null);
 
   // Switching modes (windowed → minimized → fullscreen) renders the <video>
   // inside a different parent element, so React unmounts and remounts a fresh
@@ -40,10 +45,14 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
 
   // Window drag (title bar)
   useEffect(() => {
-    if (!dragWin.current && !dragPan.current) return;
+    if (!dragWin.current && !dragPan.current && !dragMini.current) return;
     const onMove = (e: MouseEvent) => {
       if (dragWin.current) {
         setPos({ x: e.clientX - dragWin.current.ox, y: e.clientY - dragWin.current.oy });
+      } else if (dragMini.current) {
+        const d = dragMini.current;
+        if (Math.abs(e.clientX - d.sx) > 3 || Math.abs(e.clientY - d.sy) > 3) d.moved = true;
+        setMiniPos({ x: e.clientX - d.ox, y: e.clientY - d.oy });
       } else if (dragPan.current) {
         const body = bodyRef.current;
         const w = body?.clientWidth ?? 1;
@@ -54,8 +63,11 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
       }
     };
     const onUp = () => {
+      // Vignette réduite relâchée sans avoir bougé → c'était un clic → on restaure.
+      if (dragMini.current && !dragMini.current.moved) setMode('windowed');
       dragWin.current = null;
       dragPan.current = null;
+      dragMini.current = null;
       setTick((t) => t + 1);
     };
     window.addEventListener('mousemove', onMove);
@@ -75,9 +87,24 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
   };
 
   const startPan = (e: React.MouseEvent) => {
+    if (mode === 'minimized') return; // en réduit, le glisser déplace la vignette
     if (zoom <= 1) return;
     e.preventDefault();
     dragPan.current = { sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y };
+    setTick((t) => t + 1);
+  };
+
+  // Glisser la vignette réduite : on mémorise l'offset curseur→coin à partir de
+  // sa position écran réelle (gère le 1er déplacement depuis la position par défaut).
+  const startMiniDrag = (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    dragMini.current = {
+      ox: e.clientX - rect.left,
+      oy: e.clientY - rect.top,
+      sx: e.clientX,
+      sy: e.clientY,
+      moved: false,
+    };
     setTick((t) => t + 1);
   };
 
@@ -125,7 +152,7 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
       ref={bodyRef}
       className="relative h-full w-full overflow-hidden bg-black"
       onMouseDown={startPan}
-      style={{ cursor: zoom > 1 ? 'grab' : 'default' }}
+      style={{ cursor: mode === 'minimized' ? 'move' : zoom > 1 ? 'grab' : 'default' }}
     >
       <video
         ref={attachVideo}
@@ -138,19 +165,32 @@ export function ScreenViewer({ track, label, index }: ScreenViewerProps) {
   );
 
   if (mode === 'minimized') {
+    // Par défaut : au-dessus de la barre d'actions (left), empilées si plusieurs.
+    // Dès que l'utilisateur la déplace, `miniPos` prend le relais (position libre).
+    const miniStyle = miniPos
+      ? { left: miniPos.x, top: miniPos.y }
+      : { left: '1rem', bottom: `calc(6rem + ${index * 130}px)` };
     return (
-      <button
-        onClick={() => setMode('windowed')}
-        title="Restaurer le partage d'écran"
-        className="pointer-events-auto fixed bottom-4 left-4 z-40 h-[120px] w-[200px] overflow-hidden rounded-lg bg-black ring-2 ring-indigo-400/60 shadow-2xl"
-        style={{ marginBottom: index * 130 }}
+      <div
+        onMouseDown={startMiniDrag}
+        title="Glisser pour déplacer · clic pour restaurer"
+        className="pointer-events-auto fixed z-40 h-[120px] w-[200px] cursor-move select-none overflow-hidden rounded-lg bg-black ring-2 ring-indigo-400/60 shadow-2xl"
+        style={miniStyle}
       >
         {VideoBody}
         <span className="absolute left-1 top-1">{LiveBadge}</span>
+        <button
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => setMode('windowed')}
+          title="Restaurer le partage d'écran"
+          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-md bg-black/70 text-sm text-white ring-1 ring-white/15 hover:bg-black/90"
+        >
+          ⤢
+        </button>
         <span className="absolute bottom-0 left-0 right-0 truncate bg-black/70 px-2 py-0.5 text-[10px] text-white">
           {label}
         </span>
-      </button>
+      </div>
     );
   }
 
