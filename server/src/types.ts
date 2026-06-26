@@ -166,6 +166,7 @@ export interface RoomState {
   adminToken: string;
   players: Map<string, PlayerState>;
   agents: Map<string, AiAgentRecord>;   // agents IA incarnés (Marie + embauchés + doublures)
+  employeeStore: import('./ai/employeeStore.js').EmployeeStore; // persistance PB des IA embauchées
   createdAt: number;
   chatHistory: ChatMessage[];
   interactiveObjects: InteractiveObject[];

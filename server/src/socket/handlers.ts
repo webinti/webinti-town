@@ -318,6 +318,9 @@ export function registerSocketHandlers(io: Server): void {
         knockTimestamps: [],
       });
       socket.join(roomSlug);
+      // S'assure que les IA embauchées persistées sont chargées avant d'envoyer
+      // l'état (mémoïsé : ne charge qu'une fois par room).
+      await room.employeeStore.loadInto(room.agents);
       const players = Array.from(room.players.values()).map(publicPlayer);
       socket.emit('room_state', {
         playerId: player.playerId,
@@ -1223,6 +1226,7 @@ export function registerSocketHandlers(io: Server): void {
       const rec = createEmployeeRecord({ name, role, knowledge, appearance, x: host.x, y: host.y });
       room.agents.set(rec.agentId, rec);
       io.to(session.roomSlug).emit('ai_agent_joined', toPublicAgent(rec));
+      room.employeeStore.create(rec); // persistance (best-effort)
     });
 
     socket.on('ai:fire', (payload: unknown) => {
@@ -1241,6 +1245,7 @@ export function registerSocketHandlers(io: Server): void {
       room.agents.delete(agentId);
       forgetConversation(`${session.roomSlug}:${agentId}`);
       io.to(session.roomSlug).emit('ai_agent_left', { agentId });
+      room.employeeStore.remove(agentId); // persistance (best-effort)
     });
 
     // Récupère la config éditable d'une IA embauchée (hôte) — pour pré-remplir le formulaire d'édition.
@@ -1283,6 +1288,7 @@ export function registerSocketHandlers(io: Server): void {
       // Reconstruit le persona avec le nom/rôle à jour.
       rec.persona = buildEmployeePersona(rec.name, rec.role);
       io.to(session.roomSlug).emit('ai_agent_update', toPublicAgent(rec));
+      room.employeeStore.update(rec); // persistance (best-effort)
       socket.emit('ai:agent_config', {
         agentId: rec.agentId,
         name: rec.name,

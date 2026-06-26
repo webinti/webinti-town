@@ -26,6 +26,7 @@ import { CIRCUIT_ID } from '../circuit.js';
 import { aabbOverlap, computeKnockback } from '../karts/collisionPush.js';
 import { KART_HALF_W, KART_HALF_H, PLAYER_HALF } from '../karts.js';
 import { seedMarieAgent } from '../ai/AgentRegistry.js';
+import { EmployeeStore } from '../ai/employeeStore.js';
 
 function slugify(name: string): string {
   const base = name
@@ -143,12 +144,14 @@ export class RoomManager {
     const isDemo = /^demo(-[a-z0-9-]*)?$/.test(slug);
     // Marie, l'hôtesse IA, est présente d'office dans chaque room.
     const marie = seedMarieAgent(slug);
+    const employeeStore = new EmployeeStore(slug);
     const room: RoomState = {
       slug,
       name,
       adminToken,
       players: new Map(),
       agents: new Map([[marie.agentId, marie]]),
+      employeeStore,
       createdAt: Date.now(),
       chatHistory: [],
       interactiveObjects: defaultInteractiveObjects(),
@@ -169,6 +172,8 @@ export class RoomManager {
       expiresAt: isDemo && slug !== 'demo' ? Date.now() + config.demoRoomTtlMs : null,
     };
     this.rooms.set(slug, room);
+    // Réhydrate les IA embauchées persistées (best-effort, non bloquant).
+    void employeeStore.loadInto(room.agents);
     return room;
   }
 
