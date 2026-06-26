@@ -36,6 +36,26 @@ function getMemory(key: string): Memory {
   return fresh;
 }
 
+/**
+ * Retire le « monologue interne » des modèles à raisonnement (MiniMax M2,
+ * DeepSeek-R1, Qwen-thinking…). Ces modèles émettent parfois leur réflexion
+ * dans la réponse, encadrée par <think>…</think> (ou variantes). On ne garde
+ * que la réponse finale. Sans effet sur les modèles classiques (gpt-4o-mini).
+ */
+function stripReasoning(text: string): string {
+  let t = text;
+  // Blocs de raisonnement bien formés → supprimés.
+  t = t.replace(/<(think|thinking|reasoning|reflexion|réflexion)>[\s\S]*?<\/\1>/gi, '');
+  // Balise de fermeture orpheline (ouverture absente/tronquée) → on ne garde
+  // que ce qui suit la dernière fermeture (= la réponse finale).
+  const close = t.lastIndexOf('</think>');
+  if (close !== -1) t = t.slice(close + '</think>'.length);
+  // Balise d'ouverture orpheline résiduelle (réflexion non fermée) → on enlève
+  // juste la balise pour éviter d'afficher un tag brut.
+  t = t.replace(/<\/?(think|thinking|reasoning)>/gi, '');
+  return t.trim();
+}
+
 /** Retire un préfixe « Nom : » en tête de réponse (nom de l'agent ou prénom du joueur). */
 function stripNamePrefix(text: string, ...names: string[]): string {
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -76,11 +96,18 @@ export async function generateAgentReply(opts: {
       },
       body: JSON.stringify({
         model: config.aiModel,
-        max_tokens: 220,
+        // Assez haut pour les modèles à raisonnement : leur réflexion (cachée)
+        // consomme aussi le budget ; trop bas tronquerait la vraie réponse. La
+        // brièveté reste imposée par le prompt système (les modèles classiques
+        // s'arrêtent bien avant cette limite).
+        max_tokens: 1200,
         temperature: 0.6,
+        // OpenRouter : ne pas renvoyer le monologue de raisonnement dans la
+        // réponse (MiniMax M2, R1…). Ignoré par les modèles sans raisonnement.
+        reasoning: { exclude: true },
         messages: [{ role: 'system', content: opts.systemPrompt }, ...mem.turns],
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000),
     });
 
     if (!res.ok) {
@@ -97,9 +124,16 @@ export async function generateAgentReply(opts: {
       console.error('[ai] OpenRouter: réponse vide');
       return null;
     }
+    // Modèles à raisonnement : on retire le monologue interne s'il a fui dans
+    // la réponse (filet de sécurité en plus du `reasoning.exclude` côté API).
+    text = stripReasoning(text);
     // Filet de sécurité : le modèle imite parfois le format d'entrée et préfixe
     // sa réponse par « <agent> : » ou « <prénom> : ». On retire ce préfixe.
     text = stripNamePrefix(text, opts.agentName, opts.userName);
+    if (!text) {
+      console.error('[ai] OpenRouter: réponse vide après nettoyage du raisonnement');
+      return null;
+    }
 
     mem.turns.push({ role: 'assistant', content: text });
     if (mem.turns.length > MAX_TURNS) mem.turns.splice(0, mem.turns.length - MAX_TURNS);
