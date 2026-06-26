@@ -261,8 +261,11 @@ export function HUD() {
       ) : (
         <div className="pointer-events-none relative flex items-end justify-end p-4">
           {/* Barre d'actions centrée en bas (façon Gather) — évite aussi le
-              chevauchement avec la sidebar Personnes ancrée à gauche. */}
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2">
+              chevauchement avec la sidebar Personnes ancrée à gauche.
+              ⚠ z-50 OBLIGATOIRE : le -translate-x-1/2 crée un contexte
+              d'empilement → sans z élevé ici, les popovers caméra/audio (z-50
+              internes) passent SOUS le WorkstationPanel (z-30). */}
+          <div className="pointer-events-none absolute bottom-4 left-1/2 z-50 -translate-x-1/2">
             {controlCluster}
           </div>
           <div className="pointer-events-none flex flex-col items-end gap-2">
