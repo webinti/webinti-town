@@ -58,9 +58,21 @@ export function ChatPanel() {
   const unreadDm = useGameStore((s) => s.unreadDm);
   const activeDmTarget = useGameStore((s) => s.activeDmTarget);
   const setActiveDmTarget = useGameStore((s) => s.setActiveDmTarget);
+  const pendingDmTarget = useGameStore((s) => s.pendingDmTarget);
+  const clearPendingDm = useGameStore((s) => s.clearPendingDm);
 
   const [tab, setTab] = useState<ChatTab>('global');
   const [text, setText] = useState('');
+
+  // Ouverture d'un DM demandée depuis l'extérieur (sidebar / carte joueur) :
+  // bascule sur l'onglet Privés + sélectionne le contact, puis consomme le signal.
+  useEffect(() => {
+    if (!pendingDmTarget) return;
+    setTab('dm');
+    setActiveDmTarget(pendingDmTarget);
+    clearPendingDm();
+  }, [pendingDmTarget, setActiveDmTarget, clearPendingDm]);
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const scrollPosRef = useRef<number>(0);

@@ -27,6 +27,7 @@ import { AvControls } from './components/AvControls';
 import { AdminJoinNotify } from './components/AdminJoinNotify';
 import { KnockNotify } from './components/KnockNotify';
 import { PlayerCard } from './components/PlayerCard';
+import { PeopleSidebar } from './components/PeopleSidebar';
 import { useSpeakerBubbles } from './hooks/useSpeakerBubbles';
 
 export function HUD() {
@@ -64,24 +65,33 @@ export function HUD() {
   // les menus de périphériques (AvControls) s'ouvrent AU-DESSUS de la barre en
   // position absolue, un overflow les clipperait (régression déjà vécue).
   const controlCluster = (
-    <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-slate-900/80 p-2 ring-1 ring-white/10 backdrop-blur">
+    <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-slate-900/85 p-1.5 ring-1 ring-white/10 backdrop-blur">
       <AvControls />
-      <ControlButton
-        active={screenShareEnabled}
-        onClick={() => {
-          void toggleScreenShare();
-        }}
-        label={screenShareEnabled ? 'Stop écran' : 'Écran'}
-      />
+      <button
+        onClick={() => { void toggleScreenShare(); }}
+        title={screenShareEnabled ? 'Arrêter le partage d’écran' : 'Partager mon écran'}
+        aria-pressed={screenShareEnabled}
+        className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
+          screenShareEnabled ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+        }`}
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+          <rect x="3" y="4" width="18" height="13" rx="1.5" />
+          <path d="M8 21h8M12 13V8m0 0l-2 2m2-2l2 2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
       <ChatButton />
-      <div className="mx-1 h-6 w-px shrink-0 bg-white/10" />
       <EmoteBar />
-      <div className="mx-1 h-6 w-px shrink-0 bg-white/10" />
+      <div className="mx-0.5 h-6 w-px shrink-0 bg-white/10" />
       <button
         onClick={handleLeave}
-        className="shrink-0 rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-400"
+        title="Quitter l’espace"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-red-500 text-white transition hover:bg-red-400"
       >
-        Quitter
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path d="M14 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M10 8l-4 4 4 4M6 12h9" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
     </div>
   );
@@ -157,6 +167,7 @@ export function HUD() {
           >
             {name || 'Anonyme'} <span className="ml-0.5 opacity-70">✎</span>
           </button>
+          <PeopleButton playerCount={playerCount} />
           <PresenceSelector />
           {isHost && (
             <div className="rounded-full bg-amber-500/30 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/50">
@@ -223,6 +234,7 @@ export function HUD() {
       {avatarEditOpen && <AvatarEditModal onClose={() => setAvatarEditOpen(false)} />}
       <KanbanToasts />
       <DmToasts />
+      <PeopleSidebar />
       <WorkstationPanel />
       <WorkstationInviteToast />
       <AdminJoinNotify />
@@ -247,8 +259,12 @@ export function HUD() {
           onOpenAvatar={() => setAvatarEditOpen(true)}
         />
       ) : (
-        <div className="pointer-events-none flex items-end justify-between p-4">
-          {controlCluster}
+        <div className="pointer-events-none relative flex items-end justify-end p-4">
+          {/* Barre d'actions centrée en bas (façon Gather) — évite aussi le
+              chevauchement avec la sidebar Personnes ancrée à gauche. */}
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2">
+            {controlCluster}
+          </div>
           <div className="pointer-events-none flex flex-col items-end gap-2">
             <div className="pointer-events-auto flex items-center gap-1 rounded-full bg-slate-900/80 p-1 ring-1 ring-white/10 backdrop-blur">
               <button
@@ -285,25 +301,23 @@ export function HUD() {
   );
 }
 
-function ControlButton({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
+function PeopleButton({ playerCount }: { playerCount: number }) {
+  const open = useGameStore((s) => s.peopleSidebarOpen);
+  const toggle = useGameStore((s) => s.togglePeopleSidebar);
   return (
     <button
-      onClick={onClick}
-      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? 'bg-indigo-500 text-white'
-          : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+      type="button"
+      onClick={toggle}
+      title="Personnes connectées"
+      aria-pressed={open}
+      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 backdrop-blur transition ${
+        open
+          ? 'bg-indigo-500/60 text-white ring-indigo-300/60'
+          : 'bg-slate-900/80 text-slate-100 ring-white/10 hover:bg-slate-800/90'
       }`}
     >
-      {label}
+      <span>👥</span>
+      <span className="tabular-nums">{playerCount}</span>
     </button>
   );
 }
@@ -324,16 +338,15 @@ function ChatButton() {
           ? `${unreadDm} DM non lu(s), ${unread} message(s) non lu(s)`
           : unread > 0 ? `${unread} message(s) non lu(s)` : 'Chat'
       }
-      className={`relative flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition ${
+      className={`relative flex h-9 w-9 items-center justify-center rounded-full transition ${
         open
           ? 'bg-indigo-500 text-white'
           : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
       }`}
     >
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true">
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
         <path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2zm3 5h10v2H7V9zm0 4h7v2H7v-2z" />
       </svg>
-      <span>Chat</span>
       {unread > 0 && (
         <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-bold text-white ring-2 ring-slate-900">
           {unread > 9 ? '9+' : unread}

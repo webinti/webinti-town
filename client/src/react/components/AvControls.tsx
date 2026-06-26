@@ -17,7 +17,7 @@ export function AvControls() {
   const masterVolume = useGameStore((s) => s.masterVolume);
   const camMirror = useGameStore((s) => s.camMirror);
 
-  const [menu, setMenu] = useState<null | 'mic' | 'cam'>(null);
+  const [menu, setMenu] = useState<null | 'mic' | 'cam' | 'out'>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [activeId, setActiveId] = useState<string | undefined>(undefined);
 
@@ -103,27 +103,42 @@ export function AvControls() {
         )}
       </DeviceControl>
 
-      {/* SORTIE SON : casque (sourdine) + slider */}
-      <div className="flex items-center gap-2 rounded-full bg-slate-800/80 px-2 py-1">
+      {/* SORTIE SON : casque (sourdine) + caret → popover volume (barre minimale) */}
+      <div className="relative flex items-center rounded-full bg-slate-800/80">
         <button
           onClick={toggleMute}
           title={muted ? 'Réactiver le son' : 'Couper tout le son'}
-          className={`flex h-8 w-8 items-center justify-center rounded-full text-base transition ${
-            muted ? 'bg-red-500/90 text-white' : 'bg-slate-700 text-slate-100 hover:bg-slate-600'
+          className={`flex h-8 items-center rounded-l-full pl-3 pr-2 text-base transition ${
+            muted ? 'bg-red-500/90 text-white' : 'text-slate-100 hover:bg-slate-700'
           }`}
         >
           🎧
         </button>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={pct}
-          onChange={(e) => onVolume(Number(e.target.value) / 100)}
+        <button
+          onClick={() => setMenu(menu === 'out' ? null : 'out')}
           title="Volume des autres"
-          className="h-1 w-24 cursor-pointer accent-indigo-500"
-        />
-        <span className="w-9 text-right text-xs font-semibold tabular-nums text-slate-300">{pct}%</span>
+          className={`flex h-8 w-6 items-center justify-center rounded-r-full text-[10px] text-slate-300 transition hover:bg-slate-700 ${
+            menu === 'out' ? 'bg-slate-700' : ''
+          }`}
+        >
+          ▲
+        </button>
+        {menu === 'out' && (
+          <div className="absolute bottom-full right-0 z-50 mb-2 w-56 rounded-xl bg-slate-900/95 p-3 text-sm shadow-2xl ring-1 ring-white/10 backdrop-blur">
+            <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              <span>Volume des autres</span>
+              <span className="tabular-nums text-slate-300">{pct}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={pct}
+              onChange={(e) => onVolume(Number(e.target.value) / 100)}
+              className="h-1 w-full cursor-pointer accent-indigo-500"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

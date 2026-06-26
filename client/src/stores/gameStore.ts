@@ -110,6 +110,16 @@ interface GameStore {
   enterFreeLook: (x: number, y: number) => void;
   setFreeLookTarget: (x: number, y: number) => void;
   exitFreeLook: () => void;
+  // Sidebar « Personnes » (panneau latéral gauche façon Gather).
+  peopleSidebarOpen: boolean;
+  togglePeopleSidebar: () => void;
+  setPeopleSidebarOpen: (v: boolean) => void;
+  // Signal pour ouvrir un DM depuis l'extérieur du ChatPanel (sidebar, carte
+  // joueur). Le ChatPanel le consomme (bascule onglet Privés + contact) puis le
+  // remet à null via clearPendingDm.
+  pendingDmTarget: string | null;
+  requestOpenDm: (playerId: string) => void;
+  clearPendingDm: () => void;
   // Mute master : coupe TOUT le son entrant (effets + voix LiveKit) pour le joueur
   // local (= "sourdine"). N'affecte pas le micro (ce que les autres entendent).
   deafened: boolean;
@@ -447,6 +457,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   enterFreeLook: (x, y) => set({ freeLook: true, freeLookTarget: { x, y } }),
   setFreeLookTarget: (x, y) => set((s) => (s.freeLook ? { freeLookTarget: { x, y } } : {})),
   exitFreeLook: () => set({ freeLook: false, freeLookTarget: null }),
+  peopleSidebarOpen: false,
+  togglePeopleSidebar: () => set((s) => ({ peopleSidebarOpen: !s.peopleSidebarOpen })),
+  setPeopleSidebarOpen: (v) => set({ peopleSidebarOpen: v }),
+  pendingDmTarget: null,
+  requestOpenDm: (playerId) => set({ chatPanelOpen: true, unreadChat: 0, pendingDmTarget: playerId }),
+  clearPendingDm: () => set({ pendingDmTarget: null }),
   deafened: false,
   setDeafened: (v) => set({ deafened: v }),
   masterVolume: 1,
@@ -571,6 +587,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       mapZoom: 1,
       freeLook: false,
       freeLookTarget: null,
+      peopleSidebarOpen: false,
+      pendingDmTarget: null,
       deafened: false,
       masterVolume: 1,
       camMirror: true,
