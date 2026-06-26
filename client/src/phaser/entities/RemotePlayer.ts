@@ -82,12 +82,17 @@ export class RemotePlayer {
       this.sprite.setDepth(10);
     }
 
+    // Pastille de nom façon Gather : fond indigo, texte gras blanc. (Phaser Text
+    // ne gère pas le border-radius/la flèche nativement — pour une bulle arrondie
+    // pixel-perfect il faudrait un Container + Graphics ; ici on reste léger.)
     this.label = scene.add
       .text(state.x, state.y - 28, state.name, {
+        fontFamily: 'system-ui, sans-serif',
         fontSize: '12px',
+        fontStyle: 'bold',
         color: '#ffffff',
-        backgroundColor: '#0008',
-        padding: { left: 4, right: 4, top: 1, bottom: 1 },
+        backgroundColor: '#4338caf2', // indigo-700
+        padding: { left: 7, right: 7, top: 3, bottom: 3 },
       })
       .setOrigin(0.5, 1)
       .setDepth(11);
@@ -118,6 +123,16 @@ export class RemotePlayer {
   }
 
   setBoosting(b: boolean): void { this.boosting = b; }
+
+  /**
+   * Rend l'avatar cliquable (curseur main) → ouvre la carte d'interaction
+   * « Faire signe / Aller vers » côté React. Le hit-area couvre toute la frame
+   * (origine 0.5) ; les couches outfit/hair non-interactives laissent passer le clic.
+   */
+  makeClickable(onClick: (pointer: Phaser.Input.Pointer) => void): void {
+    this.sprite.setInteractive({ useHandCursor: true });
+    this.sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) => onClick(pointer));
+  }
 
   /** Définit/maj le texte de la bulle « agent IA » (créée cachée la 1re fois). */
   setAgentBubbleText(text: string): void {

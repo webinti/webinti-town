@@ -26,6 +26,7 @@ import { RaceHud } from './components/RaceHud';
 import { AvControls } from './components/AvControls';
 import { AdminJoinNotify } from './components/AdminJoinNotify';
 import { KnockNotify } from './components/KnockNotify';
+import { PlayerCard } from './components/PlayerCard';
 import { useSpeakerBubbles } from './hooks/useSpeakerBubbles';
 
 export function HUD() {
@@ -226,6 +227,7 @@ export function HUD() {
       <WorkstationInviteToast />
       <AdminJoinNotify />
       <KnockNotify />
+      <PlayerCard />
       <RaceHud />
 
       {kickedReason && (

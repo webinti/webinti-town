@@ -159,6 +159,10 @@ interface GameStore {
   // vers (x, y). Clear quand le joueur arrive (rayon de tolérance) ou expire.
   autoWalkTarget: { x: number; y: number; startedAt: number } | null;
   setAutoWalkTarget: (t: { x: number; y: number; startedAt: number } | null) => void;
+  // Joueur cliqué dans le monde → ouvre la carte d'interaction (Faire signe /
+  // Aller vers). sx/sy = position écran du clic, pour ancrer la carte. null = fermée.
+  selectedPlayer: { playerId: string; sx: number; sy: number } | null;
+  setSelectedPlayer: (p: { playerId: string; sx: number; sy: number } | null) => void;
   speakingPlayerIds: Set<string>;
   setSpeakingPlayer: (playerId: string, speaking: boolean) => void;
   reset: () => void;
@@ -527,6 +531,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setPendingInvite: (inv) => set({ pendingInvite: inv }),
   autoWalkTarget: null,
   setAutoWalkTarget: (t) => set({ autoWalkTarget: t }),
+  selectedPlayer: null,
+  setSelectedPlayer: (p) => set({ selectedPlayer: p }),
   speakingPlayerIds: new Set<string>(),
   setSpeakingPlayer: (playerId, speaking) =>
     set((s) => {
@@ -586,6 +592,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       leaderboard: [],
       pendingInvite: null,
       autoWalkTarget: null,
+      selectedPlayer: null,
       speakingPlayerIds: new Set(),
     }),
 }));

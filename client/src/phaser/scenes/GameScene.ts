@@ -663,6 +663,14 @@ export class GameScene extends Phaser.Scene {
     const rp = new RemotePlayer(this, p, this.hasLayers);
     this.remotePlayers.set(p.playerId, rp);
     if (this.remoteBodiesGroup) rp.enableCollisionBody(this.remoteBodiesGroup);
+    // Clic sur l'avatar → carte d'interaction (Faire signe / Aller vers).
+    rp.makeClickable((pointer) => {
+      useGameStore.getState().setSelectedPlayer({
+        playerId: p.playerId,
+        sx: pointer.x,
+        sy: pointer.y,
+      });
+    });
   }
 
   /** Adapte un AiAgentState en PlayerState pour le rendu via RemotePlayer. */
