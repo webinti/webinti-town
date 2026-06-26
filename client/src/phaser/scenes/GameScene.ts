@@ -55,7 +55,14 @@ export class GameScene extends Phaser.Scene {
   // RemotePlayer mais pilotés serveur, sans corps de collision ni contrôle local.
   private aiAgents = new Map<string, RemotePlayer>();
   private lastAgentsRef: AiAgentState[] | null = null;
-  private wasdKeys?: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
+  // Déplacement clavier insensible à la disposition : on lit le CARACTÈRE tapé
+  // (event.key), pas le keyCode physique. Ça couvre WASD (QWERTY) ET ZQSD (AZERTY,
+  // demandé par les utilisateurs FR) avec les mêmes touches que celles imprimées
+  // sur le clavier. Les flèches restent gérées par les cursors Phaser.
+  private moveHeld = { up: false, down: false, left: false, right: false };
+  private danceHeld = false;
+  private onMoveKeyDown?: (e: KeyboardEvent) => void;
+  private onMoveKeyUp?: (e: KeyboardEvent) => void;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private wallsLayer?: Phaser.Tilemaps.TilemapLayer;
   private furnitureLayer?: Phaser.Tilemaps.TilemapLayer;
@@ -92,7 +99,6 @@ export class GameScene extends Phaser.Scene {
   private appliedAppearance: Appearance | null = null;
   private eKey?: Phaser.Input.Keyboard.Key;
   private kartPrompt?: Phaser.GameObjects.Text;
-  private zKey?: Phaser.Input.Keyboard.Key;
   /** Distance entre les 2 doigts à la frame précédente (pinch-to-zoom), null si pas de pinch. */
   private pinchPrevDist: number | null = null;
   /** true si la traînée de boost a été dessinée (pour ne clear() qu'une fois au repos). */
@@ -232,10 +238,25 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.cursors = this.input.keyboard?.createCursorKeys();
-    this.wasdKeys = this.input.keyboard?.addKeys('W,A,S,D') as Record<
-      'W' | 'A' | 'S' | 'D',
-      Phaser.Input.Keyboard.Key
-    >;
+    // Déplacement par lettre, basé sur le caractère réel (cross-layout AZERTY/QWERTY).
+    // On NE preventDefault PAS : taper z/q/s/d dans un champ doit rester possible
+    // (le mouvement est de toute façon ignoré quand un champ est focus, cf. update()).
+    // keyup est écouté au niveau window → pas de touche « collée » même si on
+    // relâche pendant qu'un champ est focus.
+    const applyMoveKey = (e: KeyboardEvent, down: boolean) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return; // laisse passer Cmd+D, Ctrl+S…
+      switch (e.key) {
+        case 'z': case 'Z': case 'w': case 'W': this.moveHeld.up = down; break;
+        case 's': case 'S': this.moveHeld.down = down; break;
+        case 'q': case 'Q': case 'a': case 'A': this.moveHeld.left = down; break;
+        case 'd': case 'D': this.moveHeld.right = down; break;
+        case 'x': case 'X': this.danceHeld = down; break; // danse (ex-Z, libéré pour ZQSD)
+      }
+    };
+    this.onMoveKeyDown = (e) => applyMoveKey(e, true);
+    this.onMoveKeyUp = (e) => applyMoveKey(e, false);
+    window.addEventListener('keydown', this.onMoveKeyDown);
+    window.addEventListener('keyup', this.onMoveKeyUp);
 
     for (const [id, p] of store.players) {
       if (id !== localId) this.spawnRemote(p);
@@ -257,7 +278,6 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.eKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-    this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     // F — lance des confettis pour toute la salle (comme dans Gather).
     this.fKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.F);
     this.fKey?.on('down', () => {
@@ -354,6 +374,8 @@ export class GameScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('keydown', onReturnDeskKey);
+      if (this.onMoveKeyDown) window.removeEventListener('keydown', this.onMoveKeyDown);
+      if (this.onMoveKeyUp) window.removeEventListener('keyup', this.onMoveKeyUp);
       this.game.loop.wake();
       this.dayNight?.destroy();
       this.officeStatus?.destroy();
@@ -827,20 +849,20 @@ export class GameScene extends Phaser.Scene {
       setFireVolume(v * 0.7);
     }
     // Déplacement bloqué seulement quand on tape dans un champ (on peut continuer
-    // à se déplacer avec le chat ouvert). La danse (Z) est, elle, un raccourci
+    // à se déplacer avec le chat ouvert). La danse (X) est, elle, un raccourci
     // d'action → bloquée aussi quand le chat est visible.
     const focused = isTypingInField();
     const actionsBlocked = gameShortcutsBlocked();
     const c = this.cursors;
-    const w = this.wasdKeys;
+    const m = this.moveHeld; // ZQSD / WASD (cross-layout, cf. event.key)
     let input = focused
       ? { up: false, down: false, left: false, right: false, dance: false }
       : {
-          up: !!(c?.up.isDown || w?.W.isDown),
-          down: !!(c?.down.isDown || w?.S.isDown),
-          left: !!(c?.left.isDown || w?.A.isDown),
-          right: !!(c?.right.isDown || w?.D.isDown),
-          dance: !actionsBlocked && !!this.zKey?.isDown,
+          up: !!(c?.up.isDown || m.up),
+          down: !!(c?.down.isDown || m.down),
+          left: !!(c?.left.isDown || m.left),
+          right: !!(c?.right.isDown || m.right),
+          dance: !actionsBlocked && this.danceHeld,
         };
 
     // Joystick tactile : on fusionne ses axes avec le clavier (8 directions,

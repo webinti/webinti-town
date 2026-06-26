@@ -13,7 +13,7 @@ interface ShortcutGroup {
 const GROUPS: ShortcutGroup[] = [
   {
     title: 'Déplacement',
-    rows: [{ keys: 'WASD / Flèches', desc: "Bouger l'avatar" }],
+    rows: [{ keys: 'ZQSD / WASD / Flèches', desc: "Bouger l'avatar" }],
   },
   {
     title: 'Audio / Vidéo',
@@ -33,6 +33,7 @@ const GROUPS: ShortcutGroup[] = [
       { keys: '5', desc: '\u{2753} Question' },
       { keys: '6', desc: '\u{2757} Exclamation' },
       { keys: 'F', desc: '\u{1F389} Confettis (pour toute la salle)' },
+      { keys: 'X', desc: '\u{1F483} Danser (maintenir)' },
     ],
   },
   {
