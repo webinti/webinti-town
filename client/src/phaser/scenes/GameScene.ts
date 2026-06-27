@@ -304,9 +304,12 @@ export class GameScene extends Phaser.Scene {
     this.boostGfx = this.add.graphics().setDepth(11);
     this.boostTrail = this.add.graphics().setDepth(7);
 
-    // Debug Shift+D
-    this.shiftKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
-    this.dKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+    // Debug Shift+D. ⚠ enableCapture=false : sinon Phaser fait preventDefault sur
+    // « d » (et Shift) AU NIVEAU FENÊTRE — même quand un champ a le focus — et la
+    // lettre « d » n'arrive jamais dans le chat. (E/F sont, eux, nettoyés par le
+    // clearCaptures() plus haut ; ces deux-là étaient ajoutés après, d'où le bug.)
+    this.shiftKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT, false);
+    this.dKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.D, false);
     this.eKey?.on('down', () => {
       if (gameShortcutsBlocked()) return;
       this.handleInteract();
@@ -1156,7 +1159,8 @@ export class GameScene extends Phaser.Scene {
     const shiftDown = this.shiftKey?.isDown ?? false;
     const dDown = !!this.dKey?.isDown;
     const combo = shiftDown && dDown;
-    if (combo && !this.lastShiftDCombo) {
+    // Ne pas basculer le debug quand on tape un « D » majuscule dans le chat.
+    if (combo && !this.lastShiftDCombo && !isTypingInField()) {
       this.debugMode = !this.debugMode;
       if (!this.debugMode) {
         this.debugText?.setVisible(false);
