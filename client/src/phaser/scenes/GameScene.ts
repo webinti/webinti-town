@@ -6,7 +6,7 @@ import { socketManager } from '../../network/SocketManager';
 import { gameShortcutsBlocked, isTypingInField } from '../../utils/inputGuard';
 import { stepMapZoom } from '../../mapZoom';
 import { setFireVolume } from '../../sounds/sounds';
-import type { AiAgentState, Appearance, EmoteType, InteractiveObject, PlayerState } from '../../types';
+import type { AiAgentState, Appearance, Direction, EmoteType, InteractiveObject, PlayerState } from '../../types';
 import { saveLastPosition } from '../../lastPosition';
 import { WorkstationOverlay } from '../WorkstationOverlay';
 import { WORKSTATIONS } from '../../workstations';
@@ -117,6 +117,13 @@ export class GameScene extends Phaser.Scene {
   private shiftKey?: Phaser.Input.Keyboard.Key;
   private dKey?: Phaser.Input.Keyboard.Key;
   private lastShiftDCombo = false;
+  // ── Assise auto sur chaise (façon Gather). Détectées dans la map (tuiles
+  // `decoration` de base gid CHAIR_BASE, orientation déduite de la rotation Tiled).
+  // 100% client : on cale le perso + on fige le mouvement ; la position/direction
+  // diffusées normalement font que les autres te voient assis. ──
+  private seats: Array<{ x: number; y: number; dir: Direction }> = [];
+  private seatedSeat: { x: number; y: number; dir: Direction } | null = null;
+  private blockedSeat: { x: number; y: number } | null = null; // anti re-assise immédiate après lever
   // F11 — boost state machine (local-only, broadcast via boost_start/_end)
   private boostStartedAt = 0;
   private boostEndedAt = -Infinity;
@@ -559,6 +566,36 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Repère les chaises dans la map pour l'assise auto. Une chaise = tuile du
+   * calque `decoration` de base gid CHAIR_BASE ; l'orientation de l'avatar
+   * (vers la table) est déduite des bits de rotation Tiled de la tuile.
+   * Lit le JSON brut (cache) car on a besoin des flips, pas juste du gid.
+   */
+  private buildSeats(): void {
+    const CHAIR_BASE = 28471;
+    const H = 0x80000000, V = 0x40000000, D = 0x20000000, GID = 0x1fffffff;
+    const data = this.cache.tilemap.get('map_default')?.data as
+      | { width: number; layers?: Array<{ name: string; data?: number[] }> }
+      | undefined;
+    const dec = data?.layers?.find((l) => l.name === 'decoration');
+    if (!data || !dec?.data) return;
+    const W = data.width;
+    this.seats = [];
+    for (let i = 0; i < dec.data.length; i++) {
+      const raw = dec.data[i]! >>> 0;
+      if ((raw & GID) !== CHAIR_BASE) continue;
+      const c = i % W, r = Math.floor(i / W);
+      const h = !!(raw & H), v = !!(raw & V), d = !!(raw & D);
+      // Rotations Tiled : HV=180°, HD=90°CW, VD=270°CW (base = chaise face bas).
+      let dir: Direction = 'down';
+      if (h && v && !d) dir = 'up';
+      else if (v && d && !h) dir = 'right';
+      else if (h && d && !v) dir = 'left';
+      this.seats.push({ x: c * 32 + 16, y: r * 32 + 32, dir });
+    }
+  }
+
   private buildTilemap(): void {
     const map = this.make.tilemap({ key: 'map_default' });
     this.mapW = map.width;
@@ -582,6 +619,7 @@ export class GameScene extends Phaser.Scene {
         this.furnitureLayer = layer;
       }
     }
+    this.buildSeats();
     const collObj = map.getObjectLayer('collision');
     if (collObj) {
       const rects: CollisionRect[] = collObj.objects.map((o) => ({
@@ -921,6 +959,37 @@ export class GameScene extends Phaser.Scene {
       const body = this.player.sprite.body as Phaser.Physics.Arcade.Body | null;
       body?.setVelocity(0, 0);
       useGameStore.getState().setAutoWalkTarget(null);
+      this.seatedSeat = null; // un téléport (retour bureau) annule l'assise
+    }
+
+    // ── Assise auto sur chaise (façon Gather) ──
+    {
+      const onKart = useGameStore.getState().localKartId !== null;
+      const moveInput = input.up || input.down || input.left || input.right;
+      const px = this.player.sprite.x, py = this.player.sprite.y;
+      const pin = (s: { x: number; y: number; dir: Direction }) => {
+        this.player!.sprite.setPosition(s.x, s.y);
+        (this.player!.sprite.body as Phaser.Physics.Arcade.Body | null)?.setVelocity(0, 0);
+        this.player!.direction = s.dir;
+        input = { up: false, down: false, left: false, right: false, dance: false };
+      };
+      if (this.seatedSeat) {
+        if (moveInput || onKart) {
+          this.blockedSeat = { x: this.seatedSeat.x, y: this.seatedSeat.y }; // on bloque la re-assise tant qu'on n'est pas parti
+          this.seatedSeat = null;
+        } else {
+          pin(this.seatedSeat); // rester assis : figé + orienté vers la table
+        }
+      } else if (!onKart && !moveInput && !focused) {
+        const seat = this.seats.find((s) =>
+          Math.hypot(px - s.x, py - s.y) < 22 &&
+          !(this.blockedSeat && Math.hypot(s.x - this.blockedSeat.x, s.y - this.blockedSeat.y) < 4));
+        if (seat) { this.seatedSeat = seat; pin(seat); }
+      }
+      // Libère le verrou anti-re-assise une fois éloigné de la chaise quittée.
+      if (this.blockedSeat && Math.hypot(px - this.blockedSeat.x, py - this.blockedSeat.y) > 40) {
+        this.blockedSeat = null;
+      }
     }
 
     this.player.update(input);
