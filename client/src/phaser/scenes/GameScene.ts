@@ -967,8 +967,13 @@ export class GameScene extends Phaser.Scene {
       const onKart = useGameStore.getState().localKartId !== null;
       const moveInput = input.up || input.down || input.left || input.right;
       const px = this.player.sprite.x, py = this.player.sprite.y;
+      // Décalage « vers l'avant » (sens de l'orientation = vers la table) pour que
+      // l'avatar s'assoie DANS la chaise et non en retrait. Ajustable.
+      const SEAT_FORWARD = 14;
       const pin = (s: { x: number; y: number; dir: Direction }) => {
-        this.player!.sprite.setPosition(s.x, s.y);
+        const fx = s.dir === 'left' ? -SEAT_FORWARD : s.dir === 'right' ? SEAT_FORWARD : 0;
+        const fy = s.dir === 'up' ? -SEAT_FORWARD : s.dir === 'down' ? SEAT_FORWARD : 0;
+        this.player!.sprite.setPosition(s.x + fx, s.y + fy);
         (this.player!.sprite.body as Phaser.Physics.Arcade.Body | null)?.setVelocity(0, 0);
         this.player!.direction = s.dir;
         input = { up: false, down: false, left: false, right: false, dance: false };
