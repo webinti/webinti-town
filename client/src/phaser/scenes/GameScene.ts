@@ -968,8 +968,12 @@ export class GameScene extends Phaser.Scene {
 
     // F11 — render kart sprites. Resolver lit la position depuis les entités
     // Phaser (frame-accurate) et non le store, qui est laggué par le tick serveur.
-    this.kartOverlay?.update(storeState.karts, (pid) => {
+    this.kartOverlay?.update(storeState.karts, (pid, kartId) => {
       if (this.player && pid === storeState.localPlayerId) {
+        // Garde anti-desync : le kart ne suit le joueur local que si c'est bien
+        // SON kart courant (localKartId). Si le serveur garde un driverId périmé
+        // (ex. reconnexion), le kart ne « colle » pas — il reste à sa position.
+        if (storeState.localKartId !== kartId) return null;
         return {
           x: this.player.sprite.x,
           y: this.player.sprite.y,

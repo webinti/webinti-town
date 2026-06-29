@@ -39,7 +39,7 @@ const DIRECTION_TO_ANGLE: Record<Direction, number> = {
  * dizaines de ms (rebroadcast serveur). Sans ça, le sprite kart traîne
  * derrière le joueur local.
  */
-export type DriverStateResolver = (playerId: string) => {
+export type DriverStateResolver = (playerId: string, kartId: string) => {
   x: number;
   y: number;
   direction: Direction;
@@ -75,7 +75,7 @@ export class KartOverlay {
       let dir: Direction = this.lastDirection.get(k.id) ?? 'up';
 
       if (k.driverId) {
-        const ds = getDriverState(k.driverId);
+        const ds = getDriverState(k.driverId, k.id);
         if (ds) {
           x = ds.x;
           y = ds.y;

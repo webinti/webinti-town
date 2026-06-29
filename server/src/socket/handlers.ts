@@ -327,6 +327,19 @@ export function registerSocketHandlers(io: Server): void {
         : undefined;
       const player = roomManager.addPlayer(roomSlug, socket.id, name, appearance, clientKey, spawn);
       if (!player) return;
+      // Reconnexion / 2e onglet (même clientKey → même playerId) : addPlayer a
+      // remplacé le record joueur (kartId=null) mais le KartManager garde encore
+      // driverId = playerId pour le kart qu'il pilotait. Sans libération, le kart
+      // « colle » à l'avatar (il le suit) alors que le joueur se croit à pied, et
+      // reste collé même après en avoir pris/lâché un autre. On le libère + on
+      // prévient toute la salle pour que tout le monde le voie redevenir libre.
+      const staleKart = room.kartManager.getKartByDriver(player.playerId);
+      if (staleKart) {
+        room.kartManager.dismount(player.playerId);
+        const freed = room.kartManager.getState(staleKart.id)!;
+        room.karts.set(staleKart.id, freed);
+        io.to(roomSlug).emit('kart:state', { ...freed });
+      }
       // Statut hôte = vérifié côté serveur, JAMAIS sur un email client en clair.
       // Voie 1 : token PocketBase prouvé via authRefresh → email == config.hostEmail.
       //   NON-BLOQUANT : la vérif (≤ 4 s si PocketBase est down) ne retarde pas le
