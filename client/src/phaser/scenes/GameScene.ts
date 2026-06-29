@@ -20,10 +20,11 @@ import { DayNightOverlay } from '../DayNightOverlay';
 import { OfficeStatusOverlay } from '../OfficeStatusOverlay';
 
 // Fireplace anchor in pixel coords — tile (x, y) center is (x*32+16, y*32+16).
-// Tile (1, 30): against the west wall of the meeting room.
-// The fireplace faces east — opening pointing toward the meeting table.
-const FIREPLACE_X = 1 * 32 + 16;
-const FIREPLACE_Y = 30 * 32 + 16;
+// Source sonore de la cheminée. L'ancien foyer dessiné en code (coin bas-gauche,
+// tile 1,30) a été retiré : on aligne le son sur la NOUVELLE cheminée (flammes
+// particules de l'AmbientLayer, coin cosy). Le visuel est géré par AmbientLayer.
+const FIREPLACE_X = 1412;
+const FIREPLACE_Y = 730;
 const FIRE_AUDIBLE_RADIUS = 6 * 32;
 
 const EMOTE_EMOJI: Record<EmoteType, string> = {
@@ -37,7 +38,7 @@ const EMOTE_EMOJI: Record<EmoteType, string> = {
 
 interface ObjectVisual {
   obj: InteractiveObject;
-  icon: Phaser.GameObjects.Text;
+  icon: Phaser.GameObjects.Text | Phaser.GameObjects.Image;
   hint: Phaser.GameObjects.Text;
   liveLabel: Phaser.GameObjects.Text;
 }
@@ -94,6 +95,7 @@ export class GameScene extends Phaser.Scene {
   private typingTimers = new Map<string, NodeJS.Timeout>();
   private emoteStacks = new Map<string, Phaser.GameObjects.Text[]>();
   private objectVisuals = new Map<string, ObjectVisual>();
+  private objIconFramesReady = false; // frames sprites (tableau blanc/kanban) ajoutées au tileset office
   private nearbyObjectId: string | null = null;
   private appliedZoom = 1;
   private appliedAppearance: Appearance | null = null;
@@ -103,7 +105,7 @@ export class GameScene extends Phaser.Scene {
   private pinchPrevDist: number | null = null;
   /** true si la traînée de boost a été dessinée (pour ne clear() qu'une fois au repos). */
   private trailWasDrawn = false;
-  private fireplace?: { x: number; y: number; glow: Phaser.GameObjects.Graphics; flame: Phaser.GameObjects.Graphics };
+  private fireplace?: { x: number; y: number }; // position = source sonore (visuel géré par AmbientLayer)
   private screenGlows: Array<{ wsId: string; glow: Phaser.GameObjects.Graphics; near: boolean }> = [];
   private animatedDoors: Array<{ sprite: Phaser.GameObjects.Sprite; cx: number; cy: number; open: boolean }> = [];
   private lastLocalPresence: string | undefined = undefined;
@@ -414,79 +416,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buildFireplace(): void {
-    const x = FIREPLACE_X;
-    const y = FIREPLACE_Y;
-
-    // East-facing fireplace built into a west wall.
-    // Local origin (0, 0) = center of the opening (where the flame anchors on the log).
-    //
-    //   -16  ┌─┐                            stone backing (against wall)
-    //        │█│
-    //        │█│ ┌────────────────┐        opening extending east
-    //        │█│ │ ░░░░░░░░░░░░░░░│        hearth interior
-    //        │█│ │ ░░░░ flame ░░░░│
-    //        │█│ │ ──── log ──────│
-    //   +16  └─┘ └────────────────┘
-    //
-    //   x = -18 to -10 : stone backing (8 wide)
-    //   x = -10 to +18 : opening (28 wide)
-    //   y = -14 to +14 : full height (28 tall)
-    //   log: x = -8 to +16, y = +8 to +14
-    //   flame anchored at local (4, 8) — center of log, sticking up and slightly east
-    const container = this.add.container(x, y);
-    container.setDepth(7);
-
-    const base = this.add.graphics();
-    // Stone backing (vertical pillar against the wall)
-    base.fillStyle(0x9ca3af, 1).fillRect(-18, -16, 8, 32);
-    base.lineStyle(1, 0x4b5563, 1).strokeRect(-18, -16, 8, 32);
-    // Top trim of the opening (lintel)
-    base.fillStyle(0x6b7280, 1).fillRect(-10, -16, 28, 4);
-    base.lineStyle(1, 0x4b5563, 1).strokeRect(-10, -16, 28, 4);
-    // Bottom trim (floor edge of opening)
-    base.fillStyle(0x6b7280, 1).fillRect(-10, 12, 28, 4);
-    base.lineStyle(1, 0x4b5563, 1).strokeRect(-10, 12, 28, 4);
-    // Hearth interior (dark) — opens to the east
-    base.fillStyle(0x0f172a, 1).fillRect(-10, -12, 28, 24);
-    base.lineStyle(1, 0x000000, 1).strokeRect(-10, -12, 28, 24);
-    // Log at the bottom of the hearth (horizontal)
-    base.fillStyle(0x57321a, 1).fillRect(-8, 6, 24, 6);
-    base.fillStyle(0x7a4625, 1).fillRect(-8, 6, 24, 2);
-    container.add(base);
-
-    // Glow contained inside the hearth, slightly east-biased
-    const glow = this.add.graphics();
-    glow.fillStyle(0xffb35a, 0.35).fillRect(-8, -10, 24, 18);
-    glow.fillStyle(0xff8a3a, 0.55).fillRect(-6, -4, 22, 12);
-    glow.setAlpha(0.85);
-    container.add(glow);
-
-    // Flame — anchored on the log, slightly east of center for "facing east" feel
-    const flame = this.add.graphics();
-    flame.setPosition(4, 8);
-    flame.fillStyle(0xffe27a, 1).fillTriangle(0, -16, -6, 0, 6, 0);
-    flame.fillStyle(0xff8a1a, 1).fillTriangle(0, -11, -4, 0, 4, 0);
-    flame.fillStyle(0xff3b1a, 1).fillTriangle(0, -7, -2, 0, 2, 0);
-    container.add(flame);
-
-    this.tweens.add({
-      targets: flame,
-      scaleY: 0.78,
-      duration: 320,
-      ease: 'Sine.easeInOut',
-      yoyo: true,
-      repeat: -1,
-    });
-    this.tweens.add({
-      targets: glow,
-      alpha: 0.55,
-      duration: 480,
-      ease: 'Sine.easeInOut',
-      yoyo: true,
-      repeat: -1,
-    });
-
-    this.fireplace = { x, y, glow, flame };
+    // L'ancien foyer dessiné en code (pierre + flamme triangulaire, coin bas-gauche
+    // tile 1,30) a été RETIRÉ à la demande de Tim. On ne garde que la SOURCE SONORE,
+    // alignée sur la nouvelle cheminée (flammes particules de l'AmbientLayer). Le
+    // crépitement (setFireVolume, cf. update) se base sur cette position.
+    this.fireplace = { x: FIREPLACE_X, y: FIREPLACE_Y };
   }
 
   // Halos bleus "écran allumé" sur les pods LimeZu (procédural, aucun asset).
@@ -976,9 +910,8 @@ export class GameScene extends Phaser.Scene {
       // compare les PIEDS au siège (sinon la détection rate selon le sens d'arrivée).
       const FOOT_OFFSET = 22;
       const feetY = py + FOOT_OFFSET;
-      // Léger décalage vers la table une fois assis (le centrage sur le siège fait
-      // déjà l'essentiel). Ajustable.
-      const SEAT_FORWARD = 8;
+      // Décalage vers la table une fois assis (en plus du centrage sur le siège).
+      const SEAT_FORWARD = 18;
       const pin = (s: { x: number; y: number; dir: Direction }) => {
         const fx = s.dir === 'left' ? -SEAT_FORWARD : s.dir === 'right' ? SEAT_FORWARD : 0;
         const fy = s.dir === 'up' ? -SEAT_FORWARD : s.dir === 'down' ? SEAT_FORWARD : 0;
@@ -1433,29 +1366,56 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Déclare une fois les frames recadrées dans le tileset office (déjà chargé)
+   * pour les objets interactifs — on remplace ainsi les emojis par de vrais
+   * sprites LimeZu sans charger de nouvel asset.
+   */
+  private ensureObjectIconFrames(): void {
+    if (this.objIconFramesReady) return;
+    if (!this.textures.exists('tileset_office_shadowless')) return;
+    const tex = this.textures.get('tileset_office_shadowless');
+    if (!tex.has('io_whiteboard')) tex.add('io_whiteboard', 0, 288, 320, 64, 64); // tableau blanc (cols 9-10, rows 10-11)
+    if (!tex.has('io_kanban')) tex.add('io_kanban', 0, 480, 96, 32, 32);           // panneau liège à notes (col 15, row 3)
+    this.objIconFramesReady = true;
+  }
+
+  /** Icône d'un objet interactif : sprite LimeZu (whiteboard/kanban) sinon emoji. */
+  private makeObjectIcon(
+    type: InteractiveObject['type'],
+    cx: number,
+    cy: number,
+  ): Phaser.GameObjects.Text | Phaser.GameObjects.Image {
+    const frame = type === 'whiteboard' ? 'io_whiteboard' : type === 'kanban' ? 'io_kanban' : null;
+    if (frame && this.textures.exists('tileset_office_shadowless')) {
+      this.ensureObjectIconFrames();
+      if (this.textures.get('tileset_office_shadowless').has(frame)) {
+        return this.add.image(cx, cy, 'tileset_office_shadowless', frame).setOrigin(0.5, 0.5).setDepth(8);
+      }
+    }
+    // Repli emoji (si le tileset n'est pas chargé / objet d'un autre type).
+    const emoji =
+      type === 'screen' ? '\u{1F4FA}'
+        : type === 'whiteboard' ? '\u{1F3A8}'
+          : type === 'note' ? '\u{1F4DD}'
+            : type === 'kanban' ? '\u{1F4CB}'
+              : '\u{1F517}';
+    return this.add
+      .text(cx, cy, emoji, { fontSize: '28px', fontFamily: 'system-ui, sans-serif' })
+      .setOrigin(0.5, 0.5)
+      .setDepth(8);
+  }
+
   private refreshObject(obj: InteractiveObject): void {
     const cx = obj.x + 16;
     const cy = obj.y + 16;
     let visual = this.objectVisuals.get(obj.id);
     if (!visual) {
-      const emoji =
-        obj.type === 'screen'
-          ? '\u{1F4FA}'
-          : obj.type === 'whiteboard'
-            ? '\u{1F3A8}'
-            : obj.type === 'note'
-              ? '\u{1F4DD}'
-              : obj.type === 'kanban'
-                ? '\u{1F4CB}'
-                : '\u{1F517}';
       const hintText =
         obj.type === 'kanban'
           ? "Appuyer sur E — Tableau d'idées"
           : '[E] Interagir';
-      const icon = this.add
-        .text(cx, cy, emoji, { fontSize: '28px', fontFamily: 'system-ui, sans-serif' })
-        .setOrigin(0.5, 0.5)
-        .setDepth(8);
+      const icon = this.makeObjectIcon(obj.type, cx, cy);
       const hint = this.add
         .text(cx, cy - 28, hintText, {
           fontSize: '12px',
