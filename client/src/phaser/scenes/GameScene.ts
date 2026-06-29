@@ -592,7 +592,12 @@ export class GameScene extends Phaser.Scene {
       if (h && v && !d) dir = 'up';
       else if (v && d && !h) dir = 'right';
       else if (h && d && !v) dir = 'left';
-      this.seats.push({ x: c * 32 + 16, y: r * 32 + 32, dir });
+      // La chaise fait 2 tuiles : la tuile "bas" (28487) est adjacente DANS le sens
+      // de l'orientation. Le siège = centre des deux = centre du tile "haut" + 16px
+      // vers la table.
+      const dx = dir === 'left' ? -16 : dir === 'right' ? 16 : 0;
+      const dy = dir === 'up' ? -16 : dir === 'down' ? 16 : 0;
+      this.seats.push({ x: c * 32 + 16 + dx, y: r * 32 + 16 + dy, dir });
     }
   }
 
@@ -967,9 +972,13 @@ export class GameScene extends Phaser.Scene {
       const onKart = useGameStore.getState().localKartId !== null;
       const moveInput = input.up || input.down || input.left || input.right;
       const px = this.player.sprite.x, py = this.player.sprite.y;
-      // Décalage « vers l'avant » (sens de l'orientation = vers la table) pour que
-      // l'avatar s'assoie DANS la chaise et non en retrait. Ajustable.
-      const SEAT_FORWARD = 14;
+      // L'avatar (sprite 32×64) a son centre ~22px AU-DESSUS de ses pieds : on
+      // compare les PIEDS au siège (sinon la détection rate selon le sens d'arrivée).
+      const FOOT_OFFSET = 22;
+      const feetY = py + FOOT_OFFSET;
+      // Léger décalage vers la table une fois assis (le centrage sur le siège fait
+      // déjà l'essentiel). Ajustable.
+      const SEAT_FORWARD = 8;
       const pin = (s: { x: number; y: number; dir: Direction }) => {
         const fx = s.dir === 'left' ? -SEAT_FORWARD : s.dir === 'right' ? SEAT_FORWARD : 0;
         const fy = s.dir === 'up' ? -SEAT_FORWARD : s.dir === 'down' ? SEAT_FORWARD : 0;
@@ -987,12 +996,12 @@ export class GameScene extends Phaser.Scene {
         }
       } else if (!onKart && !moveInput && !focused) {
         const seat = this.seats.find((s) =>
-          Math.hypot(px - s.x, py - s.y) < 22 &&
+          Math.hypot(px - s.x, feetY - s.y) < 28 &&
           !(this.blockedSeat && Math.hypot(s.x - this.blockedSeat.x, s.y - this.blockedSeat.y) < 4));
         if (seat) { this.seatedSeat = seat; pin(seat); }
       }
       // Libère le verrou anti-re-assise une fois éloigné de la chaise quittée.
-      if (this.blockedSeat && Math.hypot(px - this.blockedSeat.x, py - this.blockedSeat.y) > 40) {
+      if (this.blockedSeat && Math.hypot(px - this.blockedSeat.x, feetY - this.blockedSeat.y) > 44) {
         this.blockedSeat = null;
       }
     }
