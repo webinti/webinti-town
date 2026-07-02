@@ -103,14 +103,24 @@ export class Player {
       })
       .setOrigin(0.5, 1)
       .setDepth(11);
+
+    // Couches synchronisées APRÈS la physique (voir syncVisuals) pour éviter le
+    // décrochage tenue/cheveux en mouvement.
+    this.scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.syncVisuals);
   }
 
-  private syncLayers(): void {
+  // Synchronise les couches visuelles (tenue, cheveux, label, bulle) sur la
+  // position du corps. Branché en POST_UPDATE → exécuté APRÈS le pas physique :
+  // sinon les couches lisent la position de la frame précédente et "décrochent"
+  // du corps en mouvement (visible en marchant, pire sur un kart plus rapide).
+  private syncVisuals = (): void => {
     const x = this.sprite.x;
     const y = this.sprite.y;
-    if (this.outfitLayer) this.outfitLayer.setPosition(x, y);
-    if (this.hairLayer) this.hairLayer.setPosition(x, y);
-  }
+    this.outfitLayer?.setPosition(x, y);
+    this.hairLayer?.setPosition(x, y);
+    this.label.setPosition(x, y - 28);
+    this.speakingBubble?.setPosition(x, y - 54);
+  };
 
   private updateAnimatedFrames(): void {
     if (!this.hasLayers) return;
@@ -180,9 +190,8 @@ export class Player {
     this.walkAccumMs = advanced.accumMs;
 
     this.updateAnimatedFrames();
-    this.syncLayers();
-    this.label.setPosition(this.sprite.x, this.sprite.y - 28);
-    if (this.speakingBubble) this.speakingBubble.setPosition(this.sprite.x, this.sprite.y - 54);
+    // Positions des couches/label/bulle : synchronisées en POST_UPDATE (après la
+    // physique), pas ici — voir syncVisuals.
 
     // F11 — quand on est sur un kart, on bumpe TOUTES les couches de +1 pour
     // passer au-dessus du sprite kart (depth 8) tout en préservant les offsets
@@ -277,6 +286,7 @@ export class Player {
   }
 
   destroy(): void {
+    this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.syncVisuals);
     this.sprite.destroy();
     this.outfitLayer?.destroy();
     this.hairLayer?.destroy();
