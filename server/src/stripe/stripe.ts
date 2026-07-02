@@ -48,12 +48,17 @@ export async function createCheckoutSession(email: string, plan: PlanId): Promis
   }
 
   const stripe = getStripe();
+  // Enterprise = droit au self-host : on tague la session ET l'abonnement avec
+  // selfhost=true pour que le serveur de licence (licences.webinti.com) cree et
+  // gere automatiquement la licence via le webhook.
+  const metadata = { email, plan, ...(plan === 'enterprise' ? { selfhost: 'true' } : {}) };
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     line_items: [{ price, quantity: 1 }],
     customer_email: email,
     client_reference_id: email,
-    metadata: { email, plan },
+    metadata,
+    subscription_data: { metadata },
     success_url: `${config.appBaseUrl}?checkout=success`,
     cancel_url: `${config.appBaseUrl}?checkout=cancel`,
   });
