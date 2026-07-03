@@ -31,8 +31,9 @@ export default function App() {
       </div>
     );
   }
-  // 2. Pas connecté : lien explicite ?room=demo → invité sans compte ; sinon auth.
-  if (!user) {
+  // 2. Pas encore en jeu ET pas connecté (!joined crucial : un invité qui a rejoint
+  //    n'a pas de user, il doit passer au jeu). Lien ?room=demo → invité ; sinon auth.
+  if (!user && !joined) {
     if (!forceAuth && isGuestRoom(explicitRoomFromUrl())) {
       return <JoinScreen onRequestAuth={() => setForceAuth(true)} />;
     }
