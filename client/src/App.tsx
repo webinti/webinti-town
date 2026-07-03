@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useGameStore } from './stores/gameStore';
 import { useAuthStore } from './stores/authStore';
 import { AuthScreen } from './react/AuthScreen';
 import { JoinScreen } from './react/JoinScreen';
+import { explicitRoomFromUrl, isGuestRoom } from './room';
 
 // Phaser (~800 kB) et le HUD (qui tire LiveKit, ~490 kB) ne servent qu'une fois
 // en jeu : on les charge en lazy pour que les écrans d'auth/join s'affichent
@@ -16,6 +17,7 @@ export default function App() {
   const ready = useAuthStore((s) => s.ready);
   const user = useAuthStore((s) => s.user);
   const joined = useGameStore((s) => s.joined);
+  const [forceAuth, setForceAuth] = useState(false);
 
   useEffect(() => {
     void useAuthStore.getState().init();
@@ -29,8 +31,11 @@ export default function App() {
       </div>
     );
   }
-  // 2. Pas connecté → écran d'auth (compte obligatoire)
+  // 2. Pas connecté : lien explicite ?room=demo → invité sans compte ; sinon auth.
   if (!user) {
+    if (!forceAuth && isGuestRoom(explicitRoomFromUrl())) {
+      return <JoinScreen onRequestAuth={() => setForceAuth(true)} />;
+    }
     return <AuthScreen />;
   }
   // 3. Connecté mais pas encore entré → choix avatar/pseudo
