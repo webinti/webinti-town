@@ -4,6 +4,9 @@ import { HAIR_COLOR_COUNT } from '../../types';
 import { advanceWalkTick, animatedFrame } from './avatarFrames';
 import { breathScaleY } from '../idleBreath';
 import { applyBreath } from '../applyBreath';
+import { addShadow } from '../shadow';
+import { emitFootstepDust } from '../footstepDust';
+import { NamePlate } from './NamePlate';
 
 const OUTFIT_FALLBACK_COLORS = [
   0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x14b8a6,
@@ -19,7 +22,10 @@ export class RemotePlayer {
   sprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image;
   outfitLayer?: Phaser.GameObjects.Sprite;
   hairLayer?: Phaser.GameObjects.Sprite;
-  label: Phaser.GameObjects.Text;
+  label: NamePlate;
+  private shadow: Phaser.GameObjects.Image;
+  private feetOffset: number;
+  private dustAccumMs = 0;
   private badgeLabel: Phaser.GameObjects.Text | null = null;
   private badgeText = '';
   // Bulle « agent IA » : indice de proximité (façon Marie), révélé quand le
@@ -82,20 +88,15 @@ export class RemotePlayer {
       this.sprite.setDepth(10);
     }
 
-    // Pastille de nom façon Gather : fond indigo, texte gras blanc. (Phaser Text
-    // ne gère pas le border-radius/la flèche nativement — pour une bulle arrondie
-    // pixel-perfect il faudrait un Container + Graphics ; ici on reste léger.)
-    this.label = scene.add
-      .text(state.x, state.y - 28, state.name, {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '12px',
-        fontStyle: 'bold',
-        color: '#ffffff',
-        backgroundColor: '#4338caf2', // indigo-700
-        padding: { left: 7, right: 7, top: 3, bottom: 3 },
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(11);
+    // Ombre au sol (mêmes offsets que le joueur local).
+    this.feetOffset = hasLayers ? 26 : 15;
+    this.shadow = addShadow(scene, state.x, state.y + this.feetOffset);
+
+    // Pastille de nom façon Gather : bulle indigo arrondie + flèche.
+    this.label = new NamePlate(scene, state.x, state.y - 28, state.name, {
+      color: 0x4338ca, // indigo-700
+      alpha: 0.95,
+    }).setDepth(11);
 
     if (state.isGhost === true) this.setGhost(true);
   }
@@ -120,6 +121,8 @@ export class RemotePlayer {
     this.sprite.setDepth(9.0 + bump);
     this.outfitLayer?.setDepth(9.1 + bump);
     this.hairLayer?.setDepth(9.2 + bump);
+    // Sur un kart, l'ombre du personnage disparaît (le kart couvre le sol).
+    this.shadow.setVisible(kartId === null);
   }
 
   setBoosting(b: boolean): void { this.boosting = b; }
@@ -199,6 +202,7 @@ export class RemotePlayer {
     this.sprite.setAlpha(a);
     this.outfitLayer?.setAlpha(a);
     this.hairLayer?.setAlpha(a);
+    this.shadow.setAlpha(isGhost ? 0.25 : 0.5);
     this.label.setAlpha(a);
     this.badgeLabel?.setAlpha(a);
     this.typingBubble?.setAlpha(a);
@@ -328,6 +332,7 @@ export class RemotePlayer {
     // F11 — pas d'offset Y, vêtements alignés sur le body.
     if (this.outfitLayer) this.outfitLayer.setPosition(x, y);
     if (this.hairLayer) this.hairLayer.setPosition(x, y);
+    this.shadow.setPosition(x, y + this.feetOffset);
     this.label.setPosition(x, y - 28);
     if (this.badgeLabel) this.badgeLabel.setPosition(x, y - 14);
     if (this.agentBubble) this.agentBubble.setPosition(x, y - 46);
@@ -351,12 +356,23 @@ export class RemotePlayer {
       this.idleMs += dt;
       applyBreath(this, breathScaleY(this.idleMs));
     }
+
+    // Poussière de pas (comme le joueur local).
+    this.dustAccumMs = emitFootstepDust(
+      this.scene,
+      x,
+      y + this.feetOffset,
+      this.isMoving && this.kartId === null,
+      this.dustAccumMs,
+      dt,
+    );
   }
 
   destroy(): void {
     this.sprite.destroy();
     this.outfitLayer?.destroy();
     this.hairLayer?.destroy();
+    this.shadow.destroy();
     this.label.destroy();
     this.badgeLabel?.destroy();
     this.agentBubble?.destroy();

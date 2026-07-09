@@ -9,7 +9,8 @@ import { playMeow } from '../sounds/sounds';
 
 const FIRE_SPOTS = [{ x: 1412, y: 730 }];            // cheminée
 // Vapeur sur les 2 machines à café du coin pause (comptoirs sombres avec tasses).
-const STEAM_SPOTS: Array<{ x: number; y: number }> = [
+// Exporté : GameScene y accroche aussi des lumières nocturnes (DayNightOverlay).
+export const STEAM_SPOTS: Array<{ x: number; y: number }> = [
   { x: 478, y: 740 }, // machine à café gauche
   { x: 768, y: 740 }, // machine à café droite
 ];

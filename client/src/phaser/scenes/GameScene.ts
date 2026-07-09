@@ -12,7 +12,7 @@ import { WorkstationOverlay } from '../WorkstationOverlay';
 import { WORKSTATIONS } from '../../workstations';
 import { KartOverlay } from '../KartOverlay';
 import { CircuitOverlay } from '../CircuitOverlay';
-import { AmbientLayer } from '../AmbientLayer';
+import { AmbientLayer, STEAM_SPOTS } from '../AmbientLayer';
 import { MOUNT_DISTANCE, BOOST_DURATION_MS, BOOST_COOLDOWN_MS } from '../../karts';
 import { CollisionLayer, type CollisionRect } from '../collision/CollisionLayer';
 import { touchInput, consumeTouchInteract } from '../touchInput';
@@ -207,6 +207,13 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
+    // Fondu d'arrivée : on ouvre sur le monde en douceur plutôt qu'un pop sec.
+    this.cameras.main.fadeIn(450, 15, 23, 42); // slate-900, comme le fond
+    // Vignette très légère (WebGL uniquement) : concentre le regard au centre
+    // sans assombrir la lecture de la map. No-op en rendu canvas.
+    if (this.renderer.type === Phaser.WEBGL) {
+      this.cameras.main.postFX.addVignette(0.5, 0.5, 0.98, 0.16);
+    }
 
     // Sauvegarde périodique de la position (localStorage) pour réapparaître au
     // même endroit après un refresh, plutôt qu'au spawn d'entrée.
@@ -308,6 +315,23 @@ export class GameScene extends Phaser.Scene {
     // E1 — cycle jour/nuit (teinte selon l'heure locale). E3 — badges de statut
     // « Occupé / En réunion » au-dessus des bureaux (calcul client par zone).
     this.dayNight = new DayNightOverlay(this, worldW, worldH);
+    // Lumières nocturnes : invisibles le jour, elles s'allument au crépuscule
+    // et percent la teinte de nuit (cheminée chaude, écrans froids, coin café).
+    this.dayNight.addLight(FIREPLACE_X, FIREPLACE_Y, 0xff8c3a, 150, 0.5);
+    for (const sg of this.screenGlows) {
+      this.dayNight.addLight(sg.glow.x, sg.glow.y, 0x66b3ff, 55, 0.3);
+    }
+    for (const sp of STEAM_SPOTS) {
+      this.dayNight.addLight(sp.x, sp.y - 10, 0xffc46b, 70, 0.32);
+    }
+    // Lampadaires posés sur la map (calque furniture, tuile basic 139) : les
+    // positions tuile doivent rester synchrones avec dress_map / default.tmj.
+    const LAMPPOSTS: ReadonlyArray<readonly [number, number]> = [
+      [60, 20], [60, 27], [66, 30], [76, 30],
+    ];
+    for (const [tc, tr] of LAMPPOSTS) {
+      this.dayNight.addLight(tc * TILE + 16, tr * TILE + 8, 0xffe2a8, 95, 0.42);
+    }
     this.officeStatus = new OfficeStatusOverlay(this);
 
     this.boostGfx = this.add.graphics().setDepth(11);
@@ -899,6 +923,8 @@ export class GameScene extends Phaser.Scene {
       body?.setVelocity(0, 0);
       useGameStore.getState().setAutoWalkTarget(null);
       this.seatedSeat = null; // un téléport (retour bureau) annule l'assise
+      // Court fondu : masque le snap de téléportation (pas de pathfinding).
+      this.cameras.main.fadeIn(280, 15, 23, 42);
     }
 
     // ── Assise auto sur chaise (façon Gather) ──
@@ -1045,6 +1071,8 @@ export class GameScene extends Phaser.Scene {
           this.boostStartedAt = now;
           s.setLocalBoosting(true);
           socketManager.sendKartBoostStart();
+          // Léger screen shake : le coup d'accélérateur se « sent ».
+          this.cameras.main.shake(150, 0.0035);
         }
       }
       if (boosting && (!onKart || now - this.boostStartedAt >= BOOST_DURATION_MS || !shiftDown)) {

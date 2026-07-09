@@ -5,6 +5,9 @@ import { advanceWalkTick, animatedFrame } from './avatarFrames';
 import { computeKartSpeed } from '../kartSpeed';
 import { breathScaleY } from '../idleBreath';
 import { applyBreath } from '../applyBreath';
+import { addShadow } from '../shadow';
+import { emitFootstepDust } from '../footstepDust';
+import { NamePlate } from './NamePlate';
 
 const OUTFIT_FALLBACK_COLORS = [
   0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x14b8a6,
@@ -21,7 +24,10 @@ export class Player {
   sprite: Phaser.Physics.Arcade.Sprite | Phaser.Physics.Arcade.Image;
   outfitLayer?: Phaser.GameObjects.Sprite;
   hairLayer?: Phaser.GameObjects.Sprite;
-  label: Phaser.GameObjects.Text;
+  label: NamePlate;
+  private shadow: Phaser.GameObjects.Image;
+  private feetOffset: number;
+  private dustAccumMs = 0;
   direction: Direction = 'down';
   moving = false;
   private idleMs = 0;
@@ -94,23 +100,35 @@ export class Player {
 
     this.sprite.setCollideWorldBounds(true);
 
-    this.label = scene.add
-      .text(x, y - 28, name, {
-        fontSize: '12px',
-        color: '#ffffff',
-        backgroundColor: '#0008',
-        padding: { left: 4, right: 4, top: 1, bottom: 1 },
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(11);
+    // Ombre au sol : ancre visuellement l'avatar (sprite 32x64 centré → les
+    // pieds sont ~26px sous le centre ; cercle fallback 32x32 → ~15px).
+    this.feetOffset = hasLayers ? 26 : 15;
+    this.shadow = addShadow(scene, x, y + this.feetOffset);
+
+    // Pastille du joueur local : fond sombre (les distants sont en indigo).
+    this.label = new NamePlate(scene, x, y - 28, name, {
+      color: 0x1e293b,
+      alpha: 0.88,
+    }).setDepth(11);
+
+    // Couches synchronisées APRÈS la physique (voir syncVisuals) pour éviter le
+    // décrochage tenue/cheveux en mouvement.
+    this.scene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.syncVisuals);
   }
 
-  private syncLayers(): void {
+  // Synchronise les couches visuelles (tenue, cheveux, label, bulle) sur la
+  // position du corps. Branché en POST_UPDATE → exécuté APRÈS le pas physique :
+  // sinon les couches lisent la position de la frame précédente et "décrochent"
+  // du corps en mouvement (visible en marchant, pire sur un kart plus rapide).
+  private syncVisuals = (): void => {
     const x = this.sprite.x;
     const y = this.sprite.y;
-    if (this.outfitLayer) this.outfitLayer.setPosition(x, y);
-    if (this.hairLayer) this.hairLayer.setPosition(x, y);
-  }
+    this.outfitLayer?.setPosition(x, y);
+    this.hairLayer?.setPosition(x, y);
+    this.shadow.setPosition(x, y + this.feetOffset);
+    this.label.setPosition(x, y - 28);
+    this.speakingBubble?.setPosition(x, y - 54);
+  };
 
   private updateAnimatedFrames(): void {
     if (!this.hasLayers) return;
@@ -180,9 +198,8 @@ export class Player {
     this.walkAccumMs = advanced.accumMs;
 
     this.updateAnimatedFrames();
-    this.syncLayers();
-    this.label.setPosition(this.sprite.x, this.sprite.y - 28);
-    if (this.speakingBubble) this.speakingBubble.setPosition(this.sprite.x, this.sprite.y - 54);
+    // Positions des couches/label/bulle : synchronisées en POST_UPDATE (après la
+    // physique), pas ici — voir syncVisuals.
 
     // F11 — quand on est sur un kart, on bumpe TOUTES les couches de +1 pour
     // passer au-dessus du sprite kart (depth 8) tout en préservant les offsets
@@ -192,6 +209,18 @@ export class Player {
     this.sprite.setDepth(9.0 + bump);
     this.outfitLayer?.setDepth(9.1 + bump);
     this.hairLayer?.setDepth(9.2 + bump);
+    // Sur un kart, l'ombre du personnage disparaît (le kart couvre le sol).
+    this.shadow.setVisible(this.kartId === null);
+
+    // Petits nuages de poussière aux pieds pendant la marche (à pied only).
+    this.dustAccumMs = emitFootstepDust(
+      this.scene,
+      this.sprite.x,
+      this.sprite.y + this.feetOffset,
+      this.moving && this.kartId === null,
+      this.dustAccumMs,
+      dt,
+    );
 
     // Respiration idle (procédurale) — n'affecte pas la physique (scaleY only).
     // `this.moving` est vrai pendant la danse, donc pas de cumul avec celle-ci.
@@ -213,6 +242,7 @@ export class Player {
     this.sprite.setAlpha(a);
     this.outfitLayer?.setAlpha(a);
     this.hairLayer?.setAlpha(a);
+    this.shadow.setAlpha(isGhost ? 0.25 : 0.5);
     this.label.setAlpha(a);
     this.speakingBubble?.setAlpha(a);
   }
@@ -277,9 +307,11 @@ export class Player {
   }
 
   destroy(): void {
+    this.scene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.syncVisuals);
     this.sprite.destroy();
     this.outfitLayer?.destroy();
     this.hairLayer?.destroy();
+    this.shadow.destroy();
     this.label.destroy();
     this.speakingPulseTween?.stop();
     this.speakingBubble?.destroy();

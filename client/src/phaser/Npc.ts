@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { Appearance, Direction } from '../types';
 import { HAIR_COLOR_COUNT } from '../types';
 import { animatedFrame } from './entities/avatarFrames';
+import { addShadow } from './shadow';
 
 // PNJ d'ambiance : avatar statique (3 couches LimeZu body/outfit/hair) posé à une
 // position monde, avec un léger balancement vertical optionnel (taper au clavier,
@@ -10,6 +11,7 @@ import { animatedFrame } from './entities/avatarFrames';
 
 export class Npc {
   private readonly layers: Phaser.GameObjects.Sprite[] = [];
+  private shadow: Phaser.GameObjects.Image | null = null;
   private readonly scene: Phaser.Scene;
 
   constructor(
@@ -31,6 +33,8 @@ export class Npc {
     for (const [key, frame, depth] of defs) {
       this.layers.push(scene.add.sprite(x, y, key, frame).setDepth(depth));
     }
+    // Ombre au sol (fixe : le bob ne bouge que les couches, pas l'ombre).
+    this.shadow = addShadow(scene, x, y + 26);
   }
 
   /** Balancement vertical en boucle (amp px, durée ms). Ex : typing, lifting. */
@@ -51,5 +55,7 @@ export class Npc {
   destroy(): void {
     for (const l of this.layers) l.destroy();
     this.layers.length = 0;
+    this.shadow?.destroy();
+    this.shadow = null;
   }
 }
