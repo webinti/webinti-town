@@ -1,16 +1,10 @@
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { pb } from '../../pocketbase';
-
-// Base de l'API (même logique que SocketManager) : same-origin en prod,
-// localhost:3001 en dev, surchargeable via VITE_SERVER_URL.
-const API_BASE =
-  (import.meta.env.VITE_SERVER_URL as string | undefined) ??
-  (import.meta.env.PROD ? '' : 'http://localhost:3001');
+import { API_BASE, planCode, createCheckoutSession, type PaidPlan } from '../../stripe';
 
 // Plans payants proposés au changement d'abonnement (le plan `free` n'est pas
 // vendable). Ordre = ordre d'affichage des boutons.
-type PaidPlan = 'starter' | 'team' | 'enterprise';
 const PAID_PLANS: { id: PaidPlan; label: string; price: string }[] = [
   { id: 'starter', label: 'Démarrage', price: '39€' },
   { id: 'team', label: 'Équipe', price: '90€' },
@@ -25,11 +19,6 @@ const PLAN_LABELS: Record<string, string> = {
   enterprise: 'Entreprise · jusqu’à 100',
 };
 
-// Compte hôte : toujours Entreprise (comme côté serveur). Surchargeable via env.
-const HOST_EMAIL = (
-  (import.meta.env.VITE_HOST_EMAIL as string | undefined) ?? 'agence.webinti@gmail.com'
-).toLowerCase();
-
 // Style du badge par palier — l'Entreprise est mise en avant en Or.
 const PLAN_STYLE: Record<string, { wrap: string; dot: string }> = {
   free: { wrap: 'bg-slate-900/60 text-slate-300 ring-slate-700', dot: 'bg-slate-400' },
@@ -40,15 +29,6 @@ const PLAN_STYLE: Record<string, { wrap: string; dot: string }> = {
     dot: 'bg-amber-400',
   },
 };
-
-/** Code du plan : le champ `plan` PocketBase est PRIORITAIRE ; l'hôte n'est
- *  Entreprise que par défaut, si aucun plan n'est défini (permet de tester). */
-function planCode(user: unknown): string {
-  const u = user as { plan?: string; email?: string } | null;
-  if (u?.plan) return u.plan; // un plan défini en base gagne
-  if (u?.email && u.email.toLowerCase() === HOST_EMAIL) return 'enterprise'; // défaut hôte
-  return 'free';
-}
 
 /** Libellé lisible du plan du user PB. */
 function planLabel(user: unknown): string {
@@ -78,19 +58,8 @@ export function SubscriptionSection() {
     setCheckoutError(null);
     setCheckoutPlan(plan);
     try {
-      const res = await fetch(`${API_BASE}/api/stripe/create-checkout-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {}),
-        },
-        body: JSON.stringify({ plan, token: pb.authStore.token }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { url?: string };
-      if (!data.url) throw new Error('no url');
       // Redirection vers Stripe Checkout.
-      window.location.href = data.url;
+      window.location.href = await createCheckoutSession(plan);
     } catch {
       setCheckoutError('Paiement indisponible pour le moment.');
       setCheckoutPlan(null);
