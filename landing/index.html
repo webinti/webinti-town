@@ -13,8 +13,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Webinti Town | Le bureau virtuel de votre équipe</title>
 <meta name="description" content="Un bureau virtuel en pixel-art où votre équipe se déplace, se croise et se parle comme au bureau. Alternative française à Gather.town, données hébergées en Europe." />
+<link rel="canonical" href="https://town.webinti.com/" />
 <meta property="og:title" content="Webinti Town | Le bureau virtuel de votre équipe" />
 <meta property="og:description" content="Le bureau virtuel à la française : RGPD, support FR, une ville vivante." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://town.webinti.com/" />
+<meta property="og:image" content="https://town.webinti.com/assets/og-image.png" />
+<meta property="og:locale" content="fr_FR" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Webinti Town | Le bureau virtuel de votre équipe" />
+<meta name="twitter:description" content="Le bureau virtuel à la française : RGPD, support FR, une ville vivante." />
+<meta name="twitter:image" content="https://town.webinti.com/assets/og-image.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -36,7 +45,7 @@
 .hero .lead{margin:22px auto 30px;font-size:1.22rem}
 .hero-note{margin-top:16px;font-size:.92rem;color:var(--soft);font-weight:500}
 .hero-note b{color:var(--ink)}
-.scene{perspective:1300px;margin-top:56px}
+.scene{position:relative;perspective:1300px;margin-top:56px}
 .frame{position:relative;margin:0 auto;max-width:1060px;border-radius:18px;overflow:hidden;
   border:1px solid rgba(33,26,46,.2);background:#fff;
   box-shadow:0 40px 90px -30px rgba(33,26,46,.4);
@@ -47,20 +56,96 @@
 .frame-bar .url{margin:0 auto;font-family:var(--pixel);font-size:.8rem;color:#9d94b5;background:#241c35;border-radius:8px;padding:3px 16px}
 .mapbox{position:relative;overflow:hidden}
 .mapbox>img{width:100%;display:block}
-/* Avatars STATIQUES, ancrés par les PIEDS (translate -50%,-100%) : left/top =
-   le point au sol où le perso se tient. Plus gros (4.4%) pour la visibilité. */
-/* .mate = avatar du hero (renommé pour ne PAS entrer en collision avec les
-   avatars .av du panneau admin, qui héritaient sinon de position:absolute). */
-.mate{position:absolute;width:4.4%;z-index:4;transform:translate(-50%,-100%)}
-.mate .sp{width:100%;aspect-ratio:1/2;background-size:100% 100%;animation:idle 3s ease-in-out infinite}
-.mate.d2 .sp{animation-delay:-1.4s}
-@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-4%)}}
-.mate .nm{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:3px;background:rgba(23,18,33,.85);color:#fff;font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:5px}
-.mate .nm i{width:6px;height:6px;border-radius:50%;background:#52d06c;font-style:normal}
-.mate .sh{position:absolute;left:50%;bottom:-3%;width:74%;height:7%;background:radial-gradient(ellipse,rgba(0,0,0,.3),transparent 70%);transform:translateX(-50%);z-index:-1}
-.blb{position:absolute;left:28%;top:22%;z-index:5;background:#fff;border:1.5px solid rgba(33,26,46,.25);border-radius:12px;padding:6px 12px;font-size:.78rem;font-weight:700;box-shadow:0 8px 20px -8px rgba(33,26,46,.3);animation:bob 4s ease-in-out infinite}
-.blb::after{content:"";position:absolute;left:18px;bottom:-8px;width:12px;height:12px;background:#fff;border-right:1.5px solid rgba(33,26,46,.25);border-bottom:1.5px solid rgba(33,26,46,.25);transform:rotate(45deg)}
-@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+
+/* ─── AVATARS ANIMÉS (marche pixel-art) ─────────────────────────────────
+   .mate est ancré par les PIEDS (translate -50%,-100%). Son déplacement le
+   long des couloirs est piloté par GSAP (transform x/y, en px) ; le cycle de
+   jambes est une animation steps() CSS sur background-position.
+   Bande sprite = 12 frames (droite | gauche | bas) × [walkA, idle, walkB, idle]
+   → background-size:1200% ; chaque frame occupe 100/11 % de balayage. */
+.mate{position:absolute;width:4.7%;z-index:5;transform:translate(-50%,-100%);will-change:transform}
+.mate .sp{width:100%;aspect-ratio:1/2;background-repeat:no-repeat;background-size:1200% 100%;
+  background-position-x:var(--idle,9.0909%);filter:drop-shadow(0 1px 0 rgba(0,0,0,.15))}
+.mate.face-right{--idle:9.0909%}
+.mate.face-left {--idle:45.4545%}
+.mate.face-down {--idle:81.8181%}
+.mate.walk.face-right .sp{animation:walkR var(--wspd,.66s) steps(4) infinite}
+.mate.walk.face-left  .sp{animation:walkL var(--wspd,.66s) steps(4) infinite}
+.mate.walk.face-down  .sp{animation:walkD var(--wspd,.66s) steps(4) infinite}
+@keyframes walkR{from{background-position-x:0%}      to{background-position-x:36.3636%}}
+@keyframes walkL{from{background-position-x:36.3636%}to{background-position-x:72.7272%}}
+@keyframes walkD{from{background-position-x:72.7272%}to{background-position-x:109.0909%}}
+.mate .nm{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:5px;
+  background:rgba(23,18,33,.86);color:#fff;font-size:.6rem;font-weight:700;padding:2px 8px;
+  border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:5px;font-family:var(--sans)}
+.mate .nm i{width:6px;height:6px;border-radius:50%;background:#52d06c;font-style:normal;
+  box-shadow:0 0 0 0 rgba(82,208,108,.55);animation:ping 2.6s ease-out infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(82,208,108,.5)}70%,100%{box-shadow:0 0 0 5px rgba(82,208,108,0)}}
+.mate .sh{position:absolute;left:50%;bottom:0;width:66%;height:8%;
+  background:radial-gradient(ellipse,rgba(0,0,0,.3),transparent 70%);transform:translateX(-50%);z-index:-1}
+
+/* ─── FX de proximité (bulle + mini-mosaïque vidéo) — pilotés par GSAP ── */
+.pxbubble{position:absolute;z-index:7;background:#fff;border:1.5px solid rgba(33,26,46,.22);
+  border-radius:12px;padding:5px 11px;font-size:.72rem;font-weight:700;color:var(--ink);
+  box-shadow:0 10px 22px -10px rgba(33,26,46,.35);white-space:nowrap;font-family:var(--sans);
+  transform:translate(-50%,-100%) scale(0);transform-origin:50% 120%;opacity:0}
+.pxbubble::after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;background:#fff;
+  border-right:1.5px solid rgba(33,26,46,.22);border-bottom:1.5px solid rgba(33,26,46,.22);
+  transform:translateX(-50%) rotate(45deg)}
+.vidgrid{position:absolute;z-index:7;display:flex;gap:4px;padding:5px;background:rgba(19,14,26,.93);
+  border-radius:12px;box-shadow:0 18px 40px -14px rgba(19,14,26,.6);
+  transform:translate(-50%,-100%) scale(0);transform-origin:50% 118%;opacity:0}
+.vidgrid .vt{width:52px;height:38px;border-radius:7px;position:relative;overflow:hidden;
+  display:flex;align-items:flex-end;justify-content:center}
+.vidgrid .vt b{font-size:.5rem;color:#fff;background:rgba(0,0,0,.42);border-radius:4px;padding:0 4px;
+  margin-bottom:3px;font-family:var(--sans);font-weight:700;position:relative;z-index:2}
+.vidgrid .vt i{position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:#52d06c;z-index:2}
+
+/* ─── VIE AMBIANTE (halos d'écrans, vapeur de café, papillons) ─────────── */
+.amb{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+.halo{position:absolute;width:3.4%;aspect-ratio:1.4;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(ellipse,rgba(120,180,255,.55),rgba(90,150,255,0) 70%);
+  mix-blend-mode:screen;opacity:.28;animation:haloPulse 4s ease-in-out infinite}
+@keyframes haloPulse{0%,100%{opacity:.16}50%{opacity:.5}}
+.steam{position:absolute;width:7px;height:7px;border-radius:50%;transform:translate(-50%,0);
+  background:radial-gradient(circle,rgba(255,255,255,.85),rgba(255,255,255,0) 70%);
+  opacity:0;animation:steamRise 3.4s ease-in infinite}
+@keyframes steamRise{0%{opacity:0;transform:translate(-50%,0) scale(.6)}
+  25%{opacity:.7}100%{opacity:0;transform:translate(-140%,-260%) scale(1.9)}}
+.bfly{position:absolute;width:9px;height:8px;transform:translate(-50%,-50%);
+  animation:flyPath 14s ease-in-out infinite}
+.bfly::before,.bfly::after{content:"";position:absolute;top:0;width:5px;height:8px;border-radius:60% 60% 55% 55%;
+  background:var(--bf,#e58bc0);opacity:.92;animation:flap .18s ease-in-out infinite alternate}
+.bfly::before{left:0;transform-origin:right center}
+.bfly::after{right:0;transform-origin:left center}
+@keyframes flap{0%{transform:scaleX(1)}100%{transform:scaleX(.28)}}
+@keyframes flyPath{0%{transform:translate(-50%,-50%)}25%{transform:translate(140%,-120%)}
+  50%{transform:translate(320%,40%)}75%{transform:translate(120%,150%)}100%{transform:translate(-50%,-50%)}}
+
+/* ─── 2.5D : cartes UI flottantes hors du navigateur (parallaxe scroll) ── */
+.hero-float{position:absolute;left:50%;top:0;width:min(100%,1060px);height:100%;transform:translateX(-50%);
+  z-index:8;pointer-events:none;transform-style:preserve-3d}
+.hero-float .fc{position:absolute;left:50%;top:0;background:#fff;border:1px solid rgba(33,26,46,.1);
+  border-radius:14px;box-shadow:0 26px 55px -24px rgba(33,26,46,.55);font-family:var(--sans);
+  will-change:transform;padding:9px 13px;display:flex;align-items:center;gap:9px}
+.hero-float .fc .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.hero-float .fc .t1{font-weight:800;font-size:.82rem;line-height:1.15}
+.hero-float .fc .t2{font-size:.68rem;color:var(--soft);font-weight:600}
+.hero-float .fc .av{width:30px;height:30px;border-radius:8px;flex:none;display:grid;place-items:center;
+  color:#fff;font-weight:800;font-family:var(--pixel);font-size:.9rem}
+.hero-float .fc.chip{padding:7px 12px;font-weight:700;font-size:.76rem;gap:7px}
+
+@media(max-width:760px){
+  .hero-float{display:none}
+  .mate#av-hugo,.mate#av-sofia{display:none}
+  .bfly{display:none}
+}
+/* Accessibilité : on coupe TOUTES les animations décoratives du hero. */
+@media(prefers-reduced-motion:reduce){
+  .mate .sp,.mate .nm i,.halo,.steam,.bfly,.bfly::before,.bfly::after{animation:none!important}
+  .halo{opacity:.3}
+  .steam{display:none}
+}
 .trust{padding:26px 0 0;display:flex;justify-content:center;gap:34px;flex-wrap:wrap;font-weight:600;font-size:.95rem;color:var(--soft)}
 .trust span{display:inline-flex;gap:8px;align-items:center}
 .trust b{color:var(--ink)}
@@ -96,17 +181,32 @@
     <p class="hero-note rv">Sans installation · <b>données en Europe (RGPD)</b> · gratuit jusqu'à 3 personnes</p>
   </div>
 
-  <div class="scene">
+  <div class="scene" id="heroScene">
     <div class="frame" id="frame">
       <div class="frame-bar"><span class="d"></span><span class="d"></span><span class="d"></span><span class="url">live.webinti.com</span></div>
       <div class="mapbox">
         <img class="pixelated" src="assets/map-hero.png" alt="La map de Webinti Town">
-        <!-- statiques, pieds posés sur du sol valide -->
-        <div class="mate" style="left:24%;top:38%"><div class="sh"></div><div class="nm"><i></i>Léa</div><div class="sp pixelated" style="background-image:url(assets/idle-0.png)"></div></div>
-        <div class="mate d2" style="left:13%;top:84%"><div class="sh"></div><div class="nm"><i></i>Marc</div><div class="sp pixelated" style="background-image:url(assets/idle-1.png)"></div></div>
-        <div class="mate" style="left:88%;top:82%"><div class="sh"></div><div class="nm"><i></i>Sofia</div><div class="sp pixelated" style="background-image:url(assets/idle-2.png)"></div></div>
-        <div class="blb">👋 « Vous avez 2 min ? »</div>
+        <!-- Vie ambiante (halos d'écrans, vapeur, papillons) injectée par site.js -->
+        <div class="amb" id="heroAmb"></div>
+        <!-- Avatars animés — left/top = point de DÉPART, pieds posés sur du sol.
+             Le déplacement le long des couloirs est piloté par site.js (GSAP). -->
+        <div class="mate face-right" id="av-lea"   style="left:27%;top:54%"><div class="sh"></div><div class="nm"><i></i>Léa</div><div class="sp pixelated" style="background-image:url(assets/sprites/lea.png)"></div></div>
+        <div class="mate face-down"  id="av-marc"  style="left:49%;top:54%"><div class="sh"></div><div class="nm"><i></i>Marc</div><div class="sp pixelated" style="background-image:url(assets/sprites/marc.png)"></div></div>
+        <div class="mate face-right" id="av-sofia" style="left:11%;top:82%"><div class="sh"></div><div class="nm"><i></i>Sofia</div><div class="sp pixelated" style="background-image:url(assets/sprites/sofia.png)"></div></div>
+        <div class="mate face-left"  id="av-hugo"  style="left:72%;top:54%"><div class="sh"></div><div class="nm"><i></i>Hugo</div><div class="sp pixelated" style="background-image:url(assets/sprites/hugo.png)"></div></div>
+        <!-- FX de proximité (bulle + mini-mosaïque vidéo), au point de rencontre -->
+        <div class="pxbubble" id="heroBubble" style="left:43%;top:41%">💬 « Vous avez 2 min ? »</div>
+        <div class="vidgrid" id="heroVid" style="left:46%;top:35%">
+          <div class="vt" style="background:linear-gradient(150deg,#c86fa8,#7A3B6E)"><i></i><b>Léa</b></div>
+          <div class="vt" style="background:linear-gradient(150deg,#6d6a86,#3a3550)"><i></i><b>Marc</b></div>
+        </div>
       </div>
+    </div>
+    <!-- Cartes UI flottantes en 2.5D (au-dessus du navigateur, parallaxe scroll) -->
+    <div class="hero-float" id="heroFloat">
+      <div class="fc" id="fc-name" style="left:1.5%;top:3%"><span class="av" style="background:#3B7DF6">S</span><div><div class="t1">Sofia Diallo</div><div class="t2">🟢 En ligne · Coin pause</div></div></div>
+      <div class="fc" id="fc-avail" style="left:67%;top:21%"><span class="dot" style="background:#4F9D3F"></span><div><div class="t1">Léa est disponible</div><div class="t2">Approchez-vous pour lui parler</div></div></div>
+      <div class="fc chip" id="fc-chat" style="left:60%;top:84%"><span>💬</span><span>Conversation de proximité</span></div>
     </div>
   </div>
 
@@ -328,14 +428,14 @@
         <div class="pn">Démarrage</div><div class="amt">39&nbsp;€<small> /mois</small></div>
         <p class="pd2">Pour les petites équipes et les formateurs.</p>
         <ul><li>Jusqu'à <b>10 personnes</b></li><li>Room dédiée</li><li>Audio/vidéo de proximité</li><li>Marie, l'hôtesse IA</li><li>Support en français</li></ul>
-        <a href="mailto:agence.webinti@gmail.com?subject=Offre%20Démarrage%20·%20Webinti%20Town" class="btn btn--ghost">Choisir Démarrage</a>
+        <a href="https://live.webinti.com/?plan=starter" class="btn btn--ghost">S'abonner en ligne</a>
       </div>
       <div class="price hot rv">
         <span class="rb">★ LE PLUS CHOISI</span>
         <div class="pn">Équipe</div><div class="amt">90&nbsp;€<small> /mois</small></div>
         <p class="pd2">Pour les équipes qui s'installent pour de bon.</p>
         <ul><li>Jusqu'à <b>25 personnes</b></li><li><b>Room dédiée</b> possible</li><li>Map personnalisée à votre marque</li><li>Vision admin &amp; enregistrement</li><li>Support en français</li></ul>
-        <a href="mailto:agence.webinti@gmail.com?subject=Offre%20Équipe%20·%20Webinti%20Town" class="btn">Choisir Équipe</a>
+        <a href="https://live.webinti.com/?plan=team" class="btn">S'abonner en ligne</a>
       </div>
       <div class="price rv">
         <div class="pn">Entreprise</div><div class="amt">350&nbsp;€<small> /mois</small></div>
@@ -382,9 +482,9 @@
         <a class="brand" href="index.html"><span class="logo">W</span> WEBINTI&nbsp;TOWN</a>
         <p>Le bureau virtuel de votre équipe, à la française. Une création de l'agence Webinti.</p>
       </div>
-      <div><h4>Produit</h4><a href="fonctionnalites.html">Fonctionnalités</a><a href="usages.html">Usages</a><a href="index.html#compare">vs Gather</a><a href="index.html#pricing">Tarifs</a></div>
+      <div><h4>Produit</h4><a href="fonctionnalites.html">Fonctionnalités</a><a href="usages.html">Usages</a><a href="formation.html">Formation</a><a href="index.html#compare">vs Gather</a><a href="index.html#pricing">Tarifs</a></div>
       <div><h4>Ressources</h4><a href="https://live.webinti.com/?room=discord">Démo live</a><a href="alternative-gather-town.html">Alternative à Gather.town</a><a href="bureau-virtuel-ia.html">Bureau virtuel &amp; IA</a><a href="mailto:agence.webinti@gmail.com">Contact</a></div>
-      <div><h4>Webinti</h4><a href="https://webinti.com">L'agence</a><a href="mailto:agence.webinti@gmail.com">Nous écrire</a><a href="#">Mentions légales</a></div>
+      <div><h4>Webinti</h4><a href="https://webinti.com">L'agence</a><a href="mailto:agence.webinti@gmail.com">Nous écrire</a><a href="mentions-legales.html">Mentions légales</a></div>
     </div>
     <div class="fbot"><span>© 2026 Webinti Town</span><span>Conçu en France · Données en Europe 🇪🇺</span></div>
   </div>
