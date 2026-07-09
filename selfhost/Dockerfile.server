@@ -1,0 +1,27 @@
+# Serveur de jeu Node (édition self-host). Build multi-stage :
+#   1) compile le TypeScript du serveur ;
+#   2) image runtime légère avec seulement les dépendances de prod.
+# La clé PUBLIQUE de licence est compilée dans dist (server/src/license/publicKey.ts).
+
+# ---- build ----
+FROM node:20-alpine AS build
+WORKDIR /app
+# Manifests d'abord (cache des couches d'install)
+COPY package.json package-lock.json ./
+COPY client/package.json client/package.json
+COPY server/package.json server/package.json
+RUN npm ci
+COPY . .
+RUN npm run build --workspace=server
+
+# ---- runtime ----
+FROM node:20-alpine AS runtime
+WORKDIR /app/server
+ENV NODE_ENV=production
+# Dépendances de prod du serveur uniquement
+COPY server/package.json ./
+RUN npm install --omit=dev --no-audit --no-fund
+# Artefacts compilés
+COPY --from=build /app/server/dist ./dist
+EXPOSE 3001
+CMD ["node", "dist/index.js"]

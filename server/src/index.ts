@@ -9,6 +9,7 @@ import { registerSocketHandlers, startTickLoops } from './socket/handlers.js';
 import { uploadsRouter } from './uploads/uploadsRouter.js';
 import { startCleanupSchedule } from './uploads/uploadsCleanup.js';
 import { stripeRouter } from './stripe/stripeRouter.js';
+import { startLicenseHeartbeat, getLicenseStatus } from './license/index.js';
 
 const app = express();
 app.use(cors({ origin: config.clientOrigin, credentials: true }));
@@ -28,7 +29,12 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/uploads', uploadsRouter);
-app.use('/api/stripe', stripeRouter);
+// Vente d'abonnements Stripe : pertinent UNIQUEMENT sur l'instance SaaS de
+// Webinti. En self-host (le client héberge, Webinti vend en amont), on ne monte
+// pas le routeur du tout.
+if (config.edition !== 'selfhosted') {
+  app.use('/api/stripe', stripeRouter);
+}
 app.use('/api', apiRouter);
 
 const httpServer = createServer(app);
@@ -48,8 +54,23 @@ startTickLoops(io);
 roomManager.ensureRoom('demo', 'Demo Room');
 startCleanupSchedule();
 
+// Kill-switch self-host : démarre le heartbeat de licence UNIQUEMENT en édition
+// 'selfhosted'. Sur l'instance SaaS de Webinti, aucune licence n'est vérifiée.
+if (config.edition === 'selfhosted') {
+  if (!process.env.HOST_EMAIL) {
+    console.warn(
+      '[webintispace] ⚠️ EDITION=selfhosted sans HOST_EMAIL défini : désigne le' +
+        ' compte administrateur via HOST_EMAIL, sinon personne ne sera hôte.',
+    );
+  }
+  startLicenseHeartbeat();
+}
+
 httpServer.listen(config.port, () => {
   console.log(`[webintispace] listening on http://localhost:${config.port}`);
   console.log(`[webintispace] CORS origin: ${config.clientOrigin}`);
   console.log(`[webintispace] default room: /demo`);
+  if (config.edition === 'selfhosted') {
+    console.log(`[webintispace] édition self-host — licence: ${getLicenseStatus().state}`);
+  }
 });

@@ -1,0 +1,94 @@
+# Webinti Town — bundle self-host (édition Enterprise).
+#
+# Une commande :  docker compose up -d --build   (après avoir rempli .env)
+#
+# Deux modes audio/vidéo (choisis dans .env) :
+#   • DÉFAUT  → LiveKit Cloud (le plus simple, rien à héberger côté A/V).
+#   • Local   → SFU auto-hébergé : décommente le bloc « SFU LOCAL » du .env
+#               (CADDYFILE=Caddyfile.local + COMPOSE_PROFILES=local-livekit).
+#
+# Prérequis : Docker + un domaine. En mode SFU local, ouvre aussi 7881/tcp & 7882/udp.
+name: webinti-selfhost
+
+services:
+  caddy:
+    build:
+      context: ..
+      dockerfile: selfhost/Dockerfile.web
+      args:
+        VITE_HOST_EMAIL: ${HOST_EMAIL}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN:-}
+    volumes:
+      # Caddyfile sélectionné par le .env (Caddyfile.cloud par défaut).
+      - ./${CADDYFILE:-Caddyfile.cloud}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [server, pocketbase]
+
+  server:
+    build:
+      context: ..
+      dockerfile: selfhost/Dockerfile.server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      # ── Kill-switch : active la vérification de licence ──
+      EDITION: selfhosted
+      LICENSE_KEY: ${LICENSE_KEY}
+      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL}
+      # ── App ──
+      CLIENT_ORIGIN: https://${DOMAIN}
+      HOST_EMAIL: ${HOST_EMAIL}
+      POCKETBASE_URL: http://pocketbase:8090
+      POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL}
+      POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD}
+      KANBAN_BACKEND: pocketbase
+      DM_BACKEND: pocketbase
+      WORKSTATION_BACKEND: pocketbase
+      # ── LiveKit : URL PUBLIQUE (le navigateur s'y connecte en direct) ──
+      #   Cloud → wss://<projet>.livekit.cloud   |   Local → wss://${LIVEKIT_DOMAIN}
+      LIVEKIT_URL: ${LIVEKIT_URL}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      # ── IA d'accueil (optionnel) ──
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://openrouter.ai/api/v1}
+      AI_MODEL: ${AI_MODEL:-openai/gpt-4o-mini}
+    depends_on: [pocketbase]
+
+  pocketbase:
+    # Version ÉPINGLÉE compatible avec le SDK pocketbase@0.21.5 (API admins).
+    # PocketBase v0.23+ a renommé admins → _superusers → incompatible avec ce SDK.
+    # Ne pas passer en :latest sans mettre à jour le SDK + l'auth admin du serveur.
+    image: ghcr.io/muchobien/pocketbase:0.22.21
+    restart: unless-stopped
+    volumes:
+      - pb_data:/pb_data
+    # Pas de port public : joignable uniquement via Caddy (/pb) et le server.
+
+  # SFU auto-hébergé — ne démarre QU'AVEC le profil `local-livekit`
+  # (COMPOSE_PROFILES=local-livekit dans .env). Sinon on utilise LiveKit Cloud.
+  livekit:
+    image: livekit/livekit-server:latest
+    profiles: ["local-livekit"]
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+    ports:
+      - "7881:7881"       # ICE/TCP (repli quand l'UDP est bloqué)
+      - "7882:7882/udp"   # ICE/UDP (chemin normal des flux temps réel)
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pb_data:

@@ -42,6 +42,11 @@ interface GameStore {
   // (salle pleine, démo expirée…). Affiché sur l'écran de join.
   joinError: string | null;
   setJoinError: (msg: string | null) => void;
+  // Blocage de licence (édition self-host uniquement) : quand la licence
+  // Webinti est expirée/absente ou plafonnée, le serveur refuse le join et
+  // le client bascule sur un écran plein dédié. Voir LicenseBlockedScreen.
+  licenseBlock: { code: string; message: string } | null;
+  setLicenseBlock: (block: { code: string; message: string } | null) => void;
   setConnected: (v: boolean) => void;
   setJoined: (v: boolean) => void;
   setLocalPlayerId: (id: string | null) => void;
@@ -206,6 +211,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   interactiveObjects: [],
   joinError: null,
   setJoinError: (msg) => set({ joinError: msg }),
+  licenseBlock: null,
+  setLicenseBlock: (block) => set({ licenseBlock: block }),
   setConnected: (v) => set({ connected: v }),
   setJoined: (v) => set({ joined: v }),
   setLocalPlayerId: (id) => set({ localPlayerId: id }),
@@ -569,6 +576,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       inputFocused: false,
       interactiveObjects: [],
       joinError: null,
+      licenseBlock: null,
       openWhiteboardId: null,
       openNoteId: null,
       openLinkId: null,

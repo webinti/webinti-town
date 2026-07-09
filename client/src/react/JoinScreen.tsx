@@ -8,10 +8,9 @@ import { DEFAULT_APPEARANCE } from '../types';
 import { AvatarPreview, AvatarControls, clampAppearance } from './avatar/AvatarCustomizer';
 // (abonnement géré dans le menu in-game « Mon compte », pas sur l'écran d'entrée)
 import { readLastPosition } from '../lastPosition';
+import { readRoomSlug } from '../room';
 
 const HOST_TOKEN_KEY = 'webinti-town:hostToken';
-const ROOM_SLUG_KEY = 'webinti-town:roomSlug';
-const ROOM_SLUG_RE = /^[a-z0-9-]{1,50}$/;
 
 // Message de retour de paiement Stripe, lu une seule fois au montage à partir de
 // l'URL (?checkout=success|cancel) puis nettoyé de l'URL.
@@ -49,24 +48,10 @@ function readHostToken(): string {
   }
 }
 
-function readRoomSlug(): string {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const fromUrl = params.get('room');
-    if (fromUrl && ROOM_SLUG_RE.test(fromUrl)) {
-      localStorage.setItem(ROOM_SLUG_KEY, fromUrl);
-      return fromUrl;
-    }
-    const stored = localStorage.getItem(ROOM_SLUG_KEY);
-    if (stored && ROOM_SLUG_RE.test(stored)) return stored;
-    return 'demo';
-  } catch {
-    return 'demo';
-  }
-}
-
-export function JoinScreen() {
+export function JoinScreen({ onRequestAuth }: { onRequestAuth?: () => void } = {}) {
   const user = useAuthStore((s) => s.user);
+  // App ne montre le JoinScreen sans compte que pour une room invité → !user = invité.
+  const isGuest = !user;
   const saveProfile = useAuthStore((s) => s.saveProfile);
   const logout = useAuthStore((s) => s.logout);
   const joinError = useGameStore((s) => s.joinError);
@@ -103,7 +88,8 @@ export function JoinScreen() {
     useGameStore.getState().setJoinError(null);
     // Persiste pseudo + avatar sur le compte EN ARRIÈRE-PLAN — ne doit jamais
     // bloquer l'entrée (un appel PocketBase lent ne doit pas figer « Rejoindre »).
-    void saveProfile(name, appearance).catch(() => {});
+    // Uniquement si connecté : un invité n'a pas de compte à mettre à jour.
+    if (user) void saveProfile(name, appearance).catch(() => {});
     useGameStore.getState().setName(name);
     useGameStore.getState().setAppearance(appearance);
     const hostToken = readHostToken();
@@ -129,15 +115,30 @@ export function JoinScreen() {
         >
           <div className="mb-1 flex items-start justify-between gap-3">
             <h1 className="text-3xl font-bold tracking-tight">Webinti Town</h1>
-            <button
-              type="button"
-              onClick={logout}
-              className="mt-1 shrink-0 text-xs text-slate-400 underline-offset-2 hover:text-slate-200 hover:underline"
-            >
-              Déconnexion
-            </button>
+            {isGuest ? (
+              onRequestAuth ? (
+                <button
+                  type="button"
+                  onClick={onRequestAuth}
+                  className="mt-1 shrink-0 text-xs text-indigo-300 underline-offset-2 hover:text-indigo-200 hover:underline"
+                >
+                  Créer un compte
+                </button>
+              ) : null
+            ) : (
+              <button
+                type="button"
+                onClick={logout}
+                className="mt-1 shrink-0 text-xs text-slate-400 underline-offset-2 hover:text-slate-200 hover:underline"
+              >
+                Déconnexion
+              </button>
+            )}
           </div>
           <p className="mb-3 text-sm text-slate-400">
+            {isGuest ? (
+              <span className="text-indigo-300">Mode invité — aucun compte requis. </span>
+            ) : null}
             Personnalisez votre avatar.
             {user?.email ? <span className="text-slate-500"> · {user.email}</span> : null}
           </p>

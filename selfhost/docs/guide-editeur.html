@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Webinti Town — Guide éditeur Self-Host (interne)</title>
+<style>
+  @page { size: A4; margin: 17mm 16mm 19mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system,"Segoe UI",Helvetica,Arial,sans-serif; color:#1e293b; font-size:10.5pt; line-height:1.55; margin:0; }
+  h1,h2,h3,h4 { color:#0f172a; line-height:1.25; }
+  h1 { font-size:21pt; margin:0 0 4px; }
+  h2 { font-size:15pt; margin:26px 0 10px; padding-bottom:6px; border-bottom:2.5px solid #0f766e; }
+  h3 { font-size:12pt; margin:20px 0 6px; color:#115e59; }
+  h4 { font-size:10.5pt; margin:14px 0 4px; }
+  p { margin:6px 0; }
+  ul,ol { margin:6px 0; padding-left:22px; }
+  li { margin:3px 0; }
+  code { font-family:"SF Mono",Menlo,Consolas,monospace; font-size:9pt; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:3px; padding:0.5px 4px; white-space:nowrap; }
+  pre { font-family:"SF Mono",Menlo,Consolas,monospace; font-size:8.6pt; line-height:1.5; background:#0f172a; color:#e2e8f0; border-radius:6px; padding:10px 12px; white-space:pre-wrap; word-break:break-all; page-break-inside:avoid; }
+  pre .c { color:#94a3b8; }
+  table { border-collapse:collapse; width:100%; margin:8px 0; font-size:9.5pt; page-break-inside:avoid; }
+  th,td { border:1px solid #cbd5e1; padding:5px 8px; text-align:left; vertical-align:top; }
+  th { background:#f0fdfa; color:#134e4a; font-weight:600; }
+  tr:nth-child(even) td { background:#f8fafc; }
+  .cover { height:250mm; display:flex; flex-direction:column; justify-content:center; page-break-after:always; text-align:center; }
+  .cover .logo { font-size:30pt; font-weight:800; color:#0f766e; letter-spacing:-1px; }
+  .cover .sub { font-size:15pt; color:#475569; margin-top:10px; }
+  .cover .meta { margin-top:40px; color:#64748b; font-size:10pt; }
+  .cover .badge { display:inline-block; margin:18px auto 0; background:#134e4a; color:#ccfbf1; border-radius:999px; padding:5px 18px; font-weight:700; font-size:10pt; letter-spacing:1px; }
+  .cover .live { margin:40px auto 0; max-width:140mm; text-align:left; }
+  .box { border-radius:6px; padding:9px 13px; margin:10px 0; page-break-inside:avoid; }
+  .box.info { background:#f0fdfa; border-left:4px solid #0f766e; }
+  .box.warn { background:#fffbeb; border-left:4px solid #f59e0b; }
+  .box.danger { background:#fef2f2; border-left:4px solid #dc2626; }
+  .box.ok { background:#f0fdf4; border-left:4px solid #16a34a; }
+  .box .t { font-weight:700; display:block; margin-bottom:2px; }
+  .step { display:flex; gap:10px; margin:14px 0 6px; align-items:baseline; page-break-after:avoid; }
+  .step .n { background:#0f766e; color:#fff; border-radius:999px; min-width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:10pt; flex:none; position:relative; top:4px; }
+  .step .txt { font-weight:700; font-size:11.5pt; color:#0f172a; }
+  .toc td { border:none; padding:3px 6px; }
+  .toc tr td { background:transparent !important; }
+  .toc .sec { font-weight:600; color:#134e4a; }
+  .small { font-size:9pt; color:#64748b; }
+  .diagram { font-family:"SF Mono",Menlo,monospace; font-size:8.4pt; line-height:1.45; background:#f8fafc; color:#334155; border:1px solid #e2e8f0; border-radius:6px; padding:10px 12px; white-space:pre; overflow:hidden; page-break-inside:avoid; }
+  .check li { list-style:none; margin:5px 0; }
+  .check li::before { content:"☐ "; color:#0f766e; font-size:11pt; }
+  .nobreak { page-break-inside:avoid; }
+  .pb { page-break-before:always; }
+  .pill { display:inline-block; background:#ccfbf1; color:#134e4a; border-radius:6px; padding:1px 7px; font-size:9pt; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- COUVERTURE -->
+<div class="cover">
+  <div class="logo">Webinti Town</div>
+  <div class="sub">Guide éditeur — Vente &amp; exploitation du Self-Host</div>
+  <div><span class="badge">DOCUMENT INTERNE — NE PAS DIFFUSER</span></div>
+  <div class="meta">
+    Version 1.1 · 2 juillet 2026<br>
+    Le guide destiné aux clients est un document séparé&nbsp;: «&nbsp;Webinti Town — Guide d'installation&nbsp;»
+  </div>
+  <div class="live">
+    <div class="box ok">
+      <span class="t">✅ Infrastructure en place</span>
+      Le serveur de licence, la console d'administration, le webhook Stripe et le tag du checkout
+      sont <strong>déployés et opérationnels</strong>. Ce guide décrit l'<strong>exploitation au
+      quotidien</strong> — vendre, livrer, gérer les licences — et non une installation à refaire.
+    </div>
+  </div>
+</div>
+
+<!-- SOMMAIRE -->
+<h2>Sommaire</h2>
+<table class="toc">
+  <tr><td class="sec">1. Comment marche le système</td><td>Modèle, kill-switch, chaîne complète</td></tr>
+  <tr><td class="sec">2. L'infrastructure en place</td><td>Référence de ce qui est déployé</td></tr>
+  <tr><td class="sec">3. Vendre &amp; livrer un client</td><td>De l'achat à la remise du bundle</td></tr>
+  <tr><td class="sec">4. La console d'administration</td><td>licences.webinti.com/admin</td></tr>
+  <tr><td class="sec">5. Cycle de vie des licences</td><td>Impayés, suspension, réactivation</td></tr>
+  <tr><td class="sec">6. Opérations serveur (VPS)</td><td>Redémarrer, logs, mettre à jour</td></tr>
+  <tr><td class="sec">7. Checklist par client</td><td></td></tr>
+  <tr><td class="sec">Annexes</td><td>API du serveur de licence, emplacements des fichiers</td></tr>
+</table>
+
+<!-- 1. COMMENT MARCHE -->
+<h2>1. Comment marche le système</h2>
+
+<p><strong>Le modèle commercial.</strong> L'auto-hébergement de Webinti Town est réservé à l'offre
+<strong>Enterprise (350&nbsp;€/mois)</strong>. Le client paie d'abord (Stripe, sur live.webinti.com),
+puis reçoit le bundle d'installation et une <strong>clé de licence</strong>. Stripe n'est jamais
+installé chez le client&nbsp;: il te sert uniquement à vendre.</p>
+
+<p><strong>Le kill-switch.</strong> L'instance du client appelle une fois par jour ton serveur de
+licence (<code>licences.webinti.com</code>). Si l'abonnement est actif, elle reçoit un
+<em>jeton signé</em> (Ed25519) valable 7&nbsp;jours et fonctionne normalement. S'il cesse de payer,
+les jetons ne sont plus émis et l'instance se dégrade <em>progressivement</em> (jamais brutalement,
+jamais destructivement), puis se réactive automatiquement dès la régularisation.</p>
+
+<div class="box info">
+  <span class="t">Trois garanties</span>
+  <ul style="margin:2px 0">
+    <li><strong>Un client qui paie n'est jamais coupé</strong> — même si ton serveur de licence tombe, le dernier jeton reste valable jusqu'à 7 jours.</li>
+    <li><strong>Les données du client ne sont jamais détruites</strong> — l'expiration bloque l'accès, elle n'efface rien.</li>
+    <li><strong>Un jeton ne peut pas être falsifié</strong> — seule ta clé privée (jamais livrée) peut en produire.</li>
+  </ul>
+</div>
+
+<div class="box warn">
+  <span class="t">Lucidité sur la protection</span>
+  Le code tourne chez le client&nbsp;: un développeur déterminé pourrait patcher la vérification.
+  La protection réelle = technique <strong>+ contrat Enterprise</strong>. Le mécanisme rend le
+  contournement délibéré et évident, donc juridiquement indéfendable — largement suffisant pour du
+  B2B à 350&nbsp;€/mois.
+</div>
+
+<h3>La chaîne complète (automatique)</h3>
+<div class="diagram">1. Client paie Enterprise sur live.webinti.com  (checkout tagué selfhost=true)
+2. Stripe  ─────── webhook ──────►  licences.webinti.com/v1/stripe/webhook
+3. Le serveur de licence CRÉE automatiquement la licence (clé générée, 100 users, active)
+4. Tu la vois dans la console  ─────►  licences.webinti.com/admin
+5. Tu livres au client : le bundle + sa clé de licence
+
+   Chez le client :  instance ── heartbeat 1×/j ──► licences.webinti.com ── jeton signé 7 j ──►
+   Impayé → Stripe le signale → licence 'canceled' → l'instance se dégrade toute seule.</div>
+
+<!-- 2. INFRA EN PLACE -->
+<h2>2. L'infrastructure en place</h2>
+<p>Tout ce qui suit est <strong>déjà déployé et testé</strong> (section de référence, rien à refaire) :</p>
+<table>
+  <tr><th style="width:34%">Composant</th><th>Détail</th></tr>
+  <tr><td><strong>Serveur de licence</strong></td><td><code>https://licences.webinti.com</code> — service systemd <code>webinti-license</code> sur le VPS, HTTPS auto (Let's Encrypt, renouvellement automatique).</td></tr>
+  <tr><td><strong>Console d'admin</strong></td><td><code>https://licences.webinti.com/admin</code> — voir §4.</td></tr>
+  <tr><td><strong>Clé de signature</strong></td><td>Paire Ed25519. Clé <strong>privée</strong> sur le VPS (<code>~/webinti-license/keys/</code>, jamais livrée) ; clé publique compilée dans le build client.</td></tr>
+  <tr><td><strong>Webhook Stripe (live)</strong></td><td>Endpoint dédié <code>we_1Toa7e…</code> → <code>/v1/stripe/webhook</code>, événements <code>checkout.session.completed</code> + <code>customer.subscription.updated/deleted</code>. Secret dans <code>license.env</code>.</td></tr>
+  <tr><td><strong>Checkout</strong></td><td>live.webinti.com tague les abonnements Enterprise avec <code>selfhost=true</code> → licence créée automatiquement à l'achat.</td></tr>
+</table>
+<div class="box info">
+  <span class="t">Filtre selfhost</span>
+  Le serveur de licence n'agit que sur les abonnements marqués <code>selfhost=true</code>. Tes autres
+  flux Stripe passent sans effet. <strong>Note</strong>&nbsp;: comme le checkout Enterprise est tagué,
+  <em>tout</em> abonné Enterprise obtient une licence — inoffensif (elle ne sert que s'il déploie le bundle).
+</div>
+
+<!-- 3. VENDRE & LIVRER -->
+<h2>3. Vendre &amp; livrer un client</h2>
+
+<div class="step"><span class="n">1</span><span class="txt">Le client souscrit → la licence se crée toute seule</span></div>
+<p>Dès le paiement Enterprise validé sur live.webinti.com, la licence apparaît dans la console
+(statut <code>active</code>, clé auto-générée, 100 utilisateurs).</p>
+
+<div class="step"><span class="n">2</span><span class="txt">Récupérer la clé dans la console</span></div>
+<p>Ouvre <code>https://licences.webinti.com/admin</code>, repère la ligne du client (par son email),
+copie sa clé <code>LIC-…</code>. <span class="small">(Besoin ponctuel de créer une licence à la main —
+vente hors Stripe, test, geste commercial&nbsp;? Le bouton «&nbsp;Créer&nbsp;» de la console le fait.)</span></p>
+
+<div class="step"><span class="n">3</span><span class="txt">Préparer le bundle de livraison</span></div>
+<table>
+  <tr><th style="width:50%">✅ À LIVRER</th><th>❌ À NE JAMAIS LIVRER</th></tr>
+  <tr>
+    <td>
+      <code>selfhost/</code> (compose, Dockerfiles, Caddyfiles, install.sh, README)<br>
+      <code>client/</code> et <code>server/</code> (le code, sans <code>node_modules</code>)<br>
+      <code>package.json</code>, <code>package-lock.json</code>, <code>.dockerignore</code><br>
+      <code>scripts/prepare-map.py</code> &amp; assets nécessaires au build
+    </td>
+    <td>
+      <code>license-server/</code> <strong>en entier</strong> (surtout <code>keys/</code>)<br>
+      <code>.env</code> de ta prod (secrets Stripe, IA, PocketBase)<br>
+      <code>landing/</code>, <code>deploy/</code> (ta prod SaaS)<br>
+      <code>.git/</code> (ton historique), <code>.remember/</code>, <code>.claude/</code>
+    </td>
+  </tr>
+</table>
+<p>Commande type pour produire l'archive&nbsp;:</p>
+<pre>git archive HEAD \
+  ':!license-server' ':!landing' ':!deploy' ':!docs' \
+  --format=tar.gz -o webinti-town-selfhost.tar.gz</pre>
+<div class="box ok">
+  <span class="t">Rappel rassurant</span>
+  Même si le client fouille le code livré, il n'y trouve que la clé <em>publique</em> de licence —
+  elle ne permet pas de fabriquer des jetons. Le contrat Enterprise fait le reste.
+</div>
+
+<div class="step"><span class="n">4</span><span class="txt">Envoyer au client</span></div>
+<ul>
+  <li>L'archive <code>webinti-town-selfhost.tar.gz</code></li>
+  <li>Sa clé de licence <code>LIC-…</code> (email pro acceptable)</li>
+  <li>Le <strong>guide client</strong> («&nbsp;Webinti Town — Guide d'installation&nbsp;», PDF séparé)</li>
+</ul>
+<div class="box warn">
+  <span class="t">Premier client = valider le bundle en conditions réelles</span>
+  Le bundle a été testé en local (build + démarrage). Le <strong>tout premier déploiement</strong> chez
+  un client (ou sur un VPS de test) est le bon moment pour confirmer HTTPS + audio/vidéo réels.
+  Prévois un créneau de support de 30–60&nbsp;min (surtout DNS et LiveKit).
+</div>
+
+<!-- 4. CONSOLE -->
+<h2>4. La console d'administration</h2>
+<p><strong>URL&nbsp;: <code>https://licences.webinti.com/admin</code></strong></p>
+<p><strong>Connexion&nbsp;:</strong> avec le <code>LICENSE_ADMIN_TOKEN</code> (ton mot de passe d'admin).
+Si tu ne l'as pas sous la main, récupère-le sur le VPS&nbsp;:</p>
+<pre>ssh openclaw@147.93.89.151 'grep LICENSE_ADMIN_TOKEN ~/webinti-license/license.env'</pre>
+<p class="small">Ne pas confondre avec la clé <code>private-key.pem</code> (qui signe les licences, jamais
+utilisée pour se connecter).</p>
+<h3>Ce que tu y fais</h3>
+<ul>
+  <li><span class="pill">Services</span> état en direct de <code>webinti-license</code>, <code>webinti-server</code>, <code>livekit-server</code>, <code>pocketbase</code> (pastille verte = actif).</li>
+  <li><span class="pill">Licences</span> tableau de toutes les licences (clé, client, plafond, statut, lien Stripe).</li>
+  <li><span class="pill">Créer</span> une licence manuellement (clé auto-générée ou saisie).</li>
+  <li><span class="pill">Éditer</span> client / nombre max d'utilisateurs.</li>
+  <li><span class="pill">Suspendre / Réactiver</span> en un clic.</li>
+  <li><span class="pill">Supprimer</span> une licence.</li>
+</ul>
+<p class="small">La console est le moyen principal de gestion. Les mêmes actions existent en API (annexe A)
+pour l'automatisation.</p>
+
+<!-- 5. CYCLE DE VIE -->
+<h2>5. Cycle de vie des licences</h2>
+<h3>Impayé — ce qui se passe automatiquement</h3>
+<p>Chronologie <em>pire cas</em> après l'échec de paiement (le client garde jusqu'à 7 jours de jeton
+déjà émis, puis les périodes de grâce s'enchaînent)&nbsp;:</p>
+<table>
+  <tr><th>Moment</th><th>État</th><th>Ce que vivent les utilisateurs du client</th></tr>
+  <tr><td>Échec de paiement (J0)</td><td><code>active</code></td><td>Rien — le dernier jeton (≤&nbsp;7&nbsp;j) reste valable.</td></tr>
+  <tr><td>Expiration du jeton (≤&nbsp;J+7)</td><td><code>grace</code> (3&nbsp;j)</td><td>Tout fonctionne normalement.</td></tr>
+  <tr><td>+3&nbsp;j après expiration</td><td><code>restricted</code></td><td>Maximum <strong>2 personnes</strong> connectées simultanément.</td></tr>
+  <tr><td>+7&nbsp;j après expiration (≤&nbsp;J+14)</td><td><code>expired</code></td><td>Écran «&nbsp;Accès suspendu&nbsp;» — aucune connexion, <strong>données intactes</strong>.</td></tr>
+  <tr><td>Régularisation</td><td><code>active</code></td><td>Retour automatique sous 24&nbsp;h (ou immédiat si le client redémarre son conteneur).</td></tr>
+</table>
+<h3>Suspension / réactivation manuelle</h3>
+<p>Depuis la <strong>console</strong> (§4)&nbsp;: boutons «&nbsp;Suspendre&nbsp;» / «&nbsp;Activer&nbsp;» sur la
+ligne de la licence (litige, geste commercial, fin de contrat…). L'instance du client se dégradera à
+l'expiration de son jeton, ou reviendra sous 24&nbsp;h après réactivation.</p>
+
+<!-- 6. OPÉRATIONS SERVEUR -->
+<h2>6. Opérations serveur (VPS)</h2>
+<p>Le serveur de licence vit dans <code>~/webinti-license/</code> sur le VPS
+(<code>openclaw@147.93.89.151</code>)&nbsp;: <code>server.mjs</code>, <code>admin.html</code>,
+<code>sign.mjs</code>, <code>stripe-verify.mjs</code>, <code>keys/private-key.pem</code>,
+<code>license.env</code> (secrets), <code>licenses.json</code> (registre — à inclure dans les sauvegardes).</p>
+<pre><span class="c"># État &amp; logs</span>
+sudo systemctl status webinti-license
+journalctl -u webinti-license -f
+
+<span class="c"># Redémarrer (sans mot de passe — règle NOPASSWD en place)</span>
+ssh openclaw@147.93.89.151 'sudo -n systemctl restart webinti-license'
+
+<span class="c"># Mettre à jour le code (ex. server.mjs / admin.html)</span>
+scp server.mjs admin.html openclaw@147.93.89.151:~/webinti-license/
+ssh openclaw@147.93.89.151 'sudo -n systemctl restart webinti-license'</pre>
+<p class="small">Le certificat TLS de <code>licences.webinti.com</code> se renouvelle automatiquement
+(certbot). Le registre des licences (<code>licenses.json</code>) et <code>license.env</code> (qui
+contient le secret webhook + le token admin) doivent figurer dans tes sauvegardes du VPS.</p>
+
+<!-- 7. CHECKLIST -->
+<h2>7. Checklist par client</h2>
+<div class="nobreak">
+<ul class="check">
+  <li>Paiement Enterprise self-host confirmé (ou licence créée à la main dans la console)</li>
+  <li>Clé <code>LIC-…</code> récupérée dans la console</li>
+  <li>Archive du bundle produite (sans <code>license-server/</code>, sans tes <code>.env</code>)</li>
+  <li>Bundle + clé + guide client envoyés</li>
+  <li>Créneau de support d'installation proposé</li>
+  <li>Après installation&nbsp;: le log du client affiche <code>licence: active</code> (et la console montre l'usage)</li>
+</ul>
+</div>
+
+<!-- ANNEXES -->
+<h2 class="pb">Annexe A — API du serveur de licence</h2>
+<p>La console couvre tout le quotidien ; l'API reste utile pour scripter.</p>
+<table>
+  <tr><th style="width:44%">Endpoint</th><th>Rôle</th></tr>
+  <tr><td><code>GET /health</code></td><td>Vérification de vie (public).</td></tr>
+  <tr><td><code>GET /admin</code></td><td>La console web (page HTML).</td></tr>
+  <tr><td><code>GET /admin/status</code> 🔒</td><td>État des services + nombre de licences.</td></tr>
+  <tr><td><code>GET /admin/licenses</code> 🔒</td><td>Liste toutes les licences et leur statut.</td></tr>
+  <tr><td><code>POST /admin/license</code> 🔒</td><td>Crée / modifie une licence (merge — ne perd pas les champs Stripe).</td></tr>
+  <tr><td><code>POST /admin/license/:clé/cancel</code> · <code>/activate</code> 🔒</td><td>Suspend / réactive.</td></tr>
+  <tr><td><code>DELETE /admin/license/:clé</code> 🔒</td><td>Supprime une licence.</td></tr>
+  <tr><td><code>POST /v1/activate</code></td><td>Appelé par les instances clientes (1×/jour) : renvoie un jeton signé 7&nbsp;j si actif.</td></tr>
+  <tr><td><code>POST /v1/stripe/webhook</code></td><td>Reçoit les événements Stripe (signature vérifiée) : crée/active/annule les licences <code>selfhost=true</code>.</td></tr>
+</table>
+<p class="small">🔒 = en-tête <code>authorization: Bearer &lt;LICENSE_ADMIN_TOKEN&gt;</code>.
+États d'une instance&nbsp;: <code>active</code> → <code>grace</code> (3&nbsp;j) → <code>restricted</code>
+(2 connexions) → <code>expired</code>.</p>
+
+<h2>Annexe B — Emplacements des fichiers</h2>
+<table>
+  <tr><th style="width:46%">Emplacement</th><th>Contenu</th></tr>
+  <tr><td>VPS <code>~/webinti-license/</code></td><td>Serveur de licence live (server.mjs, admin.html, sign.mjs, stripe-verify.mjs, keys/, license.env, licenses.json).</td></tr>
+  <tr><td>Repo <code>license-server/</code></td><td>Sources du serveur de licence (à ne jamais livrer au client).</td></tr>
+  <tr><td>Repo <code>server/src/license/</code></td><td>Module embarqué chez le client (vérif hors-ligne, machine à états, enforcement).</td></tr>
+  <tr><td>Repo <code>server/src/stripe/stripe.ts</code></td><td>Checkout SaaS — tague Enterprise <code>selfhost=true</code>.</td></tr>
+  <tr><td>Repo <code>selfhost/</code></td><td>Bundle livré au client (compose, Dockerfiles, Caddyfiles, install.sh).</td></tr>
+  <tr><td>Repo <code>scripts/license-keygen.mjs</code></td><td>Génération de la paire de clés (déjà faite — à ne relancer qu'en cas de rotation, ce qui invalide toutes les licences).</td></tr>
+  <tr><td>Repo <code>selfhost/docs/</code></td><td>Sources HTML des deux guides PDF (éditeur + client).</td></tr>
+</table>
+
+<p class="small" style="margin-top:26px;border-top:1px solid #e2e8f0;padding-top:8px">
+Webinti Town — Guide éditeur Self-Host v1.1 · 2 juillet 2026 · Document interne — ne pas diffuser</p>
+
+</body>
+</html>

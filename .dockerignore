@@ -1,0 +1,16 @@
+# Exclut du contexte de build Docker ce qui est lourd/inutile (les deps sont
+# réinstallées dans l'image ; les backups/artefacts locaux n'ont rien à y faire).
+**/node_modules
+**/dist.backup-*
+**/dist.bak-*
+server/dist
+client/dist
+.git
+.remember
+.claude
+*.log
+**/.DS_Store
+license-server/keys
+license-server/licenses.json
+server/data/*.json
+scratchpad

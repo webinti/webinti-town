@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Webinti — Admin Licences</title>
+<style>
+  :root {
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
+    --txt:#e2e8f0; --mut:#94a3b8; --accent:#6366f1; --accent2:#4f46e5;
+    --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--txt); font-size:14px; }
+  a { color:var(--accent); }
+  button { font:inherit; cursor:pointer; border:none; border-radius:8px; padding:8px 14px; font-weight:600; }
+  .btn { background:var(--accent2); color:#fff; }
+  .btn:hover { background:var(--accent); }
+  .btn.ghost { background:transparent; color:var(--mut); border:1px solid var(--line); }
+  .btn.ghost:hover { color:var(--txt); border-color:var(--mut); }
+  .btn.sm { padding:5px 10px; font-size:12.5px; }
+  .btn.danger { background:#7f1d1d; color:#fecaca; }
+  .btn.danger:hover { background:#991b1b; }
+  input, select { font:inherit; background:var(--panel2); border:1px solid var(--line); color:var(--txt);
+    border-radius:8px; padding:8px 10px; }
+  input::placeholder { color:#64748b; }
+
+  /* Login */
+  #login { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  #login .card { background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:32px; width:100%; max-width:400px; text-align:center; }
+  #login h1 { margin:0 0 4px; font-size:22px; }
+  #login p { color:var(--mut); margin:0 0 20px; font-size:13px; }
+  #login input { width:100%; margin-bottom:12px; }
+  #login button { width:100%; }
+  .err { color:#fca5a5; font-size:13px; min-height:18px; margin-top:8px; }
+
+  /* App */
+  #app { display:none; max-width:1080px; margin:0 auto; padding:24px 20px 60px; }
+  header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+  header h1 { font-size:20px; margin:0; }
+  header .sub { color:var(--mut); font-size:12.5px; }
+
+  .grid-svc { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:26px; }
+  .svc { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px;
+    display:flex; align-items:center; gap:12px; }
+  .dot { width:11px; height:11px; border-radius:50%; flex:none; background:var(--mut); }
+  .dot.active{ background:var(--green); box-shadow:0 0 10px -1px var(--green); }
+  .dot.failed,.dot.inactive{ background:var(--red); }
+  .dot.activating,.dot.unknown{ background:var(--amber); }
+  .svc .n { font-weight:600; font-size:13px; }
+  .svc .s { color:var(--mut); font-size:12px; }
+
+  .section { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-bottom:22px; }
+  .section h2 { font-size:15px; margin:0 0 14px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .row .f { display:flex; flex-direction:column; gap:4px; }
+  .row .f label { font-size:11.5px; color:var(--mut); }
+  .row .f input { width:170px; }
+  .row .f.key input { width:230px; }
+
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:left; padding:10px 10px; border-bottom:1px solid var(--line); font-size:13px; vertical-align:middle; }
+  th { color:var(--mut); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; }
+  td.key { font-family:"SF Mono",Menlo,monospace; font-size:12px; }
+  .badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:600; }
+  .badge.active { background:rgba(34,197,94,.15); color:#86efac; }
+  .badge.canceled { background:rgba(239,68,68,.15); color:#fca5a5; }
+  .muted { color:#64748b; }
+  .actions { display:flex; gap:6px; justify-content:flex-end; }
+  .empty { color:var(--mut); text-align:center; padding:28px; }
+
+  /* Modal */
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center; padding:20px; }
+  .modal-bg.open { display:flex; }
+  .modal { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; width:100%; max-width:380px; }
+  .modal h3 { margin:0 0 14px; font-size:16px; }
+  .modal .f { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+  .modal .f label { font-size:12px; color:var(--mut); }
+  .modal .f input { width:100%; }
+  .modal .foot { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel2);
+    border:1px solid var(--line); border-radius:10px; padding:10px 16px; font-size:13px; opacity:0;
+    transition:opacity .2s; pointer-events:none; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="card">
+    <h1>Webinti · Licences</h1>
+    <p>Console d'administration</p>
+    <input id="tokenInput" type="password" placeholder="Token d'administration" autocomplete="off">
+    <button class="btn" onclick="doLogin()">Se connecter</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div>
+      <h1>Webinti · Licences</h1>
+      <div class="sub" id="subline">—</div>
+    </div>
+    <button class="btn ghost sm" onclick="logout()">Déconnexion</button>
+  </header>
+
+  <div class="grid-svc" id="services"></div>
+
+  <div class="section">
+    <h2>Créer une licence</h2>
+    <div class="row">
+      <div class="f key"><label>Clé (vide = générée)</label><input id="nKey" placeholder="LIC-XXXXXXXX-YYYY"></div>
+      <div class="f"><label>Client</label><input id="nCustomer" placeholder="ACME Corp"></div>
+      <div class="f"><label>Max. utilisateurs</label><input id="nMax" type="number" value="100" min="1"></div>
+      <button class="btn" onclick="createLicense()">Créer</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Licences <span class="muted" id="licCount"></span></h2>
+    <table>
+      <thead><tr><th>Clé</th><th>Client</th><th>Max</th><th>Statut</th><th>Stripe</th><th></th></tr></thead>
+      <tbody id="licBody"></tbody>
+    </table>
+    <div class="empty" id="licEmpty" style="display:none">Aucune licence pour l'instant.</div>
+  </div>
+</div>
+
+<!-- MODAL ÉDITION -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <h3>Modifier la licence</h3>
+    <div class="f"><label>Clé</label><input id="eKey" disabled></div>
+    <div class="f"><label>Client</label><input id="eCustomer"></div>
+    <div class="f"><label>Max. utilisateurs</label><input id="eMax" type="number" min="1"></div>
+    <div class="foot">
+      <button class="btn ghost" onclick="closeEdit()">Annuler</button>
+      <button class="btn" onclick="saveEdit()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const TOKEN_KEY = 'wt_admin_token';
+let token = sessionStorage.getItem(TOKEN_KEY) || '';
+
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+function randHex(n){ let s=''; for(let i=0;i<n;i++) s+=Math.floor(Math.random()*16).toString(16); return s.toUpperCase(); }
+function genKey(){ return 'LIC-'+randHex(8)+'-'+randHex(4); }
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function api(method, path, body){
+  const res = await fetch(path, {
+    method,
+    headers: Object.assign({'authorization':'Bearer '+token}, body?{'content-type':'application/json'}:{}),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if(res.status===401){ logout(); throw new Error('non autorisé'); }
+  return res;
+}
+
+async function doLogin(){
+  const val = document.getElementById('tokenInput').value.trim();
+  const err = document.getElementById('loginErr');
+  if(!val){ err.textContent='Entre le token.'; return; }
+  token = val;
+  try {
+    const res = await fetch('/admin/status', {headers:{'authorization':'Bearer '+token}});
+    if(res.status===401){ err.textContent='Token incorrect.'; token=''; return; }
+    if(!res.ok) throw new Error();
+    sessionStorage.setItem(TOKEN_KEY, token);
+    showApp();
+  } catch(e){ err.textContent='Serveur injoignable.'; token=''; }
+}
+function logout(){ token=''; sessionStorage.removeItem(TOKEN_KEY);
+  document.getElementById('app').style.display='none';
+  document.getElementById('login').style.display='flex';
+  document.getElementById('tokenInput').value=''; }
+
+function showApp(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  refresh();
+}
+
+async function refresh(){ await Promise.all([loadStatus(), loadLicenses()]); }
+
+async function loadStatus(){
+  try {
+    const data = await (await api('GET','/admin/status')).json();
+    const box = document.getElementById('services');
+    box.innerHTML = data.services.map(s=>`
+      <div class="svc"><span class="dot ${esc(s.state)}"></span>
+        <div><div class="n">${esc(s.name)}</div><div class="s">${esc(s.state)}</div></div></div>`).join('');
+    const d = new Date(data.now);
+    document.getElementById('subline').textContent =
+      `${data.licenseCount} licence(s) · rafraîchi à ${d.toLocaleTimeString('fr-FR')}`;
+  } catch(e){}
+}
+
+async function loadLicenses(){
+  try {
+    const data = await (await api('GET','/admin/licenses')).json();
+    const entries = Object.entries(data.licenses||{});
+    const body = document.getElementById('licBody');
+    document.getElementById('licCount').textContent = `(${entries.length})`;
+    document.getElementById('licEmpty').style.display = entries.length?'none':'block';
+    body.innerHTML = entries.map(([key,l])=>`
+      <tr>
+        <td class="key">${esc(key)}</td>
+        <td>${esc(l.customer)||'<span class="muted">—</span>'}</td>
+        <td>${esc(l.maxUsers)}</td>
+        <td><span class="badge ${l.status==='active'?'active':'canceled'}">${esc(l.status)}</span></td>
+        <td>${l.stripeSubId?esc(l.stripeSubId):'<span class="muted">manuel</span>'}</td>
+        <td><div class="actions">
+          <button class="btn ghost sm" onclick='openEdit(${JSON.stringify(key)})'>Éditer</button>
+          <button class="btn ghost sm" onclick='toggleStatus(${JSON.stringify(key)}, ${JSON.stringify(l.status)})'>${l.status==='active'?'Suspendre':'Activer'}</button>
+          <button class="btn danger sm" onclick='delLicense(${JSON.stringify(key)})'>Suppr.</button>
+        </div></td>
+      </tr>`).join('');
+  } catch(e){}
+}
+
+async function createLicense(){
+  const key = document.getElementById('nKey').value.trim() || genKey();
+  const customer = document.getElementById('nCustomer').value.trim();
+  const maxUsers = parseInt(document.getElementById('nMax').value,10)||100;
+  await api('POST','/admin/license',{licenseKey:key, customer, maxUsers, status:'active'});
+  document.getElementById('nKey').value=''; document.getElementById('nCustomer').value=''; document.getElementById('nMax').value='100';
+  toast('Licence créée : '+key);
+  refresh();
+}
+
+async function toggleStatus(key, status){
+  const action = status==='active' ? 'cancel' : 'activate';
+  await api('POST','/admin/license/'+encodeURIComponent(key)+'/'+action);
+  toast(action==='cancel'?'Licence suspendue':'Licence réactivée');
+  refresh();
+}
+
+async function delLicense(key){
+  if(!confirm('Supprimer définitivement '+key+' ?\nL\'instance cliente perdra l\'accès à l\'expiration de son jeton.')) return;
+  await api('DELETE','/admin/license/'+encodeURIComponent(key));
+  toast('Licence supprimée');
+  refresh();
+}
+
+let editingKey=null;
+function openEdit(key){
+  const row = document.querySelectorAll('#licBody tr');
+  editingKey=key;
+  document.getElementById('eKey').value=key;
+  // récupère les valeurs actuelles depuis la table
+  api('GET','/admin/licenses').then(r=>r.json()).then(d=>{
+    const l=d.licenses[key]||{};
+    document.getElementById('eCustomer').value=l.customer||'';
+    document.getElementById('eMax').value=l.maxUsers||100;
+    document.getElementById('editModal').classList.add('open');
+  });
+}
+function closeEdit(){ document.getElementById('editModal').classList.remove('open'); editingKey=null; }
+async function saveEdit(){
+  if(!editingKey) return;
+  const customer=document.getElementById('eCustomer').value.trim();
+  const maxUsers=parseInt(document.getElementById('eMax').value,10)||100;
+  await api('POST','/admin/license',{licenseKey:editingKey, customer, maxUsers});
+  closeEdit(); toast('Licence modifiée'); refresh();
+}
+
+// Auto-refresh de l'état des services
+setInterval(()=>{ if(token && document.getElementById('app').style.display!=='none') loadStatus(); }, 20000);
+
+// Démarrage : si un token est en session, tente d'ouvrir l'app directement.
+if(token){ showApp(); }
+document.getElementById('tokenInput').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>

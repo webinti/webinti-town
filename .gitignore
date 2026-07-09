@@ -31,3 +31,9 @@ client/public/maps/Tv_Studio_Design_preview_32x32.tsx
 # Caches de build / réglages locaux (régénérés, ne pas versionner — cassaient les déploiements)
 client/tsconfig.tsbuildinfo
 .claude/settings.local.json
+
+# Système de licence self-host — SECRETS, ne JAMAIS committer :
+#   • keys/private-key.pem : signe les jetons ; qui l'a peut fabriquer des licences
+#   • licenses.json        : registre des clients/abonnements
+license-server/keys/
+license-server/licenses.json

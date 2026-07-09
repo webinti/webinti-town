@@ -1,0 +1,28 @@
+# Caddy — mode LiveKit AUTO-HÉBERGÉ (SFU dans le bundle).
+# À utiliser avec le profil compose `local-livekit` (voir .env).
+# HTTPS automatique pour les DEUX domaines : l'app + le SFU LiveKit.
+
+{$DOMAIN} {
+	encode gzip
+
+	@app path /api/* /socket.io/*
+	handle @app {
+		reverse_proxy server:3001
+	}
+
+	handle_path /pb/* {
+		reverse_proxy pocketbase:8090
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Terminaison TLS pour le SFU auto-hébergé : le navigateur se connecte en
+# wss://LIVEKIT_DOMAIN, Caddy proxifie vers le container livekit (upgrade WS auto).
+{$LIVEKIT_DOMAIN} {
+	reverse_proxy livekit:7880
+}

@@ -1,0 +1,20 @@
+# Caddyfile de TEST LOCAL uniquement — HTTP simple sur :80, aucun certificat
+# (pas d'accès public, donc pas d'ACME). Ne pas utiliser en production.
+:80 {
+	encode gzip
+
+	@app path /api/* /socket.io/*
+	handle @app {
+		reverse_proxy server:3001
+	}
+
+	handle_path /pb/* {
+		reverse_proxy pocketbase:8090
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

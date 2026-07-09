@@ -180,9 +180,15 @@ class SocketManager {
       },
     );
 
-    socket.on('join_error', (e: { message?: string }) => {
+    socket.on('join_error', (e: { code?: string; message?: string }) => {
       const message = e?.message ?? 'Impossible de rejoindre la salle.';
-      console.error('[join_error]', message);
+      console.error('[join_error]', e?.code ?? '', message);
+      // Édition self-host : un refus de licence bascule sur un écran plein dédié
+      // (et non une simple erreur sur l'écran de join).
+      if (e?.code === 'license_expired' || e?.code === 'license_capacity') {
+        useGameStore.getState().setLicenseBlock({ code: e.code, message });
+        return;
+      }
       // Remonte l'erreur à l'UI (affichée sur l'écran de join).
       useGameStore.getState().setJoinError(message);
     });

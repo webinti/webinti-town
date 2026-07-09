@@ -16,6 +16,10 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY ?? '';
 export const config = {
   port: Number(process.env.PORT ?? 3001),
   clientOrigin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
+  // Édition d'exécution. 'saas' = l'instance hébergée par Webinti (aucune
+  // licence à vérifier). 'selfhosted' = instance chez un client Enterprise :
+  // l'enforcement de licence (kill-switch) est actif. Voir server/src/license.
+  edition: (process.env.EDITION ?? 'saas') as 'saas' | 'selfhosted',
   tickRateHz: 20,
   proximityRateHz: 4,
   proximityRadiusPx: 5 * 32,

@@ -1,0 +1,57 @@
+# ⚠️ TEST LOCAL UNIQUEMENT — valide que le bundle build/démarre/sert sur cette
+# machine. Pas de HTTPS (Caddy en :80), LiveKit factice, license-server lancé sur
+# l'hôte. NE PAS livrer / NE PAS utiliser en production (voir docker-compose.yml).
+#
+#   docker compose -f selfhost/docker-compose.local-test.yml up -d --build
+#
+# Les chemins relatifs sont résolus depuis selfhost/ (dossier du fichier compose).
+name: webinti-selfhost-test
+
+services:
+  caddy:
+    build:
+      context: ..
+      dockerfile: selfhost/Dockerfile.web
+      args:
+        VITE_HOST_EMAIL: admin@localtest.dev
+    ports:
+      - "8080:80"
+    volumes:
+      - ./Caddyfile.localtest:/etc/caddy/Caddyfile:ro
+    depends_on: [server, pocketbase]
+
+  server:
+    build:
+      context: ..
+      dockerfile: selfhost/Dockerfile.server
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      # Kill-switch actif. Par défaut : license-server local (host:8790).
+      # Surcharge possible pour taper le VRAI serveur, ex. :
+      #   LICENSE_SERVER_URL=https://licences.webinti.com LICENSE_KEY=LIC-DEMO docker compose ... up
+      EDITION: selfhosted
+      LICENSE_KEY: ${LICENSE_KEY:-LIC-LOCALTEST-0001}
+      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL:-http://host.docker.internal:8790}
+      CLIENT_ORIGIN: http://localhost:8080
+      HOST_EMAIL: admin@localtest.dev
+      POCKETBASE_URL: http://pocketbase:8090
+      POCKETBASE_ADMIN_EMAIL: admin@localtest.dev
+      POCKETBASE_ADMIN_PASSWORD: localtestpass123
+      # LiveKit factice (non requis pour le test build/boot/serve)
+      LIVEKIT_URL: ws://localhost:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: devsecret
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on: [pocketbase]
+
+  pocketbase:
+    # Version ÉPINGLÉE compatible avec le SDK pocketbase@0.21.5 (API admins).
+    # PocketBase v0.23+ a renommé admins → _superusers → incompatible avec ce SDK.
+    image: ghcr.io/muchobien/pocketbase:0.22.21
+    volumes:
+      - pb_data_test:/pb_data
+
+volumes:
+  pb_data_test:

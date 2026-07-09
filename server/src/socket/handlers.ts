@@ -7,6 +7,7 @@ import { verifyUserToken, getAccountFromToken } from '../pocketbase/client.js';
 import { computeProximity } from './proximity.js';
 import { saveBest } from '../race/leaderboardStore.js';
 import { CIRCUIT_ID } from '../circuit.js';
+import { getLicenseStatus, effectiveCapacity } from '../license/index.js';
 import type {
   Appearance,
   ChatAttachment,
@@ -301,19 +302,42 @@ export function registerSocketHandlers(io: Server): void {
           return;
         }
       }
-      // Propriété + capacité (rooms non-demo) : le 1er compte authentifié qui
-      // crée la room en devient propriétaire et fixe la capacité selon son plan.
-      if (!room.isDemo && room.ownerEmail === null && account) {
-        room.ownerEmail = account.email;
-        room.capacity = config.planCapacity[account.plan] ?? config.planCapacity.free;
-      }
-      // Contrôle d'accès — refuser AVANT d'ajouter le joueur.
-      if (room.isDemo && room.expiresAt && Date.now() > room.expiresAt) {
-        socket.emit('join_error', { message: 'Cette démo a expiré. Contactez-nous pour continuer.' });
-        return;
-      } else if (room.players.size >= room.capacity) {
-        socket.emit('join_error', { message: `Cette salle est pleine (${room.capacity} personnes max).` });
-        return;
+      // Capacité & contrôle d'accès — deux régimes selon l'édition.
+      if (config.edition === 'selfhosted') {
+        // Self-host mono-tenant : la LICENCE Webinti est la SEULE autorité de
+        // capacité (pas de plans SaaS, pas de rooms démo à durée limitée).
+        // Expirée/absente ⇒ aucune connexion ; 'restricted' ⇒ capacité réduite.
+        const lic = getLicenseStatus();
+        const licCap = effectiveCapacity(room.capacity, lic);
+        if (licCap <= 0) {
+          socket.emit('join_error', {
+            code: 'license_expired',
+            message: 'Licence Webinti expirée ou absente. Contactez votre administrateur.',
+          });
+          return;
+        }
+        if (room.players.size >= licCap) {
+          socket.emit('join_error', {
+            code: 'license_capacity',
+            message: 'Capacité limitée par la licence Webinti. Contactez votre administrateur.',
+          });
+          return;
+        }
+      } else {
+        // SaaS multi-tenant : le 1er compte authentifié qui crée une room non-demo
+        // en devient propriétaire et fixe la capacité selon son plan ; les rooms
+        // démo dédiées expirent (anti-abus).
+        if (!room.isDemo && room.ownerEmail === null && account) {
+          room.ownerEmail = account.email;
+          room.capacity = config.planCapacity[account.plan] ?? config.planCapacity.free;
+        }
+        if (room.isDemo && room.expiresAt && Date.now() > room.expiresAt) {
+          socket.emit('join_error', { message: 'Cette démo a expiré. Contactez-nous pour continuer.' });
+          return;
+        } else if (room.players.size >= room.capacity) {
+          socket.emit('join_error', { message: `Cette salle est pleine (${room.capacity} personnes max).` });
+          return;
+        }
       }
       const existing = sessions.get(socket.id);
       if (existing) {

@@ -66,9 +66,12 @@ export function AvatarEditModal({ onClose }: { onClose: () => void }) {
 
         <AvatarControls appearance={appearance} onChange={setAppearance} />
 
-        <div className="mt-5 border-t border-white/10 pt-4">
-          <SubscriptionSection />
-        </div>
+        {/* Vente d'abonnements : masquée en édition self-host (Webinti vend en amont). */}
+        {import.meta.env.VITE_EDITION !== 'selfhosted' && (
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <SubscriptionSection />
+          </div>
+        )}
 
         <div className="mt-5 flex gap-2">
           <button

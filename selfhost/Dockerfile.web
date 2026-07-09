@@ -1,0 +1,26 @@
+# Client statique (Vite/Phaser) servi par Caddy avec HTTPS automatique.
+# Build multi-stage : on compile le client puis on copie le dist dans Caddy.
+
+# ---- build du client ----
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY client/package.json client/package.json
+COPY server/package.json server/package.json
+RUN npm ci
+COPY . .
+# Config d'exécution du client, injectée à la compilation Vite :
+#   • PocketBase est proxifié par Caddy sous /pb (même origine) ;
+#   • l'API/websockets sont en même origine (VITE_SERVER_URL vide) ;
+#   • l'email hôte permet au client d'afficher l'UI d'administration.
+ARG VITE_HOST_EMAIL=""
+ENV VITE_POCKETBASE_URL=/pb
+ENV VITE_HOST_EMAIL=${VITE_HOST_EMAIL}
+# Édition self-host : masque l'UI de vente d'abonnements côté client.
+ENV VITE_EDITION=selfhosted
+RUN npm run build --workspace=client
+
+# ---- image Caddy ----
+FROM caddy:2-alpine
+COPY --from=build /app/client/dist /srv
+# Le Caddyfile est MONTÉ par docker-compose (cloud ou local), pas copié ici.

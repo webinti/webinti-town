@@ -1,0 +1,11 @@
+# Configuration LiveKit (SFU) pour le self-host.
+# Les clés API sont fournies par l'environnement (LIVEKIT_KEYS dans compose),
+# donc rien de secret ici.
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  # Sur un VPS, LiveKit doit annoncer l'IP publique aux navigateurs.
+  use_external_ip: true
+logging:
+  level: info

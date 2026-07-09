@@ -1,0 +1,26 @@
+# Caddy — mode LiveKit Cloud (PAR DÉFAUT, le plus simple).
+# HTTPS automatique (Let's Encrypt) pour le domaine de l'application.
+# L'audio/vidéo va directement du navigateur vers LiveKit Cloud (wss://…livekit.cloud) :
+# aucun proxy LiveKit ici, un seul domaine à gérer.
+
+{$DOMAIN} {
+	encode gzip
+
+	# API REST + websockets Socket.IO → serveur de jeu Node
+	@app path /api/* /socket.io/*
+	handle @app {
+		reverse_proxy server:3001
+	}
+
+	# PocketBase (auth / base / fichiers) sous /pb (préfixe retiré)
+	handle_path /pb/* {
+		reverse_proxy pocketbase:8090
+	}
+
+	# Client statique (SPA)
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Webinti Town — Guide d'installation</title>
+<style>
+  @page { size: A4; margin: 17mm 16mm 19mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #1e293b; font-size: 10.5pt; line-height: 1.55; margin: 0;
+  }
+  h1, h2, h3, h4 { color: #0f172a; line-height: 1.25; }
+  h1 { font-size: 21pt; margin: 0 0 4px; }
+  h2 {
+    font-size: 15pt; margin: 26px 0 10px; padding-bottom: 6px;
+    border-bottom: 2.5px solid #4f46e5;
+  }
+  h3 { font-size: 12pt; margin: 20px 0 6px; color: #3730a3; }
+  h4 { font-size: 10.5pt; margin: 14px 0 4px; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 9pt;
+    background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 3px; padding: 0.5px 4px;
+    white-space: nowrap;
+  }
+  pre {
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 8.6pt; line-height: 1.5;
+    background: #0f172a; color: #e2e8f0; border-radius: 6px; padding: 10px 12px;
+    overflow-x: hidden; white-space: pre-wrap; word-break: break-all;
+    page-break-inside: avoid;
+  }
+  pre .c { color: #94a3b8; }
+  table {
+    border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+  th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #eef2ff; color: #312e81; font-weight: 600; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .cover {
+    height: 250mm; display: flex; flex-direction: column; justify-content: center;
+    page-break-after: always; text-align: center;
+  }
+  .cover .logo { font-size: 30pt; font-weight: 800; color: #4f46e5; letter-spacing: -1px; }
+  .cover .sub { font-size: 15pt; color: #475569; margin-top: 10px; }
+  .cover .meta { margin-top: 40px; color: #64748b; font-size: 10pt; }
+  .box {
+    border-radius: 6px; padding: 9px 13px; margin: 10px 0; page-break-inside: avoid;
+  }
+  .box.info    { background: #eef2ff; border-left: 4px solid #4f46e5; }
+  .box.warn    { background: #fffbeb; border-left: 4px solid #f59e0b; }
+  .box.ok      { background: #f0fdf4; border-left: 4px solid #16a34a; }
+  .box .t { font-weight: 700; display: block; margin-bottom: 2px; }
+  .step {
+    display: flex; gap: 10px; margin: 14px 0 6px; align-items: baseline;
+    page-break-after: avoid;
+  }
+  .step .n {
+    background: #4f46e5; color: #fff; border-radius: 999px; min-width: 22px; height: 22px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 10pt; flex: none; position: relative; top: 4px;
+  }
+  .step .txt { font-weight: 700; font-size: 11.5pt; color: #0f172a; }
+  .toc td { border: none; padding: 3px 6px; }
+  .toc tr td { background: transparent !important; }
+  .toc .sec { font-weight: 600; color: #312e81; }
+  .small { font-size: 9pt; color: #64748b; }
+  .diagram {
+    font-family: "SF Mono", Menlo, monospace; font-size: 8.4pt; line-height: 1.45;
+    background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; border-radius: 6px;
+    padding: 10px 12px; white-space: pre; overflow: hidden; page-break-inside: avoid;
+  }
+  .check li { list-style: none; margin: 5px 0; }
+  .check li::before { content: "☐ "; color: #4f46e5; font-size: 11pt; }
+  .nobreak { page-break-inside: avoid; }
+  .pb { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ COUVERTURE ═══════════ -->
+<div class="cover">
+  <div class="logo">Webinti Town</div>
+  <div class="sub">Guide d'installation sur votre serveur</div>
+  <div class="meta">
+    Édition Enterprise · Version 1.0 · Juillet 2026<br>
+    Temps d'installation estimé&nbsp;: 30 à 45 minutes
+  </div>
+</div>
+
+<!-- ═══════════ SOMMAIRE ═══════════ -->
+<h2>Sommaire</h2>
+<table class="toc">
+  <tr><td class="sec">1. Avant de commencer</td><td>Ce que vous installez, prérequis</td></tr>
+  <tr><td class="sec">2. Choisir le mode audio/vidéo</td><td>LiveKit Cloud (recommandé) ou auto-hébergé</td></tr>
+  <tr><td class="sec">3. Installation express (recommandée)</td><td>L'installateur guidé <code>./install.sh</code></td></tr>
+  <tr><td class="sec">4. Installation manuelle</td><td>Pour tout contrôler soi-même</td></tr>
+  <tr><td class="sec">5. Premier démarrage</td><td>Compte admin, initialisation, compte hôte</td></tr>
+  <tr><td class="sec">6. Vérifier que tout fonctionne</td><td></td></tr>
+  <tr><td class="sec">7. Mises à jour &amp; sauvegardes</td><td></td></tr>
+  <tr><td class="sec">8. Dépannage</td><td>Les problèmes courants et leurs solutions</td></tr>
+  <tr><td class="sec">9. Votre licence</td><td>Comment elle fonctionne, ce qu'elle garantit</td></tr>
+  <tr><td class="sec">10. Checklist récapitulative</td><td></td></tr>
+  <tr><td class="sec">Annexes</td><td>Variables de configuration, commandes utiles</td></tr>
+</table>
+
+<!-- ═══════════ 1. AVANT DE COMMENCER ═══════════ -->
+<h2>1. Avant de commencer</h2>
+
+<p><strong>Bienvenue&nbsp;!</strong> Ce guide vous accompagne pas à pas pour installer
+<strong>Webinti Town</strong> — votre bureau virtuel — sur votre propre serveur. Aucune
+compétence de développement n'est requise&nbsp;: uniquement un accès administrateur à un
+serveur Linux et à votre zone DNS. L'essentiel du temps d'installation est de l'attente
+(DNS, compilation, certificats).</p>
+
+<h3>Ce que vous installez</h3>
+<p>Le bundle déploie automatiquement quatre services sur votre serveur, orchestrés par
+Docker&nbsp;:</p>
+<div class="diagram">                    ┌────────────── Caddy (HTTPS automatique) ─────────────┐
+   navigateur ─────►│   /               → l'application (le bureau virtuel) │
+                    │   /api /socket.io → serveur de jeu temps réel          │
+                    │   /pb             → base de données et comptes         │
+                    └────────────────────────────────────────────────────────┘
+   navigateur ────── audio/vidéo ──────────► LiveKit (voir section 2)</div>
+<p class="small">Le HTTPS est entièrement automatique&nbsp;: les certificats sont obtenus et
+renouvelés sans aucune intervention de votre part.</p>
+
+<h3>Prérequis</h3>
+<table>
+  <tr><th style="width:32%">Élément</th><th>Détail</th></tr>
+  <tr>
+    <td><strong>Un serveur (VPS)</strong></td>
+    <td>Linux (Ubuntu 22.04+ ou Debian 12 recommandé), <strong>2 vCPU / 4 Go RAM / 40 Go disque</strong>
+    minimum, avec une adresse IP publique. Chez n'importe quel hébergeur (OVH, Hetzner, Scaleway…).</td>
+  </tr>
+  <tr>
+    <td><strong>Docker + Docker Compose</strong></td>
+    <td>Installés sur le serveur&nbsp;: <code>curl -fsSL https://get.docker.com | sh</code>
+    (le plugin compose est inclus).</td>
+  </tr>
+  <tr>
+    <td><strong>Un nom de domaine</strong></td>
+    <td>Un sous-domaine dédié, ex. <code>town.votre-entreprise.com</code>, avec un enregistrement
+    <strong>DNS A</strong> pointant vers l'IP du serveur. <em>Obligatoire</em>&nbsp;: sans HTTPS,
+    les navigateurs bloquent caméra et micro.</td>
+  </tr>
+  <tr>
+    <td><strong>Ports ouverts</strong></td>
+    <td><code>80/tcp</code> et <code>443/tcp</code> (pare-feu du serveur <em>et</em> de l'hébergeur).</td>
+  </tr>
+  <tr>
+    <td><strong>Compte LiveKit Cloud</strong></td>
+    <td>Gratuit, pour l'audio/vidéo (mode recommandé, voir section 2)&nbsp;:
+    <code>https://cloud.livekit.io</code>.</td>
+  </tr>
+  <tr>
+    <td><strong>Votre clé de licence</strong></td>
+    <td>Fournie avec votre abonnement Enterprise (format <code>LIC-XXXX-YYYY</code>).
+    Si vous ne l'avez pas reçue, contactez Webinti.</td>
+  </tr>
+</table>
+
+<!-- ═══════════ 2. MODE A/V ═══════════ -->
+<h2>2. Choisir le mode audio/vidéo</h2>
+<p>Les conversations audio/vidéo de proximité passent par un serveur média (LiveKit).
+Deux options&nbsp;:</p>
+<table>
+  <tr><th></th><th style="width:38%">Mode 1 — LiveKit Cloud <em>(recommandé)</em></th><th>Mode 2 — Auto-hébergé <em>(avancé)</em></th></tr>
+  <tr><td><strong>Principe</strong></td><td>L'audio/vidéo transite par le cloud LiveKit. Toutes les autres données (comptes, messages, documents) restent sur votre serveur.</td><td>Tout reste sur votre serveur, y compris les flux audio/vidéo.</td></tr>
+  <tr><td><strong>À faire</strong></td><td>Créer un projet sur cloud.livekit.io, copier 3 valeurs.</td><td>2ᵉ sous-domaine + DNS, ouvrir <code>7881/tcp</code> &amp; <code>7882/udp</code>, exploiter le serveur média.</td></tr>
+  <tr><td><strong>Coût</strong></td><td>Gratuit jusqu'à un usage soutenu, puis à l'usage.</td><td>Inclus dans votre serveur (prévoir plus de CPU et de bande passante).</td></tr>
+  <tr><td><strong>Choisissez-le si</strong></td><td>Vous voulez la simplicité (99&nbsp;% des cas).</td><td>Votre politique interne exige que rien ne sorte de votre infrastructure.</td></tr>
+</table>
+<div class="box info">
+  <span class="t">Mode 1 — préparer LiveKit Cloud (2 minutes)</span>
+  Créez un compte sur <code>https://cloud.livekit.io</code> → nouveau projet → dans
+  <em>Settings → Keys</em>, notez&nbsp;: l'URL du projet (<code>wss://votre-projet.livekit.cloud</code>),
+  l'<em>API Key</em> et l'<em>API Secret</em>. L'installateur vous les demandera.
+</div>
+
+<!-- ═══════════ 3. INSTALLATION EXPRESS ═══════════ -->
+<h2>3. Installation express (recommandée)</h2>
+
+<div class="step"><span class="n">1</span><span class="txt">Transférer et extraire le bundle sur le serveur</span></div>
+<pre>scp webinti-town-selfhost.tar.gz votre-user@IP-DU-SERVEUR:~
+ssh votre-user@IP-DU-SERVEUR
+mkdir webinti-town &amp;&amp; tar xzf webinti-town-selfhost.tar.gz -C webinti-town
+cd webinti-town/selfhost</pre>
+
+<div class="step"><span class="n">2</span><span class="txt">Lancer l'installateur guidé</span></div>
+<pre>./install.sh</pre>
+<p>Il vérifie Docker, puis vous demande dans l'ordre&nbsp;:</p>
+<table>
+  <tr><th>Question</th><th>Quoi répondre</th></tr>
+  <tr><td>Domaine de l'application</td><td>Votre sous-domaine, ex. <code>town.votre-entreprise.com</code> (le DNS doit déjà pointer sur ce serveur).</td></tr>
+  <tr><td>Email du compte administrateur</td><td>L'email de la personne qui administrera l'espace (outils d'administration en jeu).</td></tr>
+  <tr><td>Clé de licence Webinti</td><td>Votre <code>LIC-XXXX-YYYY</code>.</td></tr>
+  <tr><td>URL du serveur de licence</td><td>Laisser la valeur par défaut proposée.</td></tr>
+  <tr><td>Mode audio/vidéo (1/2)</td><td><code>1</code> = LiveKit Cloud (recommandé). Il demande alors l'URL <code>wss://…</code>, l'API Key et le Secret notés en section 2.</td></tr>
+  <tr><td>Lancer maintenant&nbsp;?</td><td><code>o</code> — l'installateur exécute <code>docker compose up -d --build</code>.</td></tr>
+</table>
+<p class="small">Le mot de passe administrateur de la base de données est généré automatiquement
+et écrit dans le fichier <code>.env</code> — vous en aurez besoin à la section 5.</p>
+<p>Le premier lancement compile l'application&nbsp;: <strong>5 à 10 minutes</strong> selon le
+serveur. Les certificats HTTPS sont obtenus automatiquement (rien à faire).</p>
+
+<!-- ═══════════ 4. INSTALLATION MANUELLE ═══════════ -->
+<h2>4. Installation manuelle (alternative)</h2>
+<p>Si vous préférez tout contrôler&nbsp;:</p>
+<pre>cd webinti-town/selfhost
+cp .env.example .env
+nano .env        <span class="c"># remplir selon le tableau de l'annexe A</span>
+docker compose up -d --build</pre>
+<p>Pour le mode audio/vidéo auto-hébergé (mode 2)&nbsp;: décommentez le bloc
+«&nbsp;SFU LOCAL&nbsp;» du <code>.env</code> (il active <code>CADDYFILE=Caddyfile.local</code>
+et <code>COMPOSE_PROFILES=local-livekit</code>), créez le 2ᵉ DNS A et ouvrez
+<code>7881/tcp</code> &amp; <code>7882/udp</code>.</p>
+
+<!-- ═══════════ 5. PREMIER DÉMARRAGE ═══════════ -->
+<h2>5. Premier démarrage (une seule fois)</h2>
+
+<div class="step"><span class="n">1</span><span class="txt">Créer le compte administrateur de la base de données</span></div>
+<p>Ouvrez <code>https://VOTRE-DOMAINE/pb/_/</code> — l'interface vous propose de créer le
+premier compte administrateur. Utilisez l'email et le mot de passe présents dans votre
+<code>.env</code> (lignes <code>POCKETBASE_ADMIN_EMAIL</code> /
+<code>POCKETBASE_ADMIN_PASSWORD</code>).</p>
+
+<div class="step"><span class="n">2</span><span class="txt">Initialiser les données de l'application</span></div>
+<pre>docker compose exec server node dist/pocketbase/migrate.js</pre>
+<p class="small">Crée les structures nécessaires (utilisateurs, kanban, messages, postes de
+travail). À ne faire qu'une fois.</p>
+
+<div class="step"><span class="n">3</span><span class="txt">Redémarrer le serveur</span></div>
+<pre>docker compose restart server</pre>
+<p class="small">Permet au serveur de finaliser ses collections avec le compte
+administrateur que vous venez de créer. Avant ce redémarrage, les journaux
+peuvent afficher des avertissements d'authentification&nbsp;— c'est normal et sans
+conséquence.</p>
+
+<div class="step"><span class="n">4</span><span class="txt">Créer votre compte «&nbsp;hôte&nbsp;» dans l'application</span></div>
+<p>Ouvrez <code>https://VOTRE-DOMAINE</code>, créez un compte avec <strong>exactement l'email
+administrateur</strong> déclaré à l'installation. Ce compte devient l'hôte&nbsp;: il dispose
+des outils d'administration en jeu. Tous vos collaborateurs peuvent ensuite créer leur
+compte librement.</p>
+
+<!-- ═══════════ 6. VÉRIFIER ═══════════ -->
+<h2>6. Vérifier que tout fonctionne</h2>
+<pre>docker compose ps                    <span class="c"># tous les services « running »</span>
+docker compose logs server | tail    <span class="c"># doit afficher : licence: active</span></pre>
+<ul>
+  <li><strong>HTTPS</strong>&nbsp;: <code>https://VOTRE-DOMAINE</code> s'ouvre avec un cadenas valide.</li>
+  <li><strong>Licence</strong>&nbsp;: le journal ci-dessus affiche <code>licence: active</code>.</li>
+  <li><strong>Audio/vidéo</strong>&nbsp;: connectez-vous à deux (deux navigateurs), rapprochez
+  vos avatars&nbsp;: la conversation audio/vidéo doit s'établir. Testez aussi le partage d'écran.</li>
+</ul>
+<div class="box ok">
+  <span class="t">✅ C'est terminé</span>
+  Votre espace est en production. Partagez simplement l'adresse
+  <code>https://VOTRE-DOMAINE</code> à vos équipes.
+</div>
+
+<!-- ═══════════ 7. MAJ & SAUVEGARDES ═══════════ -->
+<h2>7. Mises à jour &amp; sauvegardes</h2>
+<h3>Mettre à jour (quand Webinti livre une nouvelle version)</h3>
+<pre>cd webinti-town/selfhost
+docker compose pull              <span class="c"># composants tiers</span>
+docker compose up -d --build     <span class="c"># reconstruit l'application</span></pre>
+<h3>Sauvegarder (recommandé&nbsp;: quotidien)</h3>
+<p>Toutes vos données vivent dans un volume Docker&nbsp;:</p>
+<pre>docker run --rm -v webinti-selfhost_pb_data:/data -v $(pwd)/backups:/backup \
+  alpine tar czf /backup/pocketbase-$(date +%F).tar.gz -C /data .</pre>
+<p class="small">Ajoutez cette commande à une crontab et copiez le dossier
+<code>backups/</code> hors du serveur. Sauvegardez aussi votre fichier <code>.env</code>
+(une seule fois, il ne change pas).</p>
+
+<!-- ═══════════ 8. DÉPANNAGE ═══════════ -->
+<h2>8. Dépannage</h2>
+<table>
+  <tr><th style="width:38%">Symptôme</th><th>Cause probable &amp; solution</th></tr>
+  <tr>
+    <td>Le site ne répond pas / erreur de certificat</td>
+    <td>Le DNS ne pointe pas (encore) sur le serveur — vérifiez avec
+    <code>dig +short VOTRE-DOMAINE</code>, attendez la propagation. Vérifiez que 80 et 443
+    sont ouverts. Journaux&nbsp;: <code>docker compose logs caddy</code>.</td>
+  </tr>
+  <tr>
+    <td>L'application s'affiche mais pas d'audio/vidéo</td>
+    <td>Vérifiez les 3 valeurs LiveKit du <code>.env</code> (URL <code>wss://</code>, Key, Secret),
+    puis <code>docker compose up -d</code> pour ré-appliquer. En mode auto-hébergé&nbsp;: vérifiez
+    <code>7882/udp</code> &amp; <code>7881/tcp</code> ouverts <em>aussi chez l'hébergeur</em>.</td>
+  </tr>
+  <tr>
+    <td>«&nbsp;Licence Webinti expirée ou absente&nbsp;»</td>
+    <td>Vérifiez <code>LICENSE_KEY</code> dans le <code>.env</code> (bien la clé fournie par
+    Webinti) et que le serveur a accès à Internet en sortie, puis
+    <code>docker compose restart server</code>. Si le message persiste, contactez Webinti.</td>
+  </tr>
+  <tr>
+    <td>Connexion / création de compte impossible</td>
+    <td>L'initialisation n'a pas été faite — rejouez l'étape 5-2 (initialisation), puis
+    vérifiez <code>docker compose logs pocketbase</code>.</td>
+  </tr>
+  <tr>
+    <td>Le serveur redémarre en boucle</td>
+    <td><code>docker compose logs server</code> — le plus souvent une variable <code>.env</code>
+    manquante ou mal orthographiée (comparez à <code>.env.example</code>).</td>
+  </tr>
+</table>
+<p>Support&nbsp;: <strong>contact@webinti.com</strong> — joignez la sortie de
+<code>docker compose ps</code> et <code>docker compose logs --tail 100 server</code>.</p>
+
+<!-- ═══════════ 9. LICENCE ═══════════ -->
+<h2>9. Votre licence</h2>
+<p>Votre instance vérifie automatiquement votre licence Enterprise une fois par jour auprès
+de Webinti. C'est transparent et sans effet sur les performances. Trois choses à savoir&nbsp;:</p>
+<ul>
+  <li><strong>Une coupure Internet ne vous pénalise jamais</strong>&nbsp;: votre instance garde
+  une réserve de validité de 7 jours. Une panne ponctuelle (chez vous ou chez Webinti) n'a
+  aucun effet.</li>
+  <li><strong>Si votre abonnement s'interrompt</strong>, l'accès se réduit progressivement
+  (d'abord un simple avertissement, puis une limitation du nombre de connexions, puis un
+  écran de suspension). <strong>Vos données ne sont jamais supprimées.</strong></li>
+  <li><strong>Dès la régularisation</strong>, tout revient automatiquement sous 24&nbsp;h — ou
+  immédiatement avec <code>docker compose restart server</code>.</li>
+</ul>
+
+<!-- ═══════════ 10. CHECKLIST ═══════════ -->
+<h2>10. Checklist récapitulative</h2>
+<div class="nobreak">
+<ul class="check">
+  <li>VPS Linux prêt (2 vCPU / 4 Go), Docker + Compose installés</li>
+  <li>DNS A <code>town.mon-domaine.com</code> → IP du serveur (propagé)</li>
+  <li>Ports 80 et 443 ouverts (serveur + hébergeur)</li>
+  <li>Projet LiveKit Cloud créé — URL wss, API Key, API Secret notés</li>
+  <li>Clé de licence <code>LIC-…</code> reçue de Webinti</li>
+  <li>Bundle extrait, <code>./install.sh</code> déroulé sans erreur</li>
+  <li>Compte admin de la base créé (<code>/pb/_/</code>) + initialisation exécutée</li>
+  <li>Compte hôte créé dans l'application avec l'email administrateur</li>
+  <li>Journal <code>licence: active</code> + test audio/vidéo à deux réussi</li>
+  <li>Sauvegarde quotidienne programmée (section 7)</li>
+</ul>
+</div>
+
+<!-- ═══════════ ANNEXES ═══════════ -->
+<h2 class="pb">Annexe A — Variables du fichier .env</h2>
+<table>
+  <tr><th style="width:30%">Variable</th><th style="width:14%">Obligatoire</th><th>Rôle</th></tr>
+  <tr><td><code>DOMAIN</code></td><td>Oui</td><td>Domaine de l'application (ex. <code>town.exemple.com</code>).</td></tr>
+  <tr><td><code>HOST_EMAIL</code></td><td>Oui</td><td>Email du compte qui devient hôte/administrateur dans l'application.</td></tr>
+  <tr><td><code>LICENSE_KEY</code></td><td>Oui</td><td>Votre clé de licence fournie par Webinti.</td></tr>
+  <tr><td><code>LICENSE_SERVER_URL</code></td><td>Oui</td><td>Adresse de vérification de licence (préremplie — ne pas modifier).</td></tr>
+  <tr><td><code>POCKETBASE_ADMIN_EMAIL / _PASSWORD</code></td><td>Oui</td><td>Identifiants du compte admin de la base (créé au premier démarrage).</td></tr>
+  <tr><td><code>LIVEKIT_URL</code></td><td>Oui</td><td>URL <code>wss://…</code> — LiveKit Cloud (mode 1) ou votre serveur média (mode 2).</td></tr>
+  <tr><td><code>LIVEKIT_API_KEY / _SECRET</code></td><td>Oui</td><td>Paire de clés LiveKit (Cloud, ou générée par l'installateur en mode 2).</td></tr>
+  <tr><td><code>LIVEKIT_DOMAIN</code></td><td>Mode 2</td><td>Sous-domaine du serveur média auto-hébergé.</td></tr>
+  <tr><td><code>CADDYFILE</code></td><td>Mode 2</td><td><code>Caddyfile.local</code> (défaut&nbsp;: <code>Caddyfile.cloud</code>).</td></tr>
+  <tr><td><code>COMPOSE_PROFILES</code></td><td>Mode 2</td><td><code>local-livekit</code> pour démarrer le serveur média embarqué.</td></tr>
+  <tr><td><code>AI_API_KEY / AI_BASE_URL / AI_MODEL</code></td><td>Non</td><td>Agent d'accueil IA (optionnel). Clé vide = fonctionnalité désactivée, le reste fonctionne.</td></tr>
+</table>
+
+<h2>Annexe B — Commandes utiles</h2>
+<pre><span class="c"># État des services</span>
+docker compose ps
+<span class="c"># Journaux en direct (serveur de jeu / proxy / base)</span>
+docker compose logs -f server
+docker compose logs -f caddy
+docker compose logs -f pocketbase
+<span class="c"># Redémarrer un service</span>
+docker compose restart server
+<span class="c"># Tout arrêter / tout relancer (les données persistent)</span>
+docker compose down
+docker compose up -d
+<span class="c"># Reconstruire après une mise à jour</span>
+docker compose up -d --build
+<span class="c"># Vérifier l'état de la licence</span>
+docker compose logs server | grep -i licence</pre>
+
+<p class="small" style="margin-top:26px;border-top:1px solid #e2e8f0;padding-top:8px">
+Webinti Town — Guide d'installation v1.0 · Juillet 2026 · Édition Enterprise ·
+contact@webinti.com</p>
+
+</body>
+</html>
