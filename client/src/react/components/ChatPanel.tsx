@@ -43,6 +43,9 @@ function shirtColorFor(playerId: string, players: Map<string, { appearance: { ou
 
 type ChatTab = ChatMessageType | 'dm';
 
+// Doit rester aligné avec MESSAGE_MAX_LEN côté serveur (socket/handlers.ts).
+const MESSAGE_MAX_LEN = 10000;
+
 export function ChatPanel() {
   const open = useGameStore((s) => s.chatPanelOpen);
   const chat = useGameStore((s) => s.chat);
@@ -204,15 +207,25 @@ export function ChatPanel() {
     if (uploadStatus === 'uploading') return;
     if (tab === 'dm') {
       if (!activeDmTarget) return;
-      socketManager.sendDm(activeDmTarget, value.slice(0, 1000), pendingAttachment ?? undefined);
+      socketManager.sendDm(activeDmTarget, value.slice(0, MESSAGE_MAX_LEN), pendingAttachment ?? undefined);
     } else {
-      socketManager.sendChat(value.slice(0, 300), tab as ChatMessageType, pendingAttachment ?? undefined);
+      socketManager.sendChat(value.slice(0, MESSAGE_MAX_LEN), tab as ChatMessageType, pendingAttachment ?? undefined);
     }
     setText('');
     setPendingAttachment(null);
     setUploadStatus('idle');
     setUploadError('');
+    if (inputRef.current) inputRef.current.style.height = '';
   }, [text, tab, pendingAttachment, uploadStatus, activeDmTarget]);
+
+  // La zone de saisie grandit avec le contenu (long prompt collé) jusqu'à
+  // ~6 lignes, puis scrolle en interne.
+  const autoGrow = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  }, []);
 
   if (!open) {
     const total = unread + totalDmUnread;
@@ -245,7 +258,7 @@ export function ChatPanel() {
     : tab === 'global' ? 'Message global...' : 'Message proximité...';
 
   const inputDisabled = tab === 'dm' && !activeDmTarget;
-  const maxLen = tab === 'dm' ? 1000 : 300;
+  const maxLen = MESSAGE_MAX_LEN;
 
   // Determine current DM list to display
   const dmMessages = tab === 'dm' && activeDmTarget ? (dmConversations.get(activeDmTarget) ?? []) : [];
@@ -421,6 +434,7 @@ export function ChatPanel() {
           value={text}
           onChange={(e) => {
             setText(e.target.value.slice(0, maxLen));
+            autoGrow();
             // Pas de typing_start en DM (pas implémenté côté serveur pour les DM)
             if (tab !== 'dm') {
               const now = Date.now();
@@ -479,6 +493,60 @@ export function ChatPanel() {
   );
 }
 
+/**
+ * Bouton « copier le message » : invisible par défaut, révélé au survol de la
+ * ligne (classe `group` sur le conteneur). Feedback ✓ vert pendant 1,5 s.
+ */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+  }, []);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback vieux navigateurs / contexte non sécurisé
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch { /* tant pis */ }
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => setCopied(false), 1500);
+  }, [text]);
+
+  return (
+    <button
+      onClick={handleCopy}
+      title={copied ? 'Copié !' : 'Copier le message'}
+      aria-label="Copier le message"
+      className={`ml-auto rounded p-0.5 transition-opacity focus:opacity-100 group-hover:opacity-100 ${
+        copied ? 'opacity-100 text-emerald-400' : 'opacity-0 text-slate-400 hover:bg-slate-700 hover:text-white'
+      }`}
+    >
+      {copied ? (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 function ChatRow({
   msg,
   localId,
@@ -494,7 +562,7 @@ function ChatRow({
   const color = shirtColorFor(msg.playerId, players);
   return (
     <div
-      className={`mb-1.5 animate-fadein rounded border-l-2 px-2 py-1 ${borderColor} ${bg}`}
+      className={`group mb-1.5 animate-fadein rounded border-l-2 px-2 py-1 ${borderColor} ${bg}`}
     >
       <div className="flex items-center gap-1.5">
         <span
@@ -503,8 +571,9 @@ function ChatRow({
         />
         <span className="text-xs font-bold text-slate-100">{msg.playerName}</span>
         <span className="text-[10px] text-slate-400">{formatTime(msg.timestamp)}</span>
+        {msg.text && <CopyButton text={msg.text} />}
       </div>
-      <div className="ml-4.5 break-words pl-0.5 text-[13px] text-slate-200">{msg.text}</div>
+      <div className="ml-4.5 whitespace-pre-wrap break-words pl-0.5 text-[13px] text-slate-200">{msg.text}</div>
       {msg.attachment && <AttachmentView attachment={msg.attachment} />}
     </div>
   );
@@ -525,7 +594,7 @@ function DmRow({
   const color = shirtColorFor(msg.from, players);
   const bg = isMine ? 'bg-emerald-500/10' : 'bg-slate-800/40';
   return (
-    <div className={`mb-1.5 animate-fadein rounded border-l-2 border-l-emerald-400 px-2 py-1 ${bg}`}>
+    <div className={`group mb-1.5 animate-fadein rounded border-l-2 border-l-emerald-400 px-2 py-1 ${bg}`}>
       <div className="flex items-center gap-1.5">
         <span
           className="inline-block h-3 w-3 flex-shrink-0 rounded-full ring-1 ring-white/20"
@@ -533,9 +602,10 @@ function DmRow({
         />
         <span className="text-xs font-bold text-slate-100">{name}</span>
         <span className="text-[10px] text-slate-400">{formatTime(msg.ts)}</span>
+        {msg.text && <CopyButton text={msg.text} />}
       </div>
       {msg.text && (
-        <div className="ml-4.5 break-words pl-0.5 text-[13px] text-slate-200">{msg.text}</div>
+        <div className="ml-4.5 whitespace-pre-wrap break-words pl-0.5 text-[13px] text-slate-200">{msg.text}</div>
       )}
       {msg.attachment && <AttachmentView attachment={msg.attachment} />}
     </div>

@@ -231,6 +231,25 @@ function sanitizeText(input: unknown, max: number): string {
   return input.replace(/<[^>]*>/g, '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, max);
 }
 
+// Longueur max du texte des messages (chat global/local et DM) — assez large
+// pour partager des prompts ou blocs de texte entiers.
+const MESSAGE_MAX_LEN = 10000;
+
+// Variante multi-ligne de sanitizeText pour le corps des messages : conserve
+// les sauts de ligne et tabulations (indispensables pour les prompts),
+// strip HTML et les autres caractères de contrôle.
+function sanitizeMessageText(input: unknown, max: number): string {
+  if (typeof input !== 'string') return '';
+  const cleaned = input.replace(/<[^>]*>/g, '').replace(/\r\n?/g, '\n');
+  let out = '';
+  for (const ch of cleaned) {
+    const c = ch.codePointAt(0) ?? 0;
+    const isControl = (c < 32 && c !== 10 && c !== 9) || c === 127;
+    if (!isControl) out += ch;
+  }
+  return out.trim().slice(0, max);
+}
+
 function isDirection(v: unknown): v is Direction {
   return v === 'up' || v === 'down' || v === 'left' || v === 'right';
 }
@@ -519,7 +538,7 @@ export function registerSocketHandlers(io: Server): void {
       if (!rateLimit(session.chatTimestamps, 5)) return;
       if (typeof payload !== 'object' || payload === null) return;
       const p = payload as Record<string, unknown>;
-      const text = sanitizeText(p.text, 300);
+      const text = sanitizeMessageText(p.text, MESSAGE_MAX_LEN);
       // Le texte peut être vide SI une pièce jointe est présente
       const room = roomManager.getRoom(session.roomSlug);
       if (!room) return;
@@ -879,7 +898,7 @@ export function registerSocketHandlers(io: Server): void {
       const p = payload as Record<string, unknown>;
       const toPlayerId = typeof p.toPlayerId === 'string' ? p.toPlayerId : '';
       if (!toPlayerId || toPlayerId === session.playerId) return;
-      const text = sanitizeText(p.text, 1000);
+      const text = sanitizeMessageText(p.text, MESSAGE_MAX_LEN);
       const room = roomManager.getRoom(session.roomSlug);
       if (!room) return;
       const sender = room.players.get(session.playerId);
