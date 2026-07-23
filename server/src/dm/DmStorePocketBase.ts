@@ -2,7 +2,8 @@ import type { ChatAttachment, DmMessage } from '../types.js';
 import { getPocketBase } from '../pocketbase/client.js';
 import { pairKey } from './DmStore.js';
 
-const TEXT_MAX = 1000;
+// Doit rester aligné avec MESSAGE_MAX_LEN (socket/handlers.ts).
+const TEXT_MAX = 10000;
 const PER_CONV_CAP = 200;
 
 export interface DmStorePocketBaseOptions {

@@ -11,7 +11,8 @@ const DEFAULT_DATA_DIR = (() => {
 
 const SAVE_DEBOUNCE_MS = 50;
 const FILE_VERSION = 1;
-const TEXT_MAX = 1000;
+// Doit rester aligné avec MESSAGE_MAX_LEN (socket/handlers.ts).
+const TEXT_MAX = 10000;
 const PER_CONV_CAP = 200;
 const CONVERSATIONS_CAP = 50;
 

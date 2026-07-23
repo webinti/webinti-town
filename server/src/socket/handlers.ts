@@ -236,11 +236,13 @@ function sanitizeText(input: unknown, max: number): string {
 const MESSAGE_MAX_LEN = 10000;
 
 // Variante multi-ligne de sanitizeText pour le corps des messages : conserve
-// les sauts de ligne et tabulations (indispensables pour les prompts),
-// strip HTML et les autres caractères de contrôle.
+// les sauts de ligne et tabulations (indispensables pour les prompts) et le
+// texte tel quel, y compris `<...>` — l'affichage est fait par React (échappé)
+// ou Phaser (canvas), jamais par injection HTML. Seuls les caractères de
+// contrôle sont retirés.
 function sanitizeMessageText(input: unknown, max: number): string {
   if (typeof input !== 'string') return '';
-  const cleaned = input.replace(/<[^>]*>/g, '').replace(/\r\n?/g, '\n');
+  const cleaned = input.replace(/\r\n?/g, '\n');
   let out = '';
   for (const ch of cleaned) {
     const c = ch.codePointAt(0) ?? 0;
