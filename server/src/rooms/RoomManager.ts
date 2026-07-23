@@ -212,6 +212,34 @@ export class RoomManager {
     }
   }
 
+  /**
+   * Édite un message du chat de salle. Seul l'auteur peut modifier ; le texte
+   * (déjà sanitizé par l'appelant) ne peut être vide que si le message porte
+   * une pièce jointe. Retourne le message à jour, ou null si refusé.
+   */
+  editChat(slug: string, playerId: string, messageId: string, text: string): ChatMessage | null {
+    const room = this.rooms.get(slug);
+    if (!room) return null;
+    const msg = room.chatHistory.find((m) => m.id === messageId);
+    if (!msg || msg.playerId !== playerId) return null;
+    if (!text.trim() && !msg.attachment) return null;
+    msg.text = text;
+    msg.editedAt = Date.now();
+    return msg;
+  }
+
+  /** Supprime un message du chat de salle. Seul l'auteur peut supprimer. */
+  deleteChat(slug: string, playerId: string, messageId: string): ChatMessage | null {
+    const room = this.rooms.get(slug);
+    if (!room) return null;
+    const idx = room.chatHistory.findIndex((m) => m.id === messageId);
+    if (idx < 0) return null;
+    const msg = room.chatHistory[idx]!;
+    if (msg.playerId !== playerId) return null;
+    room.chatHistory.splice(idx, 1);
+    return msg;
+  }
+
   /** Purge les messages (chat + DM) plus vieux que ttlMs, dans toutes les rooms. */
   pruneOldMessages(ttlMs: number, now: number = Date.now()): void {
     const cutoff = now - ttlMs;

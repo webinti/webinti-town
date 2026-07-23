@@ -636,6 +636,37 @@ export function registerSocketHandlers(io: Server): void {
       }
     });
 
+    // Édition d'un message du chat de salle par son auteur. La diffusion est
+    // room-wide même pour les messages 'local' : l'historique est déjà partagé
+    // à toute la room au join, et les clients sans le message ignorent l'id.
+    socket.on('chat:edit', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      if (!rateLimit(session.chatTimestamps, 5)) return;
+      if (typeof payload !== 'object' || payload === null) return;
+      const p = payload as Record<string, unknown>;
+      const messageId = typeof p.messageId === 'string' ? p.messageId : '';
+      if (!messageId) return;
+      const text = sanitizeMessageText(p.text, MESSAGE_MAX_LEN);
+      const msg = roomManager.editChat(session.roomSlug, session.playerId, messageId, text);
+      if (!msg) return;
+      io.to(session.roomSlug).emit('chat:edited', { id: msg.id, text: msg.text, editedAt: msg.editedAt });
+    });
+
+    // Suppression d'un message du chat de salle par son auteur.
+    socket.on('chat:delete', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      if (!rateLimit(session.chatTimestamps, 5)) return;
+      if (typeof payload !== 'object' || payload === null) return;
+      const p = payload as Record<string, unknown>;
+      const messageId = typeof p.messageId === 'string' ? p.messageId : '';
+      if (!messageId) return;
+      const msg = roomManager.deleteChat(session.roomSlug, session.playerId, messageId);
+      if (!msg) return;
+      io.to(session.roomSlug).emit('chat:deleted', { id: msg.id });
+    });
+
     socket.on('typing_start', () => {
       const session = sessions.get(socket.id);
       if (!session) return;
@@ -924,6 +955,44 @@ export function registerSocketHandlers(io: Server): void {
       // Emit au destinataire SI connecté dans la room
       const target = room.players.get(toPlayerId);
       if (target) io.to(target.socketId).emit('dm:message', msg);
+    });
+
+    // Édition d'un DM par son auteur — notifie les deux parties si connectées.
+    socket.on('dm:edit', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      if (!rateLimit(session.dmTimestamps, 5)) return;
+      if (typeof payload !== 'object' || payload === null) return;
+      const p = payload as Record<string, unknown>;
+      const messageId = typeof p.messageId === 'string' ? p.messageId : '';
+      if (!messageId) return;
+      const text = sanitizeMessageText(p.text, MESSAGE_MAX_LEN);
+      const room = roomManager.getRoom(session.roomSlug);
+      if (!room) return;
+      const msg = room.dmStore.edit(session.playerId, messageId, text);
+      if (!msg) return;
+      socket.emit('dm:edited', msg);
+      const target = room.players.get(msg.to);
+      if (target) io.to(target.socketId).emit('dm:edited', msg);
+    });
+
+    // Suppression d'un DM par son auteur — notifie les deux parties si connectées.
+    socket.on('dm:delete', (payload: unknown) => {
+      const session = sessions.get(socket.id);
+      if (!session) return;
+      if (!rateLimit(session.dmTimestamps, 5)) return;
+      if (typeof payload !== 'object' || payload === null) return;
+      const p = payload as Record<string, unknown>;
+      const messageId = typeof p.messageId === 'string' ? p.messageId : '';
+      if (!messageId) return;
+      const room = roomManager.getRoom(session.roomSlug);
+      if (!room) return;
+      const msg = room.dmStore.remove(session.playerId, messageId);
+      if (!msg) return;
+      const notice = { id: msg.id, from: msg.from, to: msg.to };
+      socket.emit('dm:deleted', notice);
+      const target = room.players.get(msg.to);
+      if (target) io.to(target.socketId).emit('dm:deleted', notice);
     });
 
     socket.on('dm:read', (payload: unknown) => {

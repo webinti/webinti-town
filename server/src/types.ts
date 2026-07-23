@@ -92,6 +92,7 @@ export interface ChatMessage {
   type: ChatMessageType;
   timestamp: number;
   attachment?: ChatAttachment;  // F9 — pièce jointe optionnelle
+  editedAt?: number;            // présent si le message a été modifié par son auteur
 }
 
 // F10 — Direct Messages
@@ -99,10 +100,11 @@ export interface DmMessage {
   id: string;
   from: string;          // playerId expéditeur
   to: string;            // playerId destinataire
-  text: string;          // 0..1000 chars (peut être vide si attachment présent)
+  text: string;          // 0..10000 chars (peut être vide si attachment présent)
   attachment: ChatAttachment | null;
   ts: number;
   readBy: string[];      // playerIds qui ont lu — au moins from à la création
+  editedAt?: number;     // présent si le message a été modifié par son auteur
 }
 
 export interface WhiteboardStroke {

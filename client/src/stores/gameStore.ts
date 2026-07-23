@@ -57,6 +57,8 @@ interface GameStore {
   removePlayer: (id: string) => void;
   setChatHistory: (msgs: ChatMessage[]) => void;
   addChatMessage: (msg: ChatMessage) => void;
+  applyChatEdit: (id: string, text: string, editedAt?: number) => void;
+  removeChatMessage: (id: string) => void;
   markChatRead: () => void;
   setChatPanelOpen: (v: boolean) => void;
   toggleChatPanel: () => void;
@@ -81,6 +83,8 @@ interface GameStore {
   setActiveDmTarget: (id: string | null) => void;
   setDmState: (conversations: Record<string, DmMessage[]>) => void;
   appendDmMessage: (msg: DmMessage) => void;
+  applyDmEdit: (msg: DmMessage) => void;
+  removeDmMessage: (id: string, from: string, to: string) => void;
   markDmRead: (otherPlayerId: string) => void;
   totalUnreadDm: () => number;
   localPresence: Presence;
@@ -246,6 +250,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
         unreadChat: s.chatPanelOpen ? 0 : s.unreadChat + 1,
       };
     }),
+  applyChatEdit: (id, text, editedAt) =>
+    set((s) => {
+      const idx = s.chat.findIndex((m) => m.id === id);
+      if (idx < 0) return {};
+      const next = s.chat.slice();
+      next[idx] = { ...next[idx]!, text, ...(editedAt ? { editedAt } : {}) };
+      return { chat: next };
+    }),
+  removeChatMessage: (id) =>
+    set((s) => {
+      const next = s.chat.filter((m) => m.id !== id);
+      if (next.length === s.chat.length) return {};
+      return { chat: next };
+    }),
   markChatRead: () => set({ unreadChat: 0 }),
   setChatPanelOpen: (v) =>
     set((s) => ({ chatPanelOpen: v, unreadChat: v ? 0 : s.unreadChat })),
@@ -351,6 +369,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (!isMine && !isViewing) {
         unread = new Map(s.unreadDm);
         unread.set(otherId, (unread.get(otherId) ?? 0) + 1);
+      }
+      return { dmConversations: convs, unreadDm: unread };
+    }),
+  applyDmEdit: (msg) =>
+    set((s) => {
+      const myId = s.localPlayerId;
+      if (!myId) return {};
+      const otherId = msg.from === myId ? msg.to : msg.from;
+      const list = s.dmConversations.get(otherId);
+      if (!list) return {};
+      const idx = list.findIndex((m) => m.id === msg.id);
+      if (idx < 0) return {};
+      const nextList = list.slice();
+      nextList[idx] = msg;
+      const convs = new Map(s.dmConversations);
+      convs.set(otherId, nextList);
+      return { dmConversations: convs };
+    }),
+  removeDmMessage: (id, from, to) =>
+    set((s) => {
+      const myId = s.localPlayerId;
+      if (!myId) return {};
+      const otherId = from === myId ? to : from;
+      const list = s.dmConversations.get(otherId);
+      if (!list) return {};
+      const removed = list.find((m) => m.id === id);
+      if (!removed) return {};
+      const nextList = list.filter((m) => m.id !== id);
+      const convs = new Map(s.dmConversations);
+      if (nextList.length === 0) convs.delete(otherId);
+      else convs.set(otherId, nextList);
+      // Si le message supprimé était un non-lu reçu de l'autre, décrémenter le badge
+      let unread = s.unreadDm;
+      if (removed.from === otherId && !removed.readBy.includes(myId) && unread.has(otherId)) {
+        const n = (unread.get(otherId) ?? 0) - 1;
+        unread = new Map(s.unreadDm);
+        if (n > 0) unread.set(otherId, n);
+        else unread.delete(otherId);
       }
       return { dmConversations: convs, unreadDm: unread };
     }),

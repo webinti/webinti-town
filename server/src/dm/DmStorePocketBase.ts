@@ -64,6 +64,58 @@ export class DmStorePocketBase {
     }
   }
 
+  /**
+   * Édite un DM (même contrat que DmStore.edit). La mise à jour PB est
+   * best-effort en arrière-plan ; le cache mémoire fait foi immédiatement.
+   * NB : `editedAt` n'est persisté que si le champ existe dans le schéma PB
+   * (sinon PocketBase l'ignore silencieusement — le texte, lui, est toujours
+   * mis à jour).
+   */
+  edit(requesterId: string, messageId: string, rawText: string): DmMessage | null {
+    const text = (rawText ?? '').slice(0, TEXT_MAX);
+    for (const list of this.conversations.values()) {
+      const msg = list.find((m) => m.id === messageId);
+      if (!msg) continue;
+      if (msg.from !== requesterId) return null;
+      if (text.trim().length === 0 && !msg.attachment) return null;
+      msg.text = text;
+      msg.editedAt = Date.now();
+      const editedAt = msg.editedAt;
+      this.trackPending((async () => {
+        try {
+          const pb = await getPocketBase();
+          await pb.collection('dm_messages').update(messageId, { text, editedAt });
+        } catch (err) {
+          console.warn('[dm-pb] edit failed', err);
+        }
+      })());
+      return { ...msg, readBy: [...msg.readBy] };
+    }
+    return null;
+  }
+
+  /** Supprime un DM (même contrat que DmStore.remove). Suppression PB best-effort. */
+  remove(requesterId: string, messageId: string): DmMessage | null {
+    for (const [key, list] of this.conversations) {
+      const idx = list.findIndex((m) => m.id === messageId);
+      if (idx < 0) continue;
+      const msg = list[idx]!;
+      if (msg.from !== requesterId) return null;
+      list.splice(idx, 1);
+      if (list.length === 0) this.conversations.delete(key);
+      this.trackPending((async () => {
+        try {
+          const pb = await getPocketBase();
+          await pb.collection('dm_messages').delete(messageId);
+        } catch (err) {
+          console.warn('[dm-pb] remove failed', err);
+        }
+      })());
+      return msg;
+    }
+    return null;
+  }
+
   markRead(reader: string, withPlayer: string): void {
     const key = pairKey(reader, withPlayer);
     const list = this.conversations.get(key);
@@ -149,6 +201,7 @@ export class DmStorePocketBase {
             attachment: (r.attachment as ChatAttachment | null) ?? null,
             ts: Number(r.ts ?? 0),
             readBy: Array.isArray(r.readBy) ? r.readBy.map((x) => String(x)) : [],
+            ...(Number(r.editedAt) > 0 ? { editedAt: Number(r.editedAt) } : {}),
           });
         }
         // Apply per-conv cap

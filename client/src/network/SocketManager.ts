@@ -233,6 +233,16 @@ class SocketManager {
       for (const fn of this.chatListeners) fn(msg);
     });
 
+    socket.on('chat:edited', (p: { id: string; text: string; editedAt?: number }) => {
+      if (!p || typeof p.id !== 'string') return;
+      useGameStore.getState().applyChatEdit(p.id, typeof p.text === 'string' ? p.text : '', p.editedAt);
+    });
+
+    socket.on('chat:deleted', (p: { id: string }) => {
+      if (!p || typeof p.id !== 'string') return;
+      useGameStore.getState().removeChatMessage(p.id);
+    });
+
     socket.on('emote', (e: EmoteEvent) => {
       const now = Date.now();
       while (recentEmotes.length > 0 && now - recentEmotes[0]!.t > 2000) recentEmotes.shift();
@@ -388,6 +398,16 @@ class SocketManager {
       }
     });
 
+    socket.on('dm:edited', (msg: DmMessage) => {
+      if (!msg || typeof msg.id !== 'string') return;
+      useGameStore.getState().applyDmEdit(msg);
+    });
+
+    socket.on('dm:deleted', (p: { id: string; from: string; to: string }) => {
+      if (!p || typeof p.id !== 'string') return;
+      useGameStore.getState().removeDmMessage(p.id, String(p.from ?? ''), String(p.to ?? ''));
+    });
+
     socket.on('workstation:initial', (payload: { workstations: WorkstationStatePayload[] }) => {
       if (!payload || !Array.isArray(payload.workstations)) return;
       useGameStore.getState().setWorkstationsInitial(payload.workstations);
@@ -481,6 +501,16 @@ class SocketManager {
 
   sendChat(text: string, type: ChatMessageType, attachment?: ChatAttachment): void {
     this.socket?.emit('chat_message', { text, type, ...(attachment ? { attachment } : {}) });
+  }
+
+  /** Édite un de ses propres messages du chat de salle (contrôle auteur côté serveur). */
+  editChatMessage(messageId: string, text: string): void {
+    this.socket?.emit('chat:edit', { messageId, text });
+  }
+
+  /** Supprime un de ses propres messages du chat de salle. */
+  deleteChatMessage(messageId: string): void {
+    this.socket?.emit('chat:delete', { messageId });
   }
 
   sendEmote(emoteType: EmoteType): void {
@@ -741,6 +771,16 @@ class SocketManager {
   }
   markDmRead(withPlayerId: string): void {
     this.socket?.emit('dm:read', { withPlayerId });
+  }
+
+  /** Édite un de ses propres DM (contrôle auteur côté serveur). */
+  editDm(messageId: string, text: string): void {
+    this.socket?.emit('dm:edit', { messageId, text });
+  }
+
+  /** Supprime un de ses propres DM. */
+  deleteDm(messageId: string): void {
+    this.socket?.emit('dm:delete', { messageId });
   }
 
   sendAppearanceUpdate(appearance: Appearance): void {

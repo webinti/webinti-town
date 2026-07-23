@@ -43,6 +43,10 @@ function shirtColorFor(playerId: string, players: Map<string, { appearance: { ou
 
 type ChatTab = ChatMessageType | 'dm';
 
+// Message en cours de modification : le champ de saisie devient l'éditeur.
+// hasAttachment autorise un texte vide (le message garde sa pièce jointe).
+type EditingTarget = { kind: 'chat' | 'dm'; id: string; hasAttachment: boolean };
+
 // Doit rester aligné avec MESSAGE_MAX_LEN côté serveur (socket/handlers.ts).
 const MESSAGE_MAX_LEN = 10000;
 
@@ -66,6 +70,12 @@ export function ChatPanel() {
 
   const [tab, setTab] = useState<ChatTab>('global');
   const [text, setText] = useState('');
+  const [editing, setEditing] = useState<EditingTarget | null>(null);
+  // Ref miroir pour les handlers globaux (Escape) sans re-registration à chaque frappe.
+  const editingRef = useRef<EditingTarget | null>(null);
+  editingRef.current = editing;
+  // Brouillon en cours au moment où on entre en mode édition, restauré ensuite.
+  const draftBeforeEditRef = useRef('');
 
   // Ouverture d'un DM demandée depuis l'extérieur (sidebar / carte joueur) :
   // bascule sur l'onglet Privés + sélectionne le contact, puis consomme le signal.
@@ -109,6 +119,13 @@ export function ChatPanel() {
       const target = e.target as HTMLElement | null;
       const inField = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
       if (e.key === 'Escape') {
+        // Une édition en cours s'annule d'abord ; un 2e Échap ferme le panneau.
+        if (editingRef.current) {
+          e.preventDefault();
+          setEditing(null);
+          setText(draftBeforeEditRef.current);
+          return;
+        }
         if (open) {
           e.preventDefault();
           setOpen(false);
@@ -203,6 +220,20 @@ export function ChatPanel() {
 
   const handleSend = useCallback(() => {
     const value = text.trim();
+    // Mode édition : on remplace le texte du message ciblé puis on restaure le
+    // brouillon qui était en cours avant d'entrer en édition.
+    if (editing) {
+      if (!value && !editing.hasAttachment) return;
+      if (editing.kind === 'dm') {
+        socketManager.editDm(editing.id, value.slice(0, MESSAGE_MAX_LEN));
+      } else {
+        socketManager.editChatMessage(editing.id, value.slice(0, MESSAGE_MAX_LEN));
+      }
+      setEditing(null);
+      setText(draftBeforeEditRef.current);
+      if (inputRef.current) inputRef.current.style.height = '';
+      return;
+    }
     if (!value && !pendingAttachment) return;
     if (uploadStatus === 'uploading') return;
     if (tab === 'dm') {
@@ -216,7 +247,7 @@ export function ChatPanel() {
     setUploadStatus('idle');
     setUploadError('');
     if (inputRef.current) inputRef.current.style.height = '';
-  }, [text, tab, pendingAttachment, uploadStatus, activeDmTarget]);
+  }, [text, tab, pendingAttachment, uploadStatus, activeDmTarget, editing]);
 
   // La zone de saisie grandit avec le contenu (long prompt collé) jusqu'à
   // ~6 lignes, puis scrolle en interne.
@@ -226,6 +257,33 @@ export function ChatPanel() {
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
   }, []);
+
+  const startEdit = useCallback((target: EditingTarget, initialText: string) => {
+    if (!editingRef.current) {
+      draftBeforeEditRef.current = inputRef.current?.value ?? '';
+    }
+    setEditing(target);
+    setText(initialText);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      autoGrow();
+    });
+  }, [autoGrow]);
+
+  const cancelEdit = useCallback(() => {
+    if (!editingRef.current) return;
+    setEditing(null);
+    setText(draftBeforeEditRef.current);
+    requestAnimationFrame(() => autoGrow());
+  }, [autoGrow]);
+
+  // Changer d'onglet, de contact DM ou fermer le panneau abandonne l'édition en cours.
+  useEffect(() => {
+    cancelEdit();
+  }, [tab, activeDmTarget, cancelEdit]);
+  useEffect(() => {
+    if (!open) cancelEdit();
+  }, [open, cancelEdit]);
 
   if (!open) {
     const total = unread + totalDmUnread;
@@ -253,7 +311,9 @@ export function ChatPanel() {
     if (!players.has(otherId)) offlineWithHistory.push(otherId);
   }
 
-  const placeholder = tab === 'dm'
+  const placeholder = editing
+    ? 'Modifiez votre message…'
+    : tab === 'dm'
     ? (activeDmTarget ? 'Message privé...' : 'Sélectionnez un contact')
     : tab === 'global' ? 'Message global...' : 'Message proximité...';
 
@@ -378,7 +438,14 @@ export function ChatPanel() {
               </div>
             )}
             {activeDmTarget && dmMessages.map((m) => (
-              <DmRow key={m.id} msg={m} localId={localId} players={players} />
+              <DmRow
+                key={m.id}
+                msg={m}
+                localId={localId}
+                players={players}
+                onStartEdit={() => startEdit({ kind: 'dm', id: m.id, hasAttachment: !!m.attachment }, m.text)}
+                onDelete={() => socketManager.deleteDm(m.id)}
+              />
             ))}
           </div>
         </div>
@@ -390,12 +457,27 @@ export function ChatPanel() {
             </div>
           )}
           {chat.map((msg) => (
-            <ChatRow key={msg.id} msg={msg} localId={localId} players={players} />
+            <ChatRow
+              key={msg.id}
+              msg={msg}
+              localId={localId}
+              players={players}
+              onStartEdit={() => startEdit({ kind: 'chat', id: msg.id, hasAttachment: !!msg.attachment }, msg.text)}
+              onDelete={() => socketManager.deleteChatMessage(msg.id)}
+            />
           ))}
         </div>
       )}
 
       <div className="border-t border-white/10 p-2">
+        {editing && (
+          <div className="mb-2 flex items-center justify-between rounded bg-amber-900/40 px-2 py-1 text-xs text-amber-200 ring-1 ring-amber-500/40">
+            <span>{'✏️'} Modification du message</span>
+            <button onClick={cancelEdit} className="text-amber-300 underline hover:text-white">
+              Annuler (Échap)
+            </button>
+          </div>
+        )}
         {uploadStatus === 'ready' && pendingAttachment && (
           <div className="mb-2 flex items-center gap-2 rounded bg-slate-800/80 px-2 py-1 ring-1 ring-indigo-400/40">
             {pendingAttachment.mimeType === 'application/pdf' ? (
@@ -462,7 +544,7 @@ export function ChatPanel() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadStatus === 'uploading' || inputDisabled}
+              disabled={uploadStatus === 'uploading' || inputDisabled || editing !== null}
               title="Joindre un fichier (jpg/png/svg/pdf, max 5 MB)"
               className="rounded px-1.5 py-0.5 text-base text-slate-400 hover:bg-slate-700 hover:text-white disabled:opacity-40"
             >
@@ -481,10 +563,16 @@ export function ChatPanel() {
             <span className="text-[10px] text-slate-500">{text.length}/{maxLen}</span>
             <button
               onClick={handleSend}
-              disabled={uploadStatus === 'uploading' || inputDisabled || (!text.trim() && !pendingAttachment)}
-              className="rounded bg-indigo-600 px-2 py-1 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-40"
+              disabled={
+                editing
+                  ? !text.trim() && !editing.hasAttachment
+                  : uploadStatus === 'uploading' || inputDisabled || (!text.trim() && !pendingAttachment)
+              }
+              className={`rounded px-2 py-1 text-xs font-semibold text-white disabled:opacity-40 ${
+                editing ? 'bg-amber-600 hover:bg-amber-500' : 'bg-indigo-600 hover:bg-indigo-500'
+              }`}
             >
-              Envoyer
+              {editing ? 'Modifier' : 'Envoyer'}
             </button>
           </div>
         </div>
@@ -529,7 +617,7 @@ function CopyButton({ text }: { text: string }) {
       onClick={handleCopy}
       title={copied ? 'Copié !' : 'Copier le message'}
       aria-label="Copier le message"
-      className={`ml-auto rounded p-0.5 transition-opacity focus:opacity-100 group-hover:opacity-100 ${
+      className={`rounded p-0.5 transition-opacity focus:opacity-100 group-hover:opacity-100 ${
         copied ? 'opacity-100 text-emerald-400' : 'opacity-0 text-slate-400 hover:bg-slate-700 hover:text-white'
       }`}
     >
@@ -547,14 +635,76 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+/** Bouton « modifier » : révélé au survol, uniquement sur ses propres messages. */
+function EditButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      title="Modifier le message"
+      aria-label="Modifier le message"
+      className="rounded p-0.5 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 text-slate-400 hover:bg-slate-700 hover:text-white"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      </svg>
+    </button>
+  );
+}
+
+/**
+ * Bouton « supprimer » avec confirmation en deux temps : le 1er clic passe le
+ * bouton en rouge pendant 2,5 s, le 2e clic confirme. Évite un modal.
+ */
+function DeleteButton({ onConfirm }: { onConfirm: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    if (confirming) {
+      setConfirming(false);
+      onConfirm();
+      return;
+    }
+    setConfirming(true);
+    timerRef.current = window.setTimeout(() => setConfirming(false), 2500);
+  }, [confirming, onConfirm]);
+
+  return (
+    <button
+      onClick={handleClick}
+      title={confirming ? 'Cliquez à nouveau pour confirmer' : 'Supprimer le message'}
+      aria-label="Supprimer le message"
+      className={`rounded p-0.5 transition-opacity focus:opacity-100 group-hover:opacity-100 ${
+        confirming
+          ? 'opacity-100 bg-red-900/60 text-red-300'
+          : 'opacity-0 text-slate-400 hover:bg-slate-700 hover:text-red-300'
+      }`}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="3 6 5 6 21 6" />
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      </svg>
+    </button>
+  );
+}
+
 function ChatRow({
   msg,
   localId,
   players,
+  onStartEdit,
+  onDelete,
 }: {
   msg: ChatMessage;
   localId: string | null;
   players: Map<string, { appearance: { outfit: number } }>;
+  onStartEdit: () => void;
+  onDelete: () => void;
 }) {
   const isMine = msg.playerId === localId;
   const borderColor = msg.type === 'local' ? 'border-l-blue-400' : 'border-l-purple-400';
@@ -571,7 +721,14 @@ function ChatRow({
         />
         <span className="text-xs font-bold text-slate-100">{msg.playerName}</span>
         <span className="text-[10px] text-slate-400">{formatTime(msg.timestamp)}</span>
-        {msg.text && <CopyButton text={msg.text} />}
+        {msg.editedAt !== undefined && (
+          <span className="text-[10px] italic text-slate-500">(modifié)</span>
+        )}
+        <span className="ml-auto flex items-center gap-0.5">
+          {msg.text && <CopyButton text={msg.text} />}
+          {isMine && <EditButton onClick={onStartEdit} />}
+          {isMine && <DeleteButton onConfirm={onDelete} />}
+        </span>
       </div>
       <div className="ml-4.5 whitespace-pre-wrap break-words pl-0.5 text-[13px] text-slate-200">{msg.text}</div>
       {msg.attachment && <AttachmentView attachment={msg.attachment} />}
@@ -583,10 +740,14 @@ function DmRow({
   msg,
   localId,
   players,
+  onStartEdit,
+  onDelete,
 }: {
   msg: DmMessage;
   localId: string | null;
   players: Map<string, { appearance: { outfit: number }; name: string }>;
+  onStartEdit: () => void;
+  onDelete: () => void;
 }) {
   const isMine = msg.from === localId;
   const fromPlayer = players.get(msg.from);
@@ -602,7 +763,14 @@ function DmRow({
         />
         <span className="text-xs font-bold text-slate-100">{name}</span>
         <span className="text-[10px] text-slate-400">{formatTime(msg.ts)}</span>
-        {msg.text && <CopyButton text={msg.text} />}
+        {msg.editedAt !== undefined && (
+          <span className="text-[10px] italic text-slate-500">(modifié)</span>
+        )}
+        <span className="ml-auto flex items-center gap-0.5">
+          {msg.text && <CopyButton text={msg.text} />}
+          {isMine && <EditButton onClick={onStartEdit} />}
+          {isMine && <DeleteButton onConfirm={onDelete} />}
+        </span>
       </div>
       {msg.text && (
         <div className="ml-4.5 whitespace-pre-wrap break-words pl-0.5 text-[13px] text-slate-200">{msg.text}</div>

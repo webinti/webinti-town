@@ -87,6 +87,7 @@ export interface ChatMessage {
   type: ChatMessageType;
   timestamp: number;
   attachment?: ChatAttachment;  // F9
+  editedAt?: number;            // présent si modifié par son auteur
 }
 
 // F10 — Direct Messages
@@ -98,6 +99,7 @@ export interface DmMessage {
   attachment: ChatAttachment | null;
   ts: number;
   readBy: string[];
+  editedAt?: number;  // présent si modifié par son auteur
 }
 
 export interface WhiteboardStroke {

@@ -81,6 +81,41 @@ export class DmStore {
     return msg;
   }
 
+  /**
+   * Édite un DM. Seul l'auteur (from) peut modifier ; le texte ne peut être
+   * vide que si le message porte une pièce jointe. Retourne une copie du
+   * message à jour, ou null si introuvable/refusé.
+   */
+  edit(requesterId: string, messageId: string, rawText: string): DmMessage | null {
+    const text = (rawText ?? '').slice(0, TEXT_MAX);
+    for (const list of this.conversations.values()) {
+      const msg = list.find((m) => m.id === messageId);
+      if (!msg) continue;
+      if (msg.from !== requesterId) return null;
+      if (text.trim().length === 0 && !msg.attachment) return null;
+      msg.text = text;
+      msg.editedAt = Date.now();
+      this.scheduleSave();
+      return { ...msg, readBy: [...msg.readBy] };
+    }
+    return null;
+  }
+
+  /** Supprime un DM. Seul l'auteur (from) peut supprimer. Retourne le message supprimé ou null. */
+  remove(requesterId: string, messageId: string): DmMessage | null {
+    for (const [key, list] of this.conversations) {
+      const idx = list.findIndex((m) => m.id === messageId);
+      if (idx < 0) continue;
+      const msg = list[idx]!;
+      if (msg.from !== requesterId) return null;
+      list.splice(idx, 1);
+      if (list.length === 0) this.conversations.delete(key);
+      this.scheduleSave();
+      return msg;
+    }
+    return null;
+  }
+
   /** Supprime les messages plus vieux que maxAgeMs (TTL). Vide les conversations devenues vides. */
   prune(maxAgeMs: number, now: number = Date.now()): void {
     const cutoff = now - maxAgeMs;
