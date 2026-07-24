@@ -10,19 +10,29 @@ import { socketManager } from '../../network/SocketManager';
 import type { RemoteSnapshot } from '../../livekit/LiveKitManager';
 import { ScreenViewer } from './ScreenViewer';
 import { isTouchDevice } from '../../lib/isTouchDevice';
+import { inCircuitZone } from '../../circuit';
 import type { Presence, PlayerState } from '../../types';
 
 // Vue mosaïque : réservée au desktop (sur mobile l'écran est trop petit).
 const IS_TOUCH = isTouchDevice();
 
+// Zone « micro ouvert » : les deux joueurs sur le circuit kart s'entendent à
+// plein volume quelle que soit la distance (miroir de OPEN_MIC_ZONES côté
+// serveur, qui maintient les abonnements aux pistes dans ce cas).
+function bothInOpenMicZone(local: PlayerState, remote: PlayerState): boolean {
+  return inCircuitZone(local.x, local.y) && inCircuitZone(remote.x, remote.y);
+}
+
 // Vrai si `remote` est à portée audible de `local` (mêmes règles que le volume) :
-// même poste/salle, ou < 8 tuiles en zone commune. Sert à n'afficher la tuile
-// (caméra + audio) que dans ce cas — au-delà, son ET webcam coupés.
+// zone micro ouvert (circuit), même poste/salle, ou < 8 tuiles en zone commune.
+// Sert à n'afficher la tuile (caméra + audio) que dans ce cas — au-delà, son ET
+// webcam coupés.
 function inAudibleRange(
   local: PlayerState | undefined,
   remote: PlayerState | undefined,
 ): boolean {
   if (!local || !remote) return true; // pas d'info de position → on montre
+  if (bothInOpenMicZone(local, remote)) return true;
   const localWs = local.workstationId ?? null;
   const remoteWs = remote.workstationId ?? null;
   if (localWs !== null || remoteWs !== null) {
@@ -391,12 +401,15 @@ const RemoteTile = memo(function RemoteTile({ remote, large }: { remote: RemoteS
       base = 1;
     } else {
       // Règles audio :
+      //  - Zone micro ouvert (circuit kart) : plein volume, distance ignorée.
       //  - Dans un poste/salle (workstation, dont 'salle-conf') : audio ISOLÉ au
       //    groupe → même workstationId seulement, distance ignorée.
       //  - Hors poste (zones communes) : PROXIMITÉ → décroît avec la distance.
       const localWs = local.workstationId ?? null;
       const remoteWs = remotePlayer.workstationId ?? null;
-      if (localWs !== null || remoteWs !== null) {
+      if (bothInOpenMicZone(local, remotePlayer)) {
+        base = 1;
+      } else if (localWs !== null || remoteWs !== null) {
         base = localWs !== null && localWs === remoteWs ? 1 : 0;
       } else {
         const FULL_PX = 4 * 32; // volume plein en deçà de 4 tuiles
