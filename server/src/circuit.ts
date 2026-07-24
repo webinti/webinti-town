@@ -32,6 +32,19 @@ export const CIRCUIT: readonly Checkpoint[] = [
   { x: 3525, y: 866, w: 110, h: 110 },  // 5 — droite-bas (sortie chicane)
 ];
 
+// Zone du circuit (la zone extérieure ajoutée à l'est, px monde). Mêmes coords
+// que client/src/circuit.ts (qui s'en sert pour n'afficher le HUD course que
+// sur la piste). Côté serveur : zone « micro ouvert » — tous les joueurs
+// présents dans la zone s'entendent, sans atténuation par distance.
+export const CIRCUIT_ZONE = { x0: 2650, y0: 0, x1: 3712, y1: 1344 };
+
+export function inCircuitZone(x: number, y: number): boolean {
+  return (
+    x >= CIRCUIT_ZONE.x0 && x <= CIRCUIT_ZONE.x1 &&
+    y >= CIRCUIT_ZONE.y0 && y <= CIRCUIT_ZONE.y1
+  );
+}
+
 /** Centre d'un checkpoint (utile pour le rendu / les libellés). */
 export function checkpointCenter(c: Checkpoint): { x: number; y: number } {
   return { x: c.x + c.w / 2, y: c.y + c.h / 2 };

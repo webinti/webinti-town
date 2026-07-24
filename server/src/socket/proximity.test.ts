@@ -54,3 +54,30 @@ describe('computeProximity conference-zone override', () => {
     expect(res.get('b')).toEqual(['a']);
   });
 });
+
+describe('computeProximity circuit-zone override', () => {
+  it('pairs two far-apart players when both are inside the circuit zone', () => {
+    // Deux extrémités de la piste (zone est : x 2650..3712, y 0..1344)
+    const a = mk('a', 2700, 100);
+    const b = mk('b', 3600, 1300);
+    const res = computeProximity([a, b], 160);
+    expect(res.get('a')).toEqual(['b']);
+    expect(res.get('b')).toEqual(['a']);
+  });
+
+  it('does not pair when only one is inside the circuit zone', () => {
+    const a = mk('a', 3000, 600);  // sur la piste
+    const b = mk('b', 2000, 600);  // dans les bureaux, à l'ouest
+    const res = computeProximity([a, b], 160);
+    expect(res.get('a')).toEqual([]);
+    expect(res.get('b')).toEqual([]);
+  });
+
+  it('conference zone and circuit zone stay independent', () => {
+    const conf = mk('conf', 500, 1000);     // salle de conférence
+    const track = mk('track', 3000, 600);   // circuit
+    const res = computeProximity([conf, track], 160);
+    expect(res.get('conf')).toEqual([]);
+    expect(res.get('track')).toEqual([]);
+  });
+});

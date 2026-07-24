@@ -1,5 +1,14 @@
 import type { InteractiveObject, PlayerState } from '../types.js';
 import { isInConferenceZone } from '../conferenceZone.js';
+import { inCircuitZone } from '../circuit.js';
+
+// Zones « micro ouvert » : tous les joueurs présents dans une même zone
+// s'entendent mutuellement quelle que soit la distance (la salle de conférence,
+// et toute la zone du circuit kart — on se parle d'un bout à l'autre de la piste).
+const OPEN_MIC_ZONES: ReadonlyArray<(x: number, y: number) => boolean> = [
+  isInConferenceZone,
+  inCircuitZone,
+];
 
 export function computeProximity(
   players: PlayerState[],
@@ -56,15 +65,18 @@ export function computeProximity(
     }
   }
 
-  // Conference room: every pair of players both inside the zone is mutually
-  // "near" regardless of distance, so their tracks stay subscribed.
-  const zonePlayers = players.filter((p) => isInConferenceZone(p.x, p.y));
-  for (const a of zonePlayers) {
-    const list = result.get(a.playerId);
-    if (!list) continue;
-    for (const b of zonePlayers) {
-      if (a.playerId === b.playerId) continue;
-      if (!list.includes(b.playerId)) list.push(b.playerId);
+  // Open-mic zones (conference room, circuit kart) : every pair of players both
+  // inside the same zone is mutually "near" regardless of distance, so their
+  // tracks stay subscribed.
+  for (const inZone of OPEN_MIC_ZONES) {
+    const zonePlayers = players.filter((p) => inZone(p.x, p.y));
+    for (const a of zonePlayers) {
+      const list = result.get(a.playerId);
+      if (!list) continue;
+      for (const b of zonePlayers) {
+        if (a.playerId === b.playerId) continue;
+        if (!list.includes(b.playerId)) list.push(b.playerId);
+      }
     }
   }
 
